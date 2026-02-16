@@ -514,15 +514,16 @@ textarea {
 }
 
 
+
 .spell-grid {
 	display: grid;
-	/* 魔法名(1.6fr) タイプ(60px) 指定特技(0.8fr) コスト(60px) チャージ(110px) 効果(3fr) 呪句(60px) 参照p(0.8fr) */
-	grid-template-columns: 1.6fr 60px 0.8fr 60px 110px 3fr 60px 0.8fr;
+	/* 魔法名(1.6fr) タイプ(60px) 指定特技(0.8fr) 対象(0.8fr) コスト(60px) チャージ(110px) 効果(3fr) 呪句(60px) 参照p(0.8fr) */
+	grid-template-columns: 1.6fr 60px 0.8fr 0.8fr 60px 110px 3fr 60px 0.8fr;
 	gap: 1px;
 	background-color: var(--border);
 	border: 1px solid var(--border);
 	border-radius: 8px;
-	min-width: 960px;
+	min-width: 1040px;
 	overflow: hidden;
 }
 

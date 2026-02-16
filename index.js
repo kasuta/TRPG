@@ -46,8 +46,8 @@ document.addEventListener('DOMContentLoaded', () => {
   const removeSpellBtn = document.getElementById('remove_spell_btn');
     
     let spellCount = 0;
-  const headerCount = 8;
-  const rowSize = 8;
+  const headerCount = 9;
+  const rowSize = 9;
 
     const resizeSpellRow = (rowId) => {
       const rowTextareas = spellList.querySelectorAll(`.spell-textarea[data-row="${rowId}"]`);
@@ -100,6 +100,7 @@ document.addEventListener('DOMContentLoaded', () => {
             </select>
             
             <textarea name="spell_skill_${spellCount}" class="spell-textarea" rows="1" data-row="${spellCount}"></textarea>
+            <textarea name="spell_target_${spellCount}" class="spell-textarea" rows="1" data-row="${spellCount}"></textarea>
             <textarea name="spell_cost_${spellCount}" class="spell-textarea" rows="1" data-row="${spellCount}"></textarea>
             
             <div class="box-container">
@@ -426,6 +427,7 @@ document.addEventListener('DOMContentLoaded', () => {
           name: document.querySelector(`[name="spell_name_${i}"]`).value,
           type: document.querySelector(`[name="spell_type_${i}"]`).value,
           skill: document.querySelector(`[name="spell_skill_${i}"]`).value,
+          target: document.querySelector(`[name="spell_target_${i}"]`).value,
           cost: document.querySelector(`[name="spell_cost_${i}"]`).value,
           effect: document.querySelector(`[name="spell_effect_${i}"]`).value,
           phrase: document.getElementById(`phrase_${i}`) ? document.getElementById(`phrase_${i}`).checked : false,
@@ -523,6 +525,7 @@ document.addEventListener('DOMContentLoaded', () => {
               document.querySelector(`[name="spell_name_${i}"]`).value = spell.name || '';
               document.querySelector(`[name="spell_type_${i}"]`).value = spell.type || '召喚';
               document.querySelector(`[name="spell_skill_${i}"]`).value = spell.skill || '';
+              document.querySelector(`[name="spell_target_${i}"]`).value = spell.target || '';
               document.querySelector(`[name="spell_cost_${i}"]`).value = spell.cost || '';
               document.querySelector(`[name="spell_effect_${i}"]`).value = spell.effect || '';
               document.querySelector(`[name="spell_reference_p_${i}"]`).value = spell.ref || '';
@@ -602,6 +605,17 @@ document.addEventListener('DOMContentLoaded', () => {
   const copyNameBtn = document.getElementById('copy_name_btn');
   const nameInput = document.getElementById('name');
 
+  // 要素を id または name の両方から探し、空欄なら "0" を返すお助け関数
+  const getVal = (idOrNameList) => {
+    for (const key of idOrNameList) {
+      const elById = document.getElementById(key);
+      if (elById && elById.value) return elById.value;
+      const elByName = document.querySelector(`[name="${key}"]`);
+      if (elByName && elByName.value) return elByName.value;
+    }
+    return "0";
+  };
+
   if (copyNameBtn && nameInput) {
     copyNameBtn.addEventListener('click', () => {
       const nameValue = nameInput.value;
@@ -616,15 +630,15 @@ document.addEventListener('DOMContentLoaded', () => {
       // -----------------------------
       let commands = "ーーー特技ーーー\n";
       
-      // 特技（チェックが入っているもの）を取得
-      // ※画像アップロードなどの魔法/関係関連以外のチェックボックスを対象とします
-      const checkboxes = document.querySelectorAll('input[type="checkbox"]:checked');
+      const checkboxes = document.querySelectorAll('.skill-check:checked');
       checkboxes.forEach(cb => {
-        if (!cb.id.startsWith('charge_') && !cb.id.startsWith('phrase_') && !cb.id.startsWith('relation_check_')) {
-          // value属性に特技名が入っている想定
-          commands += `2d6>=5《${cb.value}》\n`;
-        }
+        commands += `2d6>=5《${cb.value}》\n`;
       });
+
+      const soulSkill = getVal(['soul_skill', 'true_skill']);
+      if (soulSkill && soulSkill !== "0") {
+        commands += `2d6>=6《${soulSkill}》\n`;
+      }
 
       commands += "\nーーー魔法ーーー\n";
       let i = 1;
@@ -632,31 +646,30 @@ document.addEventListener('DOMContentLoaded', () => {
         const sName = document.querySelector(`[name="spell_name_${i}"]`).value || "";
         const sType = document.querySelector(`[name="spell_type_${i}"]`).value || "";
         const sSkill = document.querySelector(`[name="spell_skill_${i}"]`).value || "";
+        const sTarget = document.querySelector(`[name="spell_target_${i}"]`).value || "";
         const sCost = document.querySelector(`[name="spell_cost_${i}"]`).value || "";
         const sRef = document.querySelector(`[name="spell_reference_p_${i}"]`).value || "";
         const sEffect = document.querySelector(`[name="spell_effect_${i}"]`).value || "";
         
         if (sName) {
-          commands += `【${sName}】取得=/種別=${sType}/特技=${sSkill}/目標=/コスト=${sCost}/${sRef}　効果：${sEffect}\n`;
+          commands += `【${sName}】取得=/種別=${sType}/特技=${sSkill}/目標=${sTarget}/コスト=${sCost}/${sRef}　効果：${sEffect}\n`;
         }
         i++;
       }
 
-      // ▼ 真の姿（※HTMLのidに合わせて調整してください）
-      const trueName = document.getElementById('true_name') ? document.getElementById('true_name').value : "";
-      const trueEffect = document.getElementById('true_effect') ? document.getElementById('true_effect').value : "";
-      commands += `\nーーー真の姿ーーー\n「${trueName}」【${trueEffect}】\n`;
+      const trueName = getVal(['true_name']);
+      const trueEffect = getVal(['true_effect']);
+      commands += `\nーーー真の姿ーーー\n「${trueName === "0" ? "" : trueName}」【${trueEffect === "0" ? "" : trueEffect}】\n`;
 
-      // ▼ 戦闘ステータス（※HTMLのidに合わせて調整してください）
-      const attackVal = document.getElementById('attack') ? document.getElementById('attack').value : 0;
-      const defenseVal = document.getElementById('defense') ? document.getElementById('defense').value : 0;
-      const rootVal = document.getElementById('root') ? document.getElementById('root').value : 0;
+      const attackVal = getVal(['attack', 'attack_power', 'kougeki']);
+      const defenseVal = getVal(['defense', 'defense_power', 'bougyo']);
+      const rootVal = getVal(['kongen', 'root', 'kongenryoku']);
 
       commands += `\nーーー戦闘ーーー
-s1d1　　攻撃プロット（攻撃力=${attackVal}）
-s${attackVal}TZ6　攻撃ランダムプロット（攻撃力=${attackVal}）
-s1d1　　防御プロット（防御力=${defenseVal}）
-s${defenseVal}TZ6　防御ランダムプロット（防御力=${defenseVal}）\n\n`;
+s1d1　　攻撃プロット（攻撃力={攻撃力}）
+s{攻撃力}TZ6　攻撃ランダムプロット（攻撃力={攻撃力}）
+s1d1　　防御プロット（防御力={防御力}）
+s{防御力}TZ6　防御ランダムプロット（防御力={防御力}）\n\n`;
 
       commands += `ーーー表ーーー
 BGT　経歴表
@@ -716,16 +729,16 @@ FLT　その後表`;
 
       // -----------------------------
       // 2. ステータス（status）の作成
+      // ※ status の value/max は数値(Number)で渡す必要があります
       // -----------------------------
-      const magicMax = document.getElementById('magic') ? document.getElementById('magic').value : 0;
-      const tempMagic = document.getElementById('temp_magic') ? document.getElementById('temp_magic').value : 0;
+      const magicMax = getVal(['magic_max', 'magic']);
+      const tempMagic = getVal(['magic_temp', 'temp_magic']);
 
       let statusArr = [
         { label: "魔力", value: Number(magicMax), max: Number(magicMax) },
-        { label: "一時的魔力", value: Number(tempMagic || 0), max: Number(tempMagic || 0) }
+        { label: "一時的魔力", value: Number(tempMagic), max: Number(tempMagic) }
       ];
 
-      // 魔法名とコストをステータスに追加
       let j = 1;
       while (document.querySelector(`[name="spell_name_${j}"]`)) {
         const sName = document.querySelector(`[name="spell_name_${j}"]`).value;
@@ -742,11 +755,12 @@ FLT　その後表`;
 
       // -----------------------------
       // 3. パラメータ（params）の作成
+      // ★ ここが原因でした！ value を文字列(String)として渡すように修正 ★
       // -----------------------------
       let paramsArr = [
-        { label: "攻撃力", value: Number(attackVal) },
-        { label: "防御力", value: Number(defenseVal) },
-        { label: "根源力", value: Number(rootVal) }
+        { label: "攻撃力", value: String(attackVal) },
+        { label: "防御力", value: String(defenseVal) },
+        { label: "根源力", value: String(rootVal) }
       ];
 
       // -----------------------------
@@ -763,7 +777,6 @@ FLT　その後表`;
         }
       };
 
-      // JSのオブジェクトをココフォリアが読める形式（JSON文字列）に一括変換
       const textToCopy = JSON.stringify(ccfoliaData);
 
       navigator.clipboard.writeText(textToCopy)
@@ -777,5 +790,6 @@ FLT　その後表`;
     });
   }
 });
+
 
 clearPreview();
