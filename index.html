@@ -13,7 +13,7 @@
   <main class="top-content">
     <div class="input-left-stack">
       <section class="input-left-top">
-        <h2>入力フォーム</h2>
+        <h2>設定1</h2>
         <form class="input-form">
           <div class="form-row">
             <label for="name">かりそめの名前</label>
@@ -35,43 +35,45 @@
             <label for="points">功績点</label>
             <input id="points" name="points" type="text"/>
           </div>
-          <div class="form-row">
-            <label for="tier_number">階梯</label>
-            <div class="inline-fields">
-              <span class="inline-text">第</span><!-- spanは改行が入らない -->
-              <input id="tier_number" name="tier_number" type="text" />
-              <span class="inline-text">階梯</span>
-              <input id="tier_name" name="tier_name" type="text" />
+          <fieldset class="form-group tier-history">
+            <div class="form-row">
+              <label for="tier_number">階梯</label>
+              <div class="inline-fields">
+                <span class="inline-text">第</span><!-- spanは改行が入らない -->
+                <input id="tier_number" name="tier_number" type="text" />
+                <span class="inline-text">階梯</span>
+                <input id="tier_name" name="tier_name" type="text" />
+              </div>
             </div>
-          </div>
-          <div class="form-row">
-            <label for="area">領域</label>
-            <select id="area" name="area">
-              <option value="">選択してください</option>
-              <option value="星">星</option>
-              <option value="獣">獣</option>
-              <option value="力">力</option>
-              <option value="歌">歌</option>
-              <option value="夢">夢</option>
-              <option value="闇">闇</option>
-            </select>
-          </div>
-          <div class="form-row">
-            <label for="attack">攻撃力</label>
-            <input id="attack" name="attack" type="text"/>
-          </div>
-          <div class="form-row">
-            <label for="defense">防御力</label>
-            <input id="defense" name="defense" type="text"/>
-          </div>
-          <div class="form-row">
-            <label for="kongen">根源力</label>
-            <input id="kongen" name="kongen" type="text"/>
-          </div>
-          <div class="form-row">
-            <label for="history">経歴/機関</label>
-            <input id="history" name="history" type="text"/>
-          </div>
+            <div class="form-row">
+              <label for="area">領域</label>
+              <select id="area" name="area">
+                <option value="">選択してください</option>
+                <option value="星">星</option>
+                <option value="獣">獣</option>
+                <option value="力">力</option>
+                <option value="歌">歌</option>
+                <option value="夢">夢</option>
+                <option value="闇">闇</option>
+              </select>
+            </div>
+            <div class="form-row">
+              <label for="attack">攻撃力</label>
+              <input id="attack" name="attack" type="text"/>
+            </div>
+            <div class="form-row">
+              <label for="defense">防御力</label>
+              <input id="defense" name="defense" type="text"/>
+            </div>
+            <div class="form-row">
+              <label for="kongen">根源力</label>
+              <input id="kongen" name="kongen" type="text"/>
+            </div>
+            <div class="form-row">
+              <label for="history">経歴/機関</label>
+              <input id="history" name="history" type="text"/>
+            </div>
+          </fieldset>
           <div class="form-row">
             <label for="belief">信条</label>
             <input id="belief" name="belief" type="text"/>
@@ -90,25 +92,25 @@
             <div class="magic-input">
               <input id="magic_max" name="magic_max" type="number" />
               <div class="magic-meter" role="group" aria-label="魔力の最大値">
-                <input id="magic_max_10" name="magic_max_meter" type="radio" value="10" />
+                <input id="magic_max_10" name="magic_max_meter" type="checkbox" value="10" data-magic-group="magic_max" data-magic-index="10" />
                 <label for="magic_max_10" title="10">10</label>
-                <input id="magic_max_9" name="magic_max_meter" type="radio" value="9" />
+                <input id="magic_max_9" name="magic_max_meter" type="checkbox" value="9" data-magic-group="magic_max" data-magic-index="9" />
                 <label for="magic_max_9" title="9">9</label>
-                <input id="magic_max_8" name="magic_max_meter" type="radio" value="8" />
+                <input id="magic_max_8" name="magic_max_meter" type="checkbox" value="8" data-magic-group="magic_max" data-magic-index="8" />
                 <label for="magic_max_8" title="8">8</label>
-                <input id="magic_max_7" name="magic_max_meter" type="radio" value="7" />
+                <input id="magic_max_7" name="magic_max_meter" type="checkbox" value="7" data-magic-group="magic_max" data-magic-index="7" />
                 <label for="magic_max_7" title="7">7</label>
-                <input id="magic_max_6" name="magic_max_meter" type="radio" value="6" />
+                <input id="magic_max_6" name="magic_max_meter" type="checkbox" value="6" data-magic-group="magic_max" data-magic-index="6" />
                 <label for="magic_max_6" title="6">6</label>
-                <input id="magic_max_5" name="magic_max_meter" type="radio" value="5" />
+                <input id="magic_max_5" name="magic_max_meter" type="checkbox" value="5" data-magic-group="magic_max" data-magic-index="5" />
                 <label for="magic_max_5" title="5">5</label>
-                <input id="magic_max_4" name="magic_max_meter" type="radio" value="4" />
+                <input id="magic_max_4" name="magic_max_meter" type="checkbox" value="4" data-magic-group="magic_max" data-magic-index="4" />
                 <label for="magic_max_4" title="4">4</label>
-                <input id="magic_max_3" name="magic_max_meter" type="radio" value="3" />
+                <input id="magic_max_3" name="magic_max_meter" type="checkbox" value="3" data-magic-group="magic_max" data-magic-index="3" />
                 <label for="magic_max_3" title="3">3</label>
-                <input id="magic_max_2" name="magic_max_meter" type="radio" value="2" />
+                <input id="magic_max_2" name="magic_max_meter" type="checkbox" value="2" data-magic-group="magic_max" data-magic-index="2" />
                 <label for="magic_max_2" title="2">2</label>
-                <input id="magic_max_1" name="magic_max_meter" type="radio" value="1" />
+                <input id="magic_max_1" name="magic_max_meter" type="checkbox" value="1" data-magic-group="magic_max" data-magic-index="1" />
                 <label for="magic_max_1" title="1">1</label>
               </div>
             </div>
@@ -118,25 +120,25 @@
             <div class="magic-input">
               <input id="magic_temp" name="magic_temp" type="number" />
               <div class="magic-meter" role="group" aria-label="一時的魔力">
-                <input id="magic_temp_10" name="magic_temp_meter" type="radio" value="10" />
+                <input id="magic_temp_10" name="magic_temp_meter" type="checkbox" value="10" data-magic-group="magic_temp" data-magic-index="10" />
                 <label for="magic_temp_10" title="10">10</label>
-                <input id="magic_temp_9" name="magic_temp_meter" type="radio" value="9" />
+                <input id="magic_temp_9" name="magic_temp_meter" type="checkbox" value="9" data-magic-group="magic_temp" data-magic-index="9" />
                 <label for="magic_temp_9" title="9">9</label>
-                <input id="magic_temp_8" name="magic_temp_meter" type="radio" value="8" />
+                <input id="magic_temp_8" name="magic_temp_meter" type="checkbox" value="8" data-magic-group="magic_temp" data-magic-index="8" />
                 <label for="magic_temp_8" title="8">8</label>
-                <input id="magic_temp_7" name="magic_temp_meter" type="radio" value="7" />
+                <input id="magic_temp_7" name="magic_temp_meter" type="checkbox" value="7" data-magic-group="magic_temp" data-magic-index="7" />
                 <label for="magic_temp_7" title="7">7</label>
-                <input id="magic_temp_6" name="magic_temp_meter" type="radio" value="6" />
+                <input id="magic_temp_6" name="magic_temp_meter" type="checkbox" value="6" data-magic-group="magic_temp" data-magic-index="6" />
                 <label for="magic_temp_6" title="6">6</label>
-                <input id="magic_temp_5" name="magic_temp_meter" type="radio" value="5" />
+                <input id="magic_temp_5" name="magic_temp_meter" type="checkbox" value="5" data-magic-group="magic_temp" data-magic-index="5" />
                 <label for="magic_temp_5" title="5">5</label>
-                <input id="magic_temp_4" name="magic_temp_meter" type="radio" value="4" />
+                <input id="magic_temp_4" name="magic_temp_meter" type="checkbox" value="4" data-magic-group="magic_temp" data-magic-index="4" />
                 <label for="magic_temp_4" title="4">4</label>
-                <input id="magic_temp_3" name="magic_temp_meter" type="radio" value="3" />
+                <input id="magic_temp_3" name="magic_temp_meter" type="checkbox" value="3" data-magic-group="magic_temp" data-magic-index="3" />
                 <label for="magic_temp_3" title="3">3</label>
-                <input id="magic_temp_2" name="magic_temp_meter" type="radio" value="2" />
+                <input id="magic_temp_2" name="magic_temp_meter" type="checkbox" value="2" data-magic-group="magic_temp" data-magic-index="2" />
                 <label for="magic_temp_2" title="2">2</label>
-                <input id="magic_temp_1" name="magic_temp_meter" type="radio" value="1" />
+                <input id="magic_temp_1" name="magic_temp_meter" type="checkbox" value="1" data-magic-group="magic_temp" data-magic-index="1" />
                 <label for="magic_temp_1" title="1">1</label>
               </div>
             </div>
@@ -145,27 +147,26 @@
       </section>
     </div>
     <div class="input-right">
-      <h2>設定</h2>
-      <div class="form-row">
-        <label for="setting">設定</label>
-        <textarea id="setting" name="setting"></textarea>
-      </div>
-      <div class="form-row">
-        <label for="setting_image">設定の画像</label>
-        <input id="setting_image" name="setting_image" type="file" accept="image/*" />
+      <h2>設定2</h2>
+      <div class="form-row single-field">
+        <input id="setting_image" name="setting_image" type="file" accept="image/*" aria-label="設定の画像" />
       </div>
       <div class="image-preview-area" aria-live="polite">
         <p id="setting_image_empty" class="image-preview-empty">画像がまだ選択されていません</p>
         <img id="setting_image_preview" class="image-preview" alt="設定画像のプレビュー" />
       </div>
+      <div class="form-row">
+        <label for="setting">設定</label>
+        <textarea id="setting" name="setting"></textarea>
+      </div>
       <section class="true-form">
         <h2>真の姿</h2>
         <div class="stack-form">
-          <div class="form-row">
-            <label for="true_name">名称</label>
+          <div class="form-row inline-label">
+            <label for="true_name">真名</label>
             <input id="true_name" name="true_name" type="text" />
           </div>
-          <div class="form-row">
+          <div class="form-row inline-label">
             <label for="true_effect">効果</label>
             <input id="true_effect" name="true_effect" type="text" />
           </div>
@@ -177,6 +178,162 @@
       </section>
     </div>
   </main>
+  <section class="bottom-content">
+    <section class="input-panel skill-form">
+      <h2>特技</h2>
+      <div class="stack-form">
+        <div class="form-row">
+          <label for="skill_r1_c1">特技</label>
+          <div class="skill-grid-wrap" aria-label="特技 13行12列">
+            <div class="skill-grid">
+              <div class="skill-num-head"></div>
+              <div class="skill-head">星</div><div class="skill-head-gap"></div>
+              <div class="skill-head">獣</div><div class="skill-head-gap"></div>
+              <div class="skill-head">力</div><div class="skill-head-gap"></div>
+              <div class="skill-head">歌</div><div class="skill-head-gap"></div>
+              <div class="skill-head">夢</div><div class="skill-head-gap"></div>
+              <div class="skill-head">闇</div>
+
+              <input type="checkbox" id="gap1" class="gap-check"><label for="gap1" class="gap-col" style="grid-column: 3; grid-row: 2 / 13;"></label>
+              <input type="checkbox" id="gap2" class="gap-check"><label for="gap2" class="gap-col" style="grid-column: 5; grid-row: 2 / 13;"></label>
+              <input type="checkbox" id="gap3" class="gap-check"><label for="gap3" class="gap-col" style="grid-column: 7; grid-row: 2 / 13;"></label>
+              <input type="checkbox" id="gap4" class="gap-check"><label for="gap4" class="gap-col" style="grid-column: 9; grid-row: 2 / 13;"></label>
+              <input type="checkbox" id="gap5" class="gap-check"><label for="gap5" class="gap-col" style="grid-column: 11; grid-row: 2 / 13;"></label>
+
+              <div class="skill-num">2</div>
+              <input id="skill_r2_c1" class="skill-check" name="skill_r2_c1" type="checkbox" value="黄金" /><label for="skill_r2_c1" class="skill-label">黄金</label>
+              <input id="skill_r2_c2" class="skill-check" name="skill_r2_c2" type="checkbox" value="肉" /><label for="skill_r2_c2" class="skill-label">肉</label>
+              <input id="skill_r2_c3" class="skill-check" name="skill_r2_c3" type="checkbox" value="重力" /><label for="skill_r2_c3" class="skill-label">重力</label>
+              <input id="skill_r2_c4" class="skill-check" name="skill_r2_c4" type="checkbox" value="伝承" /><label for="skill_r2_c4" class="skill-label">物語</label>
+              <input id="skill_r2_c5" class="skill-check" name="skill_r2_c5" type="checkbox" value="思い出" /><label for="skill_r2_c5" class="skill-label">追憶</label>
+              <input id="skill_r2_c6" class="skill-check" name="skill_r2_c6" type="checkbox" value="深淵" /><label for="skill_r2_c6" class="skill-label">深淵</label>
+
+              <div class="skill-num">3</div>
+              <input id="skill_r3_c1" class="skill-check" name="skill_r3_c1" type="checkbox" value="大地" /><label for="skill_r3_c1" class="skill-label">大地</label>
+              <input id="skill_r3_c2" class="skill-check" name="skill_r3_c2" type="checkbox" value="虫" /><label for="skill_r3_c2" class="skill-label">蟲</label>
+              <input id="skill_r3_c3" class="skill-check" name="skill_r3_c3" type="checkbox" value="風" /><label for="skill_r3_c3" class="skill-label">風</label>
+              <input id="skill_r3_c4" class="skill-check" name="skill_r3_c4" type="checkbox" value="嘘" /><label for="skill_r3_c4" class="skill-label">旋律</label>
+              <input id="skill_r3_c5" class="skill-check" name="skill_r3_c5" type="checkbox" value="謎" /><label for="skill_r3_c5" class="skill-label">謎</label>
+              <input id="skill_r3_c6" class="skill-check" name="skill_r3_c6" type="checkbox" value="腐敗" /><label for="skill_r3_c6" class="skill-label">腐敗</label>
+
+              <div class="skill-num">4</div>
+              <input id="skill_r4_c1" class="skill-check" name="skill_r4_c1" type="checkbox" value="森" /><label for="skill_r4_c1" class="skill-label">森</label>
+              <input id="skill_r4_c2" class="skill-check" name="skill_r4_c2" type="checkbox" value="花" /><label for="skill_r4_c2" class="skill-label">花</label>
+              <input id="skill_r4_c3" class="skill-check" name="skill_r4_c3" type="checkbox" value="流れ" /><label for="skill_r4_c3" class="skill-label">流れ</label>
+              <input id="skill_r4_c4" class="skill-check" name="skill_r4_c4" type="checkbox" value="不安" /><label for="skill_r4_c4" class="skill-label">涙</label>
+              <input id="skill_r4_c5" class="skill-check" name="skill_r4_c5" type="checkbox" value="祈り" /><label for="skill_r4_c5" class="skill-label">嘘</label>
+              <input id="skill_r4_c6" class="skill-check" name="skill_r4_c6" type="checkbox" value="裏切り" /><label for="skill_r4_c6" class="skill-label">裏切り</label>
+
+              <div class="skill-num">5</div>
+              <input id="skill_r5_c1" class="skill-check" name="skill_r5_c1" type="checkbox" value="道" /><label for="skill_r5_c1" class="skill-label">道</label>
+              <input id="skill_r5_c2" class="skill-check" name="skill_r5_c2" type="checkbox" value="血" /><label for="skill_r5_c2" class="skill-label">血</label>
+              <input id="skill_r5_c3" class="skill-check" name="skill_r5_c3" type="checkbox" value="水" /><label for="skill_r5_c3" class="skill-label">水</label>
+              <input id="skill_r5_c4" class="skill-check" name="skill_r5_c4" type="checkbox" value="眠り" /><label for="skill_r5_c4" class="skill-label">別れ</label>
+              <input id="skill_r5_c5" class="skill-check" name="skill_r5_c5" type="checkbox" value="願い" /><label for="skill_r5_c5" class="skill-label">不安</label>
+              <input id="skill_r5_c6" class="skill-check" name="skill_r5_c6" type="checkbox" value="迷路" /><label for="skill_r5_c6" class="skill-label">迷い</label>
+
+              <div class="skill-num">6</div>
+              <input id="skill_r6_c1" class="skill-check" name="skill_r6_c1" type="checkbox" value="海" /><label for="skill_r6_c1" class="skill-label">海</label>
+              <input id="skill_r6_c2" class="skill-check" name="skill_r6_c2" type="checkbox" value="鱗" /><label for="skill_r6_c2" class="skill-label">鱗</label>
+              <input id="skill_r6_c3" class="skill-check" name="skill_r6_c3" type="checkbox" value="波" /><label for="skill_r6_c3" class="skill-label">波</label>
+              <input id="skill_r6_c4" class="skill-check" name="skill_r6_c4" type="checkbox" value="偶然" /><label for="skill_r6_c4" class="skill-label">微笑み</label>
+              <input id="skill_r6_c5" class="skill-check" name="skill_r6_c5" type="checkbox" value="微笑み" /><label for="skill_r6_c5" class="skill-label">眠り</label>
+              <input id="skill_r6_c6" class="skill-check" name="skill_r6_c6" type="checkbox" value="灰" /><label for="skill_r6_c6" class="skill-label">怠惰</label>
+
+              <div class="skill-num">7</div>
+              <input id="skill_r7_c1" class="skill-check" name="skill_r7_c1" type="checkbox" value="静寂" /><label for="skill_r7_c1" class="skill-label">静寂</label>
+              <input id="skill_r7_c2" class="skill-check" name="skill_r7_c2" type="checkbox" value="混沌" /><label for="skill_r7_c2" class="skill-label">混沌</label>
+              <input id="skill_r7_c3" class="skill-check" name="skill_r7_c3" type="checkbox" value="自由" /><label for="skill_r7_c3" class="skill-label">自由</label>
+              <input id="skill_r7_c4" class="skill-check" name="skill_r7_c4" type="checkbox" value="幻" /><label for="skill_r7_c4" class="skill-label">想い</label>
+              <input id="skill_r7_c5" class="skill-check" name="skill_r7_c5" type="checkbox" value="心" /><label for="skill_r7_c5" class="skill-label">偶然</label>
+              <input id="skill_r7_c6" class="skill-check" name="skill_r7_c6" type="checkbox" value="死" /><label for="skill_r7_c6" class="skill-label">歪み</label>
+
+              <div class="skill-num">8</div>
+              <input id="skill_r8_c1" class="skill-check" name="skill_r8_c1" type="checkbox" value="雨" /><label for="skill_r8_c1" class="skill-label">雨</label>
+              <input id="skill_r8_c2" class="skill-check" name="skill_r8_c2" type="checkbox" value="牙" /><label for="skill_r8_c2" class="skill-label">牙</label>
+              <input id="skill_r8_c3" class="skill-check" name="skill_r8_c3" type="checkbox" value="衝撃" /><label for="skill_r8_c3" class="skill-label">衝撃</label>
+              <input id="skill_r8_c4" class="skill-check" name="skill_r8_c4" type="checkbox" value="音楽" /><label for="skill_r8_c4" class="skill-label">勝利</label>
+              <input id="skill_r8_c5" class="skill-check" name="skill_r8_c5" type="checkbox" value="悪夢" /><label for="skill_r8_c5" class="skill-label">幻</label>
+              <input id="skill_r8_c6" class="skill-check" name="skill_r8_c6" type="checkbox" value="暗闇" /><label for="skill_r8_c6" class="skill-label">不幸</label>
+
+              <div class="skill-num">9</div>
+              <input id="skill_r9_c1" class="skill-check" name="skill_r9_c1" type="checkbox" value="嵐" /><label for="skill_r9_c1" class="skill-label">嵐</label>
+              <input id="skill_r9_c2" class="skill-check" name="skill_r9_c2" type="checkbox" value="叫び" /><label for="skill_r9_c2" class="skill-label">叫び</label>
+              <input id="skill_r9_c3" class="skill-check" name="skill_r9_c3" type="checkbox" value="雷" /><label for="skill_r9_c3" class="skill-label">雷</label>
+              <input id="skill_r9_c4" class="skill-check" name="skill_r9_c4" type="checkbox" value="涙" /><label for="skill_r9_c4" class="skill-label">恋</label>
+              <input id="skill_r9_c5" class="skill-check" name="skill_r9_c5" type="checkbox" value="狂気" /><label for="skill_r9_c5" class="skill-label">狂気</label>
+              <input id="skill_r9_c6" class="skill-check" name="skill_r9_c6" type="checkbox" value="星屑" /><label for="skill_r9_c6" class="skill-label">バカ</label>
+
+              <div class="skill-num">10</div>
+              <input id="skill_r10_c1" class="skill-check" name="skill_r10_c1" type="checkbox" value="太陽" /><label for="skill_r10_c1" class="skill-label">太陽</label>
+              <input id="skill_r10_c2" class="skill-check" name="skill_r10_c2" type="checkbox" value="怒り" /><label for="skill_r10_c2" class="skill-label">怒り</label>
+              <input id="skill_r10_c3" class="skill-check" name="skill_r10_c3" type="checkbox" value="炎" /><label for="skill_r10_c3" class="skill-label">炎</label>
+              <input id="skill_r10_c4" class="skill-check" name="skill_r10_c4" type="checkbox" value="恋" /><label for="skill_r10_c4" class="skill-label">情熱</label>
+              <input id="skill_r10_c5" class="skill-check" name="skill_r10_c5" type="checkbox" value="迷い" /><label for="skill_r10_c5" class="skill-label">祈り</label>
+              <input id="skill_r10_c6" class="skill-check" name="skill_r10_c6" type="checkbox" value="孤独" /><label for="skill_r10_c6" class="skill-label">悪意</label>
+
+              <div class="skill-num">11</div>
+              <input id="skill_r11_c1" class="skill-check" name="skill_r11_c1" type="checkbox" value="天空" /><label for="skill_r11_c1" class="skill-label">天空</label>
+              <input id="skill_r11_c2" class="skill-check" name="skill_r11_c2" type="checkbox" value="翼" /><label for="skill_r11_c2" class="skill-label">翼</label>
+              <input id="skill_r11_c3" class="skill-check" name="skill_r11_c3" type="checkbox" value="光" /><label for="skill_r11_c3" class="skill-label">光</label>
+              <input id="skill_r11_c4" class="skill-check" name="skill_r11_c4" type="checkbox" value="希望" /><label for="skill_r11_c4" class="skill-label">癒し</label>
+              <input id="skill_r11_c5" class="skill-check" name="skill_r11_c5" type="checkbox" value="物語" /><label for="skill_r11_c5" class="skill-label">希望</label>
+              <input id="skill_r11_c6" class="skill-check" name="skill_r11_c6" type="checkbox" value="絶望" /><label for="skill_r11_c6" class="skill-label">絶望</label>
+
+              <div class="skill-num">12</div>
+              <input id="skill_r12_c1" class="skill-check" name="skill_r12_c1" type="checkbox" value="異界" /><label for="skill_r12_c1" class="skill-label">異界</label>
+              <input id="skill_r12_c2" class="skill-check" name="skill_r12_c2" type="checkbox" value="幻獣" /><label for="skill_r12_c2" class="skill-label">エロスえ</label>
+              <input id="skill_r12_c3" class="skill-check" name="skill_r12_c3" type="checkbox" value="円環" /><label for="skill_r12_c3" class="skill-label">円環</label>
+              <input id="skill_r12_c4" class="skill-check" name="skill_r12_c4" type="checkbox" value="時" /><label for="skill_r12_c4" class="skill-label">時</label>
+              <input id="skill_r12_c5" class="skill-check" name="skill_r12_c5" type="checkbox" value="運命" /><label for="skill_r12_c5" class="skill-label">未来</label>
+              <input id="skill_r12_c6" class="skill-check" name="skill_r12_c6" type="checkbox" value="魂" /><label for="skill_r12_c6" class="skill-label">死</label>
+            </div>
+            <div class="form-row inline-label soul-skill-row">
+              <label for="soul_skill">魂の特技</label>
+              <input id="soul_skill" name="soul_skill" type="text" />
+            </div>
+        </div>
+      </div>
+    </section>
+    <section class="input-panel">
+      <h2>蔵書（修得魔法）</h2>
+      <div class="spell-grid-wrap">
+        <div class="spell-grid" id="spell_list">
+          <div class="spell-head">魔法名</div>
+          <div class="spell-head">タイプ</div>
+          <div class="spell-head">指定特技</div>
+          <div class="spell-head">コスト</div>
+          <div class="spell-head">チャージ</div>
+          <div class="spell-head">効果</div>
+          <div class="spell-head">呪句</div>
+          <div class="spell-head">参照p</div>
+        </div>
+      </div>
+      <div class="control-row">
+        <button type="button" id="add_spell_btn" class="btn">＋ 魔法を追加</button>
+        <button type="button" id="remove_spell_btn" class="btn btn-outline">－ 魔法を削除</button>
+      </div>
+    </section>
+      <section class="input-panel">
+      <h2>関係</h2>
+      <div class="spell-grid-wrap"> <div class="relation-grid" id="relation_list">
+          <div class="relation-head"></div> <div class="relation-head">アンカー名</div>
+          <div class="relation-head">運命</div>
+          <div class="relation-head">属性</div>
+          <div class="relation-head">設定</div>
+        </div>
+      </div>
+      <div class="control-row">
+        <button type="button" id="add_relation_btn" class="btn">＋ 関係を追加</button>
+        <button type="button" id="remove_relation_btn" class="btn btn-outline">－ 削除</button>
+      </div>
+    </section>
+    <div class="control-row" style="justify-content: flex-end; margin-bottom: 20px; padding: 0 20px;">
+      <button type="button" id="save_data_btn" class="btn">データを保存 (.json)</button>
+      <label for="load_data_file" class="btn btn-outline" style="cursor: pointer; margin: 0;">データを読み込む</label>
+      <input type="file" id="load_data_file" accept=".json" style="display: none;" />
+    </div>
+  </section>
 </body>
 
 </html>

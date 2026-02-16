@@ -1,5 +1,9 @@
 @import url("https://fonts.googleapis.com/css2?family=Zen+Kaku+Gothic+New:wght@400;600;700&family=DM+Serif+Display&display=swap");
 
+html {
+	font-size: 15px;
+}
+
 :root {
 	--bg-top: #f7efe3;
 	--bg-bottom: #dfe7f2;
@@ -50,6 +54,12 @@ h1 {
 	grid-template-columns: repeat(2, minmax(0, 1fr));
 	gap: 32px;
 	align-items: start;
+}
+
+.bottom-content {
+	max-width: 980px;
+	margin: 0 auto 80px;
+	padding: 0 20px;
 }
 
 .input-left-stack {
@@ -106,6 +116,17 @@ h1 {
 	gap: 16px;
 }
 
+.form-group {
+	margin: 0;
+	padding: 16px 16px 18px;
+	border: 1px solid var(--border);
+	border-radius: 12px;
+	background: rgba(244, 192, 149, 0.12);
+	display: grid;
+	gap: 16px;
+}
+
+
 .stack-form {
 	display: grid;
 	gap: 16px;
@@ -114,6 +135,181 @@ h1 {
 .stack-form .form-row {
 	grid-template-columns: 1fr;
 	align-items: start;
+}
+
+.stack-form .form-row.inline-label {
+	grid-template-columns: minmax(90px, 0.3fr) 1fr;
+	column-gap: 6px;
+	align-items: center;
+}
+
+.stack-form .form-row.inline-label input[type="text"] {
+	width: 100%;
+}
+
+/* クラス名を繋げて優先度を最大化し、確実に適用させる */
+.skill-form .soul-skill-row.form-row.inline-label {
+	margin-top: 16px;
+	grid-template-columns: max-content auto;
+	column-gap: 8px; /* ★ここの数字を変更すれば確実に間隔が変わります */
+}
+
+.skill-form .soul-skill-row.form-row.inline-label input[type="text"] {
+	width: calc(24ch + 72px);
+	justify-self: start;
+}
+
+.skill-grid-wrap {
+	overflow-x: auto;
+}
+
+/* 1. 表の枠組み（番号を一番左に変更） */
+.skill-grid {
+	display: grid;
+	grid-template-columns: 
+		40px      /* ★番号の列を一番左（上）に移動！ */
+		1fr 16px  /* 星 ＋ 隙間1 */
+		1fr 16px  /* 獣 ＋ 隙間2 */
+		1fr 16px  /* 力 ＋ 隙間3 */
+		1fr 16px  /* 歌 ＋ 隙間4 */
+		1fr 16px  /* 夢 ＋ 隙間5 */
+		1fr;      /* 闇 */
+	gap: 1px;
+	background-color: var(--border);
+	border: 1px solid var(--border);
+	border-radius: 8px;
+	min-width: 860px;
+	overflow: hidden;
+}
+
+/* 2. ヘッダー関連 */
+.skill-head {
+	background: var(--ink);
+	color: #ffffff;
+	text-align: center;
+	padding: 8px 0;
+	font-weight: 700;
+	letter-spacing: 0.2em;
+}
+
+.skill-head-gap, .skill-num-head {
+	background: var(--ink);
+}
+
+/* 3. 分野の隙間（クリックで塗りつぶし） */
+.gap-check {
+	display: none;
+}
+.gap-col {
+	background: #f6f8fb;
+	cursor: pointer;
+	transition: background 0.2s ease;
+	margin: 0;
+	position: relative;
+	z-index: 2;
+}
+.gap-col:hover {
+	background: #e2e8f0;
+}
+.gap-check:checked + .gap-col {
+	background: var(--ink);
+}
+
+
+.skill-grid input[type="text"] {
+	width: 100%;
+	min-width: 0;
+	padding: 8px 10px;
+	border: none;
+	border-radius: 0;
+	background-color: #ffffff;
+	margin: 0;
+	font-size: 0.95rem;
+}
+
+.skill-toggle {
+	position: absolute;
+	opacity: 0;
+	pointer-events: none;
+}
+
+.skill-button {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	height: 100%;
+	border: none;
+	border-radius: 0;
+	background: #f6f8fb;
+	font-weight: 600;
+	color: var(--muted);
+	cursor: pointer;
+	transition: background 0.2s ease, color 0.2s ease;
+	margin: 0;
+}
+
+.skill-toggle:checked + .skill-button {
+	background: var(--ink);
+	color: #ffffff;
+}
+
+.skill-toggle:focus-visible + .skill-button,
+.skill-grid input[type="text"]:focus {
+	outline: none;
+	position: relative;
+	z-index: 1;
+	box-shadow: 0 0 0 3px rgba(47, 93, 98, 0.3);
+}
+
+/* 4. 特技のマス（チェックボックスを隠してラベルをマスにする） */
+.skill-check {
+	position: absolute;
+	opacity: 0;
+	pointer-events: none;
+}
+
+.skill-label {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	background: #ffffff;
+	padding: 8px 4px;
+	margin: 0;
+	cursor: pointer;
+	font-size: 0.95rem;
+	transition: background 0.2s ease, color 0.2s ease;
+}
+
+/* ホバー時（マウスを乗せた時） */
+.skill-label:hover {
+	background: #f0f4f8;
+}
+
+/* チェック時（習得した時）のスタイル */
+.skill-check:checked + .skill-label {
+	background: var(--ink);
+	color: #ffffff;
+	font-weight: bold;
+}
+
+/* フォーカス時のハイライト（Tabキー操作などのため） */
+.skill-check:focus-visible + .skill-label {
+	outline: none;
+	position: relative;
+	z-index: 1;
+	box-shadow: 0 0 0 3px rgba(47, 93, 98, 0.3);
+}
+
+.skill-num {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	background: #f6f8fb;
+	font-weight: 700;
+	color: var(--accent-strong);
+	font-size: 1.1rem;
+	font-family: "DM Serif Display", serif;
+	margin: 0;
 }
 
 .stack-form label {
@@ -133,6 +329,10 @@ h1 {
 	align-items: center;
 }
 
+.form-row.single-field {
+	grid-template-columns: 1fr;
+}
+
 .magic-input {
 	display: grid;
 	gap: 8px;
@@ -145,7 +345,7 @@ h1 {
 	align-items: center;
 }
 
-.magic-meter input[type="radio"] {
+.magic-meter input[type="checkbox"] {
 	position: absolute;
 	op: auto;
 	left: -9999px;
@@ -167,14 +367,14 @@ h1 {
 	transition: background 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
 }
 
-.magic-meter input[type="radio"]:checked + label,
-.magic-meter input[type="radio"]:checked ~ label {
+.magic-meter input[type="checkbox"]:checked + label,
+.magic-meter input[type="checkbox"]:checked ~ label {
 	background: var(--ink);
 	border-color: var(--ink);
 	color: #ffffff;
 }
 
-.magic-meter input[type="radio"]:focus-visible + label {
+.magic-meter input[type="checkbox"]:focus-visible + label {
 	box-shadow: 0 0 0 3px rgba(47, 93, 98, 0.2);
 }
 
@@ -274,7 +474,7 @@ textarea {
 }
 
 .true-form textarea {
-	min-height: 280px;
+	min-height: 140px;
 }
 
 .image-preview-area {
@@ -307,6 +507,186 @@ textarea {
 	display: block;
 }
 
+/* ▼ 蔵書（修得魔法）のスタイル ▼ */
+.spell-grid-wrap {
+	overflow-x: auto;
+	margin-bottom: 24px;
+}
+
+
+.spell-grid {
+	display: grid;
+	/* 魔法名(1.6fr) タイプ(60px) 指定特技(0.8fr) コスト(60px) チャージ(110px) 効果(3fr) 呪句(60px) 参照p(0.8fr) */
+	grid-template-columns: 1.6fr 60px 0.8fr 60px 110px 3fr 60px 0.8fr;
+	gap: 1px;
+	background-color: var(--border);
+	border: 1px solid var(--border);
+	border-radius: 8px;
+	min-width: 960px;
+	overflow: hidden;
+}
+
+.spell-actions {
+	display: flex;
+	gap: 12px;
+	flex-wrap: wrap;
+}
+
+.spell-head {
+	background: var(--ink);
+	color: #ffffff;
+	text-align: center;
+	padding: 10px 8px;
+	font-weight: 700;
+	font-size: 0.95rem;
+	white-space: nowrap;
+}
+
+/* 蔵書内の入力欄（特技表と同様に枠線を消してマス目に合わせる） */
+.spell-grid input[type="text"],
+.spell-grid textarea,
+.spell-grid select {
+	width: 100%;
+	border: none;
+	border-radius: 0;
+	margin: 0;
+	padding: 10px 8px;
+	background: #ffffff;
+	font-size: 0.95rem;
+}
+
+.spell-grid textarea {
+	resize: none;
+	overflow: hidden;
+	min-height: 0;
+	line-height: 1.5;
+}
+
+/* 蔵書内のセレクトボックスの矢印位置の微調整 */
+.spell-grid select {
+	padding-right: 24px;
+	background-position: calc(100% - 8px) center;
+}
+
+/* 追加ボタンのデザイン */
+.action-button {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	padding: 12px 32px;
+	background: var(--accent);
+	color: #ffffff;
+	font-weight: bold;
+	font-size: 1rem;
+	border: none;
+	border-radius: 8px;
+	cursor: pointer;
+	transition: background 0.2s ease, transform 0.1s ease;
+	box-shadow: 0 4px 12px rgba(47, 93, 98, 0.2);
+}
+
+.action-button:hover {
+	background: var(--accent-strong);
+}
+
+.action-button:active {
+	transform: translateY(2px);
+}
+
+.box-container {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	gap: 4px; /* 四角同士の隙間 */
+	background: #ffffff;
+	padding: 0 8px;
+	margin: 0;
+}
+
+.box-check {
+	position: absolute;
+	opacity: 0;
+	pointer-events: none;
+}
+
+/* 四角の基本デザイン */
+.box-label {
+	display: inline-block;
+	width: 16px;
+	height: 16px;
+	border: 1px solid var(--muted); /* 枠線の色 */
+	background-color: #ffffff;
+	cursor: pointer;
+	transition: background 0.2s ease, border-color 0.2s ease;
+}
+
+/* ホバー時（マウスを乗せた時） */
+.box-label:hover {
+	border-color: var(--ink);
+	background-color: #f0f4f8;
+}
+
+/* チェック時（塗りつぶし） */
+.box-check:checked + .box-label {
+	background-color: var(--ink);
+	border-color: var(--ink);
+}
+
+/* フォーカス時のハイライト（Tabキー操作用） */
+.box-check:focus-visible + .box-label {
+	outline: none;
+	box-shadow: 0 0 0 3px rgba(47, 93, 98, 0.3);
+}
+
+/* --- 関係セクション用 --- */
+.relation-grid {
+	display: grid;
+	/* 左から: チェック(約32px), アンカー(10), 運命(4), 属性(4), 設定(10) の比率 */
+	grid-template-columns: 32px minmax(10em, 10fr) minmax(4em, 4fr) minmax(4em, 4fr) minmax(10em, 10fr);
+	gap: 1px;
+	background-color: var(--border);
+	border: 1px solid var(--border);
+	border-radius: 8px;
+	overflow: hidden;
+}
+
+.relation-head {
+	background: var(--ink);
+	color: #ffffff;
+	padding: 10px 8px;
+	font-weight: 700;
+	text-align: center;
+	font-size: 0.95rem;
+	white-space: nowrap;
+}
+
+.relation-textarea {
+	width: 100%;
+	border: none;
+	resize: none;
+	padding: 10px 8px;
+	font-family: inherit;
+	font-size: 0.95rem;
+	line-height: 1.5;
+	min-height: calc(1.5em + 16px);
+	height: calc(1.5em + 16px);
+	outline: none;
+	background-color: #ffffff;
+	overflow: hidden;
+}
+
+.relation-textarea:focus {
+	background-color: #ffffff;
+}
+
+.relation-checkbox-cell {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	background-color: #ffffff;
+}
+
+
 @media (max-width: 720px) {
 	h1 {
 		margin: 32px auto 20px;
@@ -333,6 +713,7 @@ textarea {
 		margin-bottom: 4px;
 	}
 
+
 	.inline-fields {
 		grid-template-columns: auto 1fr;
 		grid-auto-rows: auto;
@@ -340,6 +721,10 @@ textarea {
 
 	.inline-fields .inline-text:nth-of-type(2) {
 		grid-column: 1 / 2;
+	}
+	
+	.form-row > label {
+		text-align: left;
 	}
 }
 
