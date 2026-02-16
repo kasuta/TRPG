@@ -100,7 +100,7 @@ document.addEventListener('DOMContentLoaded', () => {
             </select>
             
             <textarea name="spell_skill_${spellCount}" class="spell-textarea" rows="1" data-row="${spellCount}"></textarea>
-            <input type="text" name="spell_cost_${spellCount}" />
+            <textarea name="spell_cost_${spellCount}" class="spell-textarea" rows="1" data-row="${spellCount}"></textarea>
             
             <div class="box-container">
               <input type="checkbox" id="charge_${spellCount}_1" class="box-check" data-charge-row="${spellCount}" data-charge-index="1"><label for="charge_${spellCount}_1" class="box-label"></label>
@@ -179,7 +179,7 @@ document.addEventListener('DOMContentLoaded', () => {
       setSpellValue('textarea[name="spell_name_1"]', '緊急召喚');
       setSpellValue('select[name="spell_type_1"]', '召喚');
       setSpellValue('textarea[name="spell_skill_1"]', '可変');
-      setSpellValue('input[name="spell_cost_1"]', 'なし');
+      setSpellValue('textarea[name="spell_cost_1"]', 'なし');
       setSpellValue(
         'textarea[name="spell_effect_1"]',
         '１Ｄ６を振って分野をランダムに決め、その後２Ｄ６を振ってランダムに特技一つを選ぶ。それが指定特技になる。その特技の判定に成功すると、その特技に対応した精霊一体を召喚できる'
@@ -591,6 +591,189 @@ document.addEventListener('DOMContentLoaded', () => {
         e.target.value = '';
       };
       reader.readAsText(file);
+    });
+  }
+});
+
+// ==========================================
+// ▼▼ ココフォリア用：キャラクター駒データをコピーする機能 ▼▼
+// ==========================================
+document.addEventListener('DOMContentLoaded', () => {
+  const copyNameBtn = document.getElementById('copy_name_btn');
+  const nameInput = document.getElementById('name');
+
+  if (copyNameBtn && nameInput) {
+    copyNameBtn.addEventListener('click', () => {
+      const nameValue = nameInput.value;
+
+      if (!nameValue) {
+        alert('かりそめの名前が入力されていません。');
+        return;
+      }
+
+      // -----------------------------
+      // 1. チャットパレット（commands）の作成
+      // -----------------------------
+      let commands = "ーーー特技ーーー\n";
+      
+      // 特技（チェックが入っているもの）を取得
+      // ※画像アップロードなどの魔法/関係関連以外のチェックボックスを対象とします
+      const checkboxes = document.querySelectorAll('input[type="checkbox"]:checked');
+      checkboxes.forEach(cb => {
+        if (!cb.id.startsWith('charge_') && !cb.id.startsWith('phrase_') && !cb.id.startsWith('relation_check_')) {
+          // value属性に特技名が入っている想定
+          commands += `2d6>=5《${cb.value}》\n`;
+        }
+      });
+
+      commands += "\nーーー魔法ーーー\n";
+      let i = 1;
+      while (document.querySelector(`[name="spell_name_${i}"]`)) {
+        const sName = document.querySelector(`[name="spell_name_${i}"]`).value || "";
+        const sType = document.querySelector(`[name="spell_type_${i}"]`).value || "";
+        const sSkill = document.querySelector(`[name="spell_skill_${i}"]`).value || "";
+        const sCost = document.querySelector(`[name="spell_cost_${i}"]`).value || "";
+        const sRef = document.querySelector(`[name="spell_reference_p_${i}"]`).value || "";
+        const sEffect = document.querySelector(`[name="spell_effect_${i}"]`).value || "";
+        
+        if (sName) {
+          commands += `【${sName}】取得=/種別=${sType}/特技=${sSkill}/目標=/コスト=${sCost}/${sRef}　効果：${sEffect}\n`;
+        }
+        i++;
+      }
+
+      // ▼ 真の姿（※HTMLのidに合わせて調整してください）
+      const trueName = document.getElementById('true_name') ? document.getElementById('true_name').value : "";
+      const trueEffect = document.getElementById('true_effect') ? document.getElementById('true_effect').value : "";
+      commands += `\nーーー真の姿ーーー\n「${trueName}」【${trueEffect}】\n`;
+
+      // ▼ 戦闘ステータス（※HTMLのidに合わせて調整してください）
+      const attackVal = document.getElementById('attack') ? document.getElementById('attack').value : 0;
+      const defenseVal = document.getElementById('defense') ? document.getElementById('defense').value : 0;
+      const rootVal = document.getElementById('root') ? document.getElementById('root').value : 0;
+
+      commands += `\nーーー戦闘ーーー
+s1d1　　攻撃プロット（攻撃力=${attackVal}）
+s${attackVal}TZ6　攻撃ランダムプロット（攻撃力=${attackVal}）
+s1d1　　防御プロット（防御力=${defenseVal}）
+s${defenseVal}TZ6　防御ランダムプロット（防御力=${defenseVal}）\n\n`;
+
+      commands += `ーーー表ーーー
+BGT　経歴表
+DAT　初期アンカー表
+FAT　運命属性表
+WIT　願い表
+PT　プライズ表
+TPT　時の流れ表
+TPTB　大判時の流れ表
+AT　事件表
+FT　ファンブル表
+WT　変調表
+FCT　運命変転表
+TCT　典型的災厄表
+PCT　物理的災厄表
+MCT　精神的災厄表
+ICT　狂気的災厄表
+SCT　社会的災厄表
+XCT　超常的災厄表
+WCT　不思議系災厄表
+CCT　コミカル系災厄表
+MGCT　魔法使いの災厄表
+ST　シーン表
+STB　大判シーン表
+XEST　極限環境表
+IWST　内面世界表
+MCST　魔法都市表
+WDST　死後世界表
+LWST　迷宮世界表
+MBST　魔法書架表
+MAST　魔法学院表
+TCST　クレドの塔表
+PWST　平行世界表
+PAST　終末世界表
+GBST　異世界酒場表
+SLST　ほしかげ表
+OLST　旧図書館表
+WLAT　世界法則追加表
+WMT　さまよう怪物表
+RCT　ランダム分野表
+RTT　ランダム特技表
+RTS　星分野ランダム特技表
+RTB　獣分野ランダム特技表
+RTF　力分野ランダム特技表
+RTP　歌分野ランダム特技表
+RTD　夢分野ランダム特技表
+RTN　闇分野ランダム特技表
+BST　ブランク秘密表
+MIT　宿敵表
+MOT　謀略表
+MAT　因縁表
+MUT　奇人表
+MFT　力場表
+MLT　同盟票
+FFT　落花表
+FLT　その後表`;
+
+      // -----------------------------
+      // 2. ステータス（status）の作成
+      // -----------------------------
+      const magicMax = document.getElementById('magic') ? document.getElementById('magic').value : 0;
+      const tempMagic = document.getElementById('temp_magic') ? document.getElementById('temp_magic').value : 0;
+
+      let statusArr = [
+        { label: "魔力", value: Number(magicMax), max: Number(magicMax) },
+        { label: "一時的魔力", value: Number(tempMagic || 0), max: Number(tempMagic || 0) }
+      ];
+
+      // 魔法名とコストをステータスに追加
+      let j = 1;
+      while (document.querySelector(`[name="spell_name_${j}"]`)) {
+        const sName = document.querySelector(`[name="spell_name_${j}"]`).value;
+        const sCost = document.querySelector(`[name="spell_cost_${j}"]`).value;
+        if (sName) {
+          statusArr.push({
+            label: `${sName}:${sCost}`,
+            value: 0,
+            max: Number(rootVal)
+          });
+        }
+        j++;
+      }
+
+      // -----------------------------
+      // 3. パラメータ（params）の作成
+      // -----------------------------
+      let paramsArr = [
+        { label: "攻撃力", value: Number(attackVal) },
+        { label: "防御力", value: Number(defenseVal) },
+        { label: "根源力", value: Number(rootVal) }
+      ];
+
+      // -----------------------------
+      // 4. ココフォリア用データの結合とコピー
+      // -----------------------------
+      const ccfoliaData = {
+        kind: "character",
+        data: {
+          name: nameValue,
+          initiative: 1,
+          commands: commands,
+          status: statusArr,
+          params: paramsArr
+        }
+      };
+
+      // JSのオブジェクトをココフォリアが読める形式（JSON文字列）に一括変換
+      const textToCopy = JSON.stringify(ccfoliaData);
+
+      navigator.clipboard.writeText(textToCopy)
+        .then(() => {
+          alert('ココフォリア用のキャラクターデータをクリップボードにコピーしました！\nそのままココフォリアの盤面で Ctrl+V（ペースト）してください。');
+        })
+        .catch(err => {
+          console.error('コピーに失敗しました', err);
+          alert('コピーに失敗しました。');
+        });
     });
   }
 });
