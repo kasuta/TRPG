@@ -62,6 +62,19 @@ h1 {
 	padding: 0 20px;
 }
 
+.site-footer {
+	max-width: 980px;
+	margin: 0 auto;
+	padding: 0 20px 40px;
+	text-align: center;
+	color: var(--muted);
+}
+
+.copyright-note {
+	font-size: 0.75rem;
+	line-height: 1.5;
+}
+
 .input-left-stack {
 	display: grid;
 	gap: 24px;
