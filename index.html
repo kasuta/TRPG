@@ -1,90 +1,182 @@
 <!DOCTYPE html>
-<html>
+<html lang="ja">
+
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Progate</title>
-  <link href="https://maxcdn.bootstrapcdn.com/font-awesome/4.7.0/css/font-awesome.min.css" rel="stylesheet" integrity="sha384-wvfXpqpZZVQGK6TAh5PVlGOfQNHSoD2xbE+QkPxCAFlNEevoEH3Sl0sibVcOQVnN" crossorigin="anonymous">
-  <link rel="stylesheet" type="text/css" href="stylesheet.css">
+    <meta charset="UTF-8">
+    <title>HTML MAKER</title>
+    <link rel="stylesheet" href="stylesheet.css">
+    <script src="index.js" defer></script>
 </head>
+
 <body>
-  <header>
-    <div class="container">
-      <div class="header-left">
-        <img class="logo" src="https://prog-8.com/images/html/advanced/main_logo.png">
-      </div>
-      <span class="fa fa-bars menu-icon"></span>
-      <div class="header-right">
-        <a href="#">レッスン</a>
-        <a href="#">新規登録</a>
-        <a href="#" class="login">ログイン</a>
-      </div>
-    </div>
-  </header>
-  <div class="top-wrapper">
-    <div class="container">
-      <h1>LEARN TO CODE.<br>LEARN TO BE CREATIVE.</h1>
-      <p>Progateはオンラインプログラミング学習サービスです。<br>初心者にもやさしいスライドとレッスンで、ウェブサービスを作りながらプログラミングを学んでいきましょう。</p>
-      <div class="btn-wrapper">
-        <a href="#" class="btn signup">新規登録はこちら</a>
-        <p>or</p>
-        <a href="#" class="btn facebook"><span class="fa fa-facebook"></span>Facebookで登録</a>
-        <a href="#" class="btn twitter"><span class="fa fa-twitter"></span>Twitterで登録</a>
-      </div>
-    </div>
-  </div>
-  <div class="lesson-wrapper">
-    <div class="container">
-      <div class="heading">
-        <h2>Learn Where to Get Started!</h2>
-      </div>
-      <div class="lessons">
-        <div class="lesson">
-          <div class="lesson-icon">
-            <img src="https://prog-8.com/images/html/advanced/html.png">
-            <p>HTML & CSS</p>
+  <h1>マギロギのCS作成用サイト</h1>
+  <main class="top-content">
+    <div class="input-left-stack">
+      <section class="input-left-top">
+        <h2>入力フォーム</h2>
+        <form class="input-form">
+          <div class="form-row">
+            <label for="name">かりそめの名前</label>
+            <input id="name" name="name" type="text"/>
           </div>
-          <p class="text-contents">ウェブページの作成に使用される言語です。HTMLとCSSを組み合わせることで、静的なページを作り上げることができます。</p>
-        </div>
-        <div class="lesson">
-          <div class="lesson-icon">
-            <img src="https://prog-8.com/images/html/advanced/jQuery.png">
-            <p>jQuery</p>
+          <div class="form-row">
+            <label for="m_name">魔法名</label>
+            <input id="m_name" name="m_name" type="text"/>
           </div>
-          <p class="text-contents">素敵な動きを手軽に実装できるJavaScriptライブラリです。 アニメーション効果をつけたり、Ajax（エイジャックス）を使って外部ファイルを読み込んだりと色々なことができます。</p>
-        </div>
-        <div class="lesson">
-          <div class="lesson-icon">
-            <img src="https://prog-8.com/images/html/advanced/ruby.png">
-            <p>Ruby</p>
+          <div class="form-row">
+            <label for="gender">性別</label>
+            <input id="gender" name="gender" type="text"/>
           </div>
-          <p class="text-contents">オープンソースの動的なプログラミング言語で、 シンプルさと高い生産性を備えています。大きなWebアプリケーションから小さな日用ツールまで、さまざまなソフトウェアを作ることができます。</p>
-        </div>
-        <div class="lesson">
-          <div class="lesson-icon">
-            <img src="https://prog-8.com/images/html/advanced/php.png">
-            <p>PHP</p>
+          <div class="form-row">
+            <label for="age">年齢</label>
+            <input id="age" name="age" type="text"/>
           </div>
-          <p class="text-contents">HTMLだけではページの内容を変えることはできません。PHPはHTMLにプログラムを埋め込み、それを可能にします。</p>
-        </div>
+          <div class="form-row">
+            <label for="points">功績点</label>
+            <input id="points" name="points" type="text"/>
+          </div>
+          <div class="form-row">
+            <label for="tier_number">階梯</label>
+            <div class="inline-fields">
+              <span class="inline-text">第</span><!-- spanは改行が入らない -->
+              <input id="tier_number" name="tier_number" type="text" />
+              <span class="inline-text">階梯</span>
+              <input id="tier_name" name="tier_name" type="text" />
+            </div>
+          </div>
+          <div class="form-row">
+            <label for="area">領域</label>
+            <select id="area" name="area">
+              <option value="">選択してください</option>
+              <option value="星">星</option>
+              <option value="獣">獣</option>
+              <option value="力">力</option>
+              <option value="歌">歌</option>
+              <option value="夢">夢</option>
+              <option value="闇">闇</option>
+            </select>
+          </div>
+          <div class="form-row">
+            <label for="attack">攻撃力</label>
+            <input id="attack" name="attack" type="text"/>
+          </div>
+          <div class="form-row">
+            <label for="defense">防御力</label>
+            <input id="defense" name="defense" type="text"/>
+          </div>
+          <div class="form-row">
+            <label for="kongen">根源力</label>
+            <input id="kongen" name="kongen" type="text"/>
+          </div>
+          <div class="form-row">
+            <label for="history">経歴/機関</label>
+            <input id="history" name="history" type="text"/>
+          </div>
+          <div class="form-row">
+            <label for="belief">信条</label>
+            <input id="belief" name="belief" type="text"/>
+          </div>
+          <div class="form-row">
+            <label for="face">表の顔</label>
+            <input id="face" name="face" type="text"/>
+          </div>
+        </form>
+      </section>
+      <section class="input-left-bottom">
+        <h2>魔力</h2>
+        <form class="input-form">
+          <div class="form-row">
+            <label for="magic_max">魔力の最大値</label>
+            <div class="magic-input">
+              <input id="magic_max" name="magic_max" type="number" />
+              <div class="magic-meter" role="group" aria-label="魔力の最大値">
+                <input id="magic_max_10" name="magic_max_meter" type="radio" value="10" />
+                <label for="magic_max_10" title="10">10</label>
+                <input id="magic_max_9" name="magic_max_meter" type="radio" value="9" />
+                <label for="magic_max_9" title="9">9</label>
+                <input id="magic_max_8" name="magic_max_meter" type="radio" value="8" />
+                <label for="magic_max_8" title="8">8</label>
+                <input id="magic_max_7" name="magic_max_meter" type="radio" value="7" />
+                <label for="magic_max_7" title="7">7</label>
+                <input id="magic_max_6" name="magic_max_meter" type="radio" value="6" />
+                <label for="magic_max_6" title="6">6</label>
+                <input id="magic_max_5" name="magic_max_meter" type="radio" value="5" />
+                <label for="magic_max_5" title="5">5</label>
+                <input id="magic_max_4" name="magic_max_meter" type="radio" value="4" />
+                <label for="magic_max_4" title="4">4</label>
+                <input id="magic_max_3" name="magic_max_meter" type="radio" value="3" />
+                <label for="magic_max_3" title="3">3</label>
+                <input id="magic_max_2" name="magic_max_meter" type="radio" value="2" />
+                <label for="magic_max_2" title="2">2</label>
+                <input id="magic_max_1" name="magic_max_meter" type="radio" value="1" />
+                <label for="magic_max_1" title="1">1</label>
+              </div>
+            </div>
+          </div>
+          <div class="form-row">
+            <label for="magic_temp">一時的魔力</label>
+            <div class="magic-input">
+              <input id="magic_temp" name="magic_temp" type="number" />
+              <div class="magic-meter" role="group" aria-label="一時的魔力">
+                <input id="magic_temp_10" name="magic_temp_meter" type="radio" value="10" />
+                <label for="magic_temp_10" title="10">10</label>
+                <input id="magic_temp_9" name="magic_temp_meter" type="radio" value="9" />
+                <label for="magic_temp_9" title="9">9</label>
+                <input id="magic_temp_8" name="magic_temp_meter" type="radio" value="8" />
+                <label for="magic_temp_8" title="8">8</label>
+                <input id="magic_temp_7" name="magic_temp_meter" type="radio" value="7" />
+                <label for="magic_temp_7" title="7">7</label>
+                <input id="magic_temp_6" name="magic_temp_meter" type="radio" value="6" />
+                <label for="magic_temp_6" title="6">6</label>
+                <input id="magic_temp_5" name="magic_temp_meter" type="radio" value="5" />
+                <label for="magic_temp_5" title="5">5</label>
+                <input id="magic_temp_4" name="magic_temp_meter" type="radio" value="4" />
+                <label for="magic_temp_4" title="4">4</label>
+                <input id="magic_temp_3" name="magic_temp_meter" type="radio" value="3" />
+                <label for="magic_temp_3" title="3">3</label>
+                <input id="magic_temp_2" name="magic_temp_meter" type="radio" value="2" />
+                <label for="magic_temp_2" title="2">2</label>
+                <input id="magic_temp_1" name="magic_temp_meter" type="radio" value="1" />
+                <label for="magic_temp_1" title="1">1</label>
+              </div>
+            </div>
+          </div>
+        </form>
+      </section>
+    </div>
+    <div class="input-right">
+      <h2>設定</h2>
+      <div class="form-row">
+        <label for="setting">設定</label>
+        <textarea id="setting" name="setting"></textarea>
       </div>
-      <div class="clear"></div>
-    </div>
-  </div>
-  <div class="message-wrapper">
-    <div class="container">
-      <div class="heading">
-        <h2>さぁ、あなたもProgateでプログラミングを学んでみませんか?</h2>
-        <h3>Let's learn to code, learn to be creative!</h3>
+      <div class="form-row">
+        <label for="setting_image">設定の画像</label>
+        <input id="setting_image" name="setting_image" type="file" accept="image/*" />
       </div>
-      <span class="btn message">さっそく開発する</span>
+      <div class="image-preview-area" aria-live="polite">
+        <p id="setting_image_empty" class="image-preview-empty">画像がまだ選択されていません</p>
+        <img id="setting_image_preview" class="image-preview" alt="設定画像のプレビュー" />
+      </div>
+      <section class="true-form">
+        <h2>真の姿</h2>
+        <div class="stack-form">
+          <div class="form-row">
+            <label for="true_name">名称</label>
+            <input id="true_name" name="true_name" type="text" />
+          </div>
+          <div class="form-row">
+            <label for="true_effect">効果</label>
+            <input id="true_effect" name="true_effect" type="text" />
+          </div>
+          <div class="form-row">
+            <label for="true_description">説明</label>
+            <textarea id="true_description" name="true_description"></textarea>
+          </div>
+        </div>
+      </section>
     </div>
-  </div>
-  <footer>
-    <div class="container">
-      <img src="https://prog-8.com/images/html/advanced/footer_logo.png">
-      <p>Learn to Code, Learn to be Creative.</p>
-    </div>
-  </footer>
+  </main>
 </body>
+
 </html>
