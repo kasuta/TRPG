@@ -360,7 +360,7 @@ h1 {
 
 .magic-meter input[type="checkbox"] {
 	position: absolute;
-	op: auto;
+	top: auto;
 	left: -9999px;
 }
 
@@ -700,6 +700,79 @@ textarea {
 	background-color: #ffffff;
 }
 
+/* ボタン共通 */
+.control-row {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 10px;
+	margin-top: 12px;
+	align-items: center;
+}
+
+.btn {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	padding: 10px 22px;
+	background: var(--accent);
+	color: #ffffff;
+	font-weight: 700;
+	font-size: 0.95rem;
+	border: 2px solid var(--accent);
+	border-radius: 8px;
+	cursor: pointer;
+	white-space: nowrap;
+	transition: background 0.2s ease, transform 0.1s ease, box-shadow 0.2s ease;
+	box-shadow: 0 4px 12px rgba(47, 93, 98, 0.2);
+	text-decoration: none;
+	line-height: 1.4;
+}
+
+.btn:hover {
+	background: var(--accent-strong);
+	border-color: var(--accent-strong);
+	box-shadow: 0 6px 16px rgba(47, 93, 98, 0.35);
+	transform: translateY(-1px);
+}
+
+.btn:active {
+	transform: translateY(1px);
+	box-shadow: 0 2px 8px rgba(47, 93, 98, 0.2);
+}
+
+.btn:disabled {
+	opacity: 0.6;
+	cursor: not-allowed;
+	transform: none;
+}
+
+.btn-outline {
+	background: transparent;
+	color: var(--accent);
+	border: 2px solid var(--accent);
+}
+
+.btn-outline:hover {
+	background: var(--accent);
+	color: #ffffff;
+}
+
+/* ボタングループ横並び */
+.button-bar {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 24px;
+	justify-content: flex-end;
+	padding: 0 20px;
+	margin-bottom: 20px;
+}
+
+.button-group {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 10px;
+	align-items: center;
+}
 
 @media (max-width: 720px) {
 	h1 {
@@ -740,6 +813,189 @@ textarea {
 	.form-row > label {
 		text-align: left;
 	}
+}
+
+
+
+/* ============================
+   キャラシ プレビュー (画像生成用)
+   ============================ */
+#preview-render-container {
+	position: absolute;
+	left: -9999px;
+	top: 0;
+}
+
+.pv-sheet {
+	width: 960px;
+	padding: 36px 40px 48px;
+	font-family: "Zen Kaku Gothic New", "Noto Sans JP", "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
+	color: #1f2328;
+	background: #f7efe3;
+	line-height: 1.6;
+}
+
+.pv-title {
+	margin: 0 0 24px;
+	font-size: 22px;
+	font-family: "DM Serif Display", serif;
+	color: #1b3a4b;
+	border-bottom: 3px solid #2f5d62;
+	padding-bottom: 10px;
+}
+
+.pv-columns {
+	display: flex;
+	gap: 28px;
+	margin-bottom: 24px;
+}
+
+.pv-col {
+	flex: 1;
+	display: flex;
+	flex-direction: column;
+	gap: 20px;
+}
+
+.pv-section {
+	background: #ffffff;
+	border-radius: 12px;
+	padding: 18px 22px;
+	box-shadow: 0 2px 8px rgba(21,27,38,0.08);
+	border: 1px solid #c7cfd8;
+}
+
+.pv-section h2 {
+	margin: 0 0 12px;
+	font-size: 15px;
+	color: #1b3a4b;
+	border-left: 4px solid #2f5d62;
+	padding-left: 10px;
+}
+
+.pv-full {
+	margin-bottom: 20px;
+}
+
+.pv-dl {
+	display: grid;
+	grid-template-columns: auto 1fr;
+	gap: 4px 14px;
+	margin: 0;
+	font-size: 13px;
+}
+
+.pv-dl dt {
+	font-weight: 700;
+	color: #5a6470;
+	white-space: nowrap;
+}
+
+.pv-dl dd {
+	margin: 0;
+	word-break: break-all;
+}
+
+.pv-bar {
+	letter-spacing: 2px;
+	font-size: 14px;
+}
+
+.pv-text {
+	margin: 8px 0 0;
+	font-size: 13px;
+	white-space: pre-wrap;
+	word-break: break-all;
+}
+
+.pv-image-wrap {
+	text-align: center;
+	margin-bottom: 12px;
+}
+
+.pv-image {
+	max-width: 100%;
+	max-height: 300px;
+	border-radius: 8px;
+	object-fit: contain;
+	box-shadow: 0 2px 8px rgba(21,27,38,0.1);
+}
+
+.pv-soul {
+	margin: 10px 0 0;
+	font-size: 13px;
+}
+
+.pv-empty {
+	margin: 4px 0 0;
+	font-size: 13px;
+	color: #5a6470;
+}
+
+/* 特技表 */
+.pv-skill-table {
+	width: 100%;
+	border-collapse: collapse;
+	font-size: 12px;
+	margin-top: 4px;
+}
+
+.pv-skill-table th,
+.pv-skill-table td {
+	border: 1px solid #c7cfd8;
+	padding: 4px 6px;
+	text-align: center;
+}
+
+.pv-skill-table th {
+	background: #1f2328;
+	color: #fff;
+	font-weight: 700;
+}
+
+.pv-num {
+	background: #f6f8fb;
+	font-weight: 700;
+	color: #1b3a4b;
+	width: 28px;
+}
+
+.pv-skill-on {
+	background: #1f2328;
+	color: #fff;
+	font-weight: 700;
+}
+
+/* 蔵書・関係テーブル */
+.pv-table {
+	width: 100%;
+	border-collapse: collapse;
+	font-size: 12px;
+	margin-top: 4px;
+}
+
+.pv-table th,
+.pv-table td {
+	border: 1px solid #c7cfd8;
+	padding: 6px 8px;
+	text-align: left;
+}
+
+.pv-table th {
+	background: #1f2328;
+	color: #fff;
+	font-weight: 700;
+	white-space: nowrap;
+}
+
+.pv-effect {
+	max-width: 280px;
+	word-break: break-all;
+}
+
+.pv-charge {
+	letter-spacing: 2px;
+	white-space: nowrap;
 }
 
 @keyframes fade-up {

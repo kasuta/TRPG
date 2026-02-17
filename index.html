@@ -5,6 +5,7 @@
     <meta charset="UTF-8">
     <title>マギロギキャラシ作成サイト</title>
     <link rel="stylesheet" href="stylesheet.css">
+    <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
     <script src="index.js" defer></script>
 </head>
 
@@ -329,12 +330,16 @@
         <button type="button" id="remove_relation_btn" class="btn btn-outline">－ 削除</button>
       </div>
     </section>
-    <div class="control-row" style="justify-content: flex-end; margin-bottom: 20px; padding: 0 20px;">
-      <button type="button" id="save_data_btn" class="btn">データを保存 (.json)</button>
-      <label for="load_data_file" class="btn btn-outline" style="cursor: pointer; margin: 0;">データを読み込む</label>
-      <input type="file" id="load_data_file" accept=".json" style="display: none;" />
-      <br>
-      <button type="button" id="copy_name_btn" class="btn btn-outline" style="white-space: nowrap;">CCFOLIA形式でコピー</button>
+    <div class="button-bar">
+      <div class="button-group">
+        <button type="button" id="save_data_btn" class="btn btn-outline">データを保存 (.json)</button>
+        <label for="load_data_file" class="btn btn-outline">データを読み込む</label>
+        <input type="file" id="load_data_file" accept=".json" style="display: none;" />
+      </div>
+      <div class="button-group">
+        <button type="button" id="copy_name_btn" class="btn btn-outline">CCFOLIA形式でコピー</button>
+        <button type="button" id="screenshot_btn" class="btn btn-outline">キャラシ画像をコピー</button>
+      </div>
     </div>
   </section>
   <footer class="site-footer">

@@ -1,387 +1,305 @@
-const imageInput = document.getElementById("setting_image");
-const imagePreview = document.getElementById("setting_image_preview");
-const imageEmpty = document.getElementById("setting_image_empty");
+// ==========================================
+// マギカロギア キャラシ作成サイト - メインスクリプト
+// ==========================================
 
+// --- 共通ヘルパー ---
+
+/** ID または name で要素を探し、値を返す。見つからなければ fallback を返す */
+const getFieldValue = (key, fallback = '') => {
+  const el = document.getElementById(key) || document.querySelector(`[name="${key}"]`);
+  return el ? (el.value || fallback) : fallback;
+};
+
+/** 複数のキー候補から最初に値が見つかったものを返す */
+const getFirstValue = (keys, fallback = '0') => {
+  for (const key of keys) {
+    const v = getFieldValue(key);
+    if (v) return v;
+  }
+  return fallback;
+};
+
+/** 蔵書データを収集 */
+const collectSpells = () => {
+  const spells = [];
+  let i = 1;
+  while (document.querySelector(`[name="spell_name_${i}"]`)) {
+    const charges = [];
+    for (let c = 1; c <= 5; c++) {
+      const cb = document.getElementById(`charge_${i}_${c}`);
+      charges.push(cb ? cb.checked : false);
+    }
+    spells.push({
+      name: document.querySelector(`[name="spell_name_${i}"]`).value || '',
+      type: document.querySelector(`[name="spell_type_${i}"]`).value || '',
+      skill: document.querySelector(`[name="spell_skill_${i}"]`).value || '',
+      target: document.querySelector(`[name="spell_target_${i}"]`).value || '',
+      cost: document.querySelector(`[name="spell_cost_${i}"]`).value || '',
+      effect: document.querySelector(`[name="spell_effect_${i}"]`).value || '',
+      phrase: document.getElementById(`phrase_${i}`) ? document.getElementById(`phrase_${i}`).checked : false,
+      ref: document.querySelector(`[name="spell_reference_p_${i}"]`).value || '',
+      charges
+    });
+    i++;
+  }
+  return spells;
+};
+
+/** 関係データを収集 */
+const collectRelations = () => {
+  const relations = [];
+  let j = 1;
+  while (document.querySelector(`[name="relation_anchor_${j}"]`)) {
+    relations.push({
+      check: document.getElementById(`relation_check_${j}`) ? document.getElementById(`relation_check_${j}`).checked : false,
+      anchor: document.querySelector(`[name="relation_anchor_${j}"]`).value || '',
+      fate: document.querySelector(`[name="relation_fate_${j}"]`).value || '',
+      attr: document.querySelector(`[name="relation_attr_${j}"]`).value || '',
+      setting: document.querySelector(`[name="relation_setting_${j}"]`).value || '',
+    });
+    j++;
+  }
+  return relations;
+};
+
+/** 習得済み特技一覧を返す */
+const getAcquiredSkills = () => {
+  const skills = [];
+  document.querySelectorAll('.skill-check:checked').forEach(cb => skills.push(cb.value));
+  return skills;
+};
+
+/** テキストエリア行の高さ同期（汎用） */
+const resizeTextareaRow = (container, selector, rowId) => {
+  const rowTextareas = container.querySelectorAll(`${selector}[data-row="${rowId}"]`);
+  if (!rowTextareas.length) return;
+  rowTextareas.forEach(ta => { ta.style.height = 'auto'; });
+  let maxHeight = 0;
+  rowTextareas.forEach(ta => { maxHeight = Math.max(maxHeight, ta.scrollHeight); });
+  rowTextareas.forEach(ta => { ta.style.height = `${maxHeight}px`; });
+};
+
+/** チャージ系チェックボックスの連動処理をバインド */
+const bindChargeChecks = (container, rowNum) => {
+  const checks = container.querySelectorAll(`input[type="checkbox"][data-charge-row="${rowNum}"]`);
+  checks.forEach(cb => {
+    cb.addEventListener('change', () => {
+      const idx = Number(cb.dataset.chargeIndex || 0);
+      checks.forEach(other => {
+        const oi = Number(other.dataset.chargeIndex || 0);
+        if (cb.checked) other.checked = oi <= idx;
+        else if (oi >= idx) other.checked = false;
+      });
+    });
+  });
+};
+
+/** HTML エスケープ */
+const escapeHTML = (str) => str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+
+// ==========================================
+// 画像プレビュー（defer で即時実行）
+// ==========================================
+const imageInput = document.getElementById('setting_image');
+const imagePreview = document.getElementById('setting_image_preview');
+const imageEmpty = document.getElementById('setting_image_empty');
 let previewUrl = null;
 
 const clearPreview = () => {
-  if (previewUrl) {
-    URL.revokeObjectURL(previewUrl);
-    previewUrl = null;
-  }
-  imagePreview.removeAttribute("src");
-  imagePreview.classList.remove("is-visible");
+  if (previewUrl) { URL.revokeObjectURL(previewUrl); previewUrl = null; }
+  imagePreview.removeAttribute('src');
+  imagePreview.classList.remove('is-visible');
   imageEmpty.hidden = false;
 };
 
-imageInput.addEventListener("change", () => {
+imageInput.addEventListener('change', () => {
   const file = imageInput.files && imageInput.files[0];
-
-  if (!file) {
+  if (!file) { clearPreview(); return; }
+  if (!file.type.startsWith('image/')) {
     clearPreview();
+    imageEmpty.textContent = '画像ファイルを選択してください';
     return;
   }
-
-  if (!file.type.startsWith("image/")) {
-    clearPreview();
-    imageEmpty.textContent = "画像ファイルを選択してください";
-    return;
-  }
-
-  if (previewUrl) {
-    URL.revokeObjectURL(previewUrl);
-  }
-
+  if (previewUrl) URL.revokeObjectURL(previewUrl);
   previewUrl = URL.createObjectURL(file);
   imagePreview.src = previewUrl;
-  imagePreview.classList.add("is-visible");
+  imagePreview.classList.add('is-visible');
   imageEmpty.hidden = true;
 });
 
-// ページが読み込まれたら実行
-// ページが読み込まれたら実行
+clearPreview();
+
+// ==========================================
+// DOMContentLoaded — すべての初期化を集約
+// ==========================================
 document.addEventListener('DOMContentLoaded', () => {
-    const spellList = document.getElementById('spell_list');
-    const addSpellBtn = document.getElementById('add_spell_btn');
+
+  // ──────────────────────────────
+  // 1. 蔵書（魔法）セクション
+  // ──────────────────────────────
+  const spellList = document.getElementById('spell_list');
+  const addSpellBtn = document.getElementById('add_spell_btn');
   const removeSpellBtn = document.getElementById('remove_spell_btn');
-    
-    let spellCount = 0;
-  const headerCount = 9;
-  const rowSize = 9;
+  let spellCount = 0;
+  const SPELL_HEADER_COUNT = 9;
+  const SPELL_ROW_SIZE = 9;
 
-    const resizeSpellRow = (rowId) => {
-      const rowTextareas = spellList.querySelectorAll(`.spell-textarea[data-row="${rowId}"]`);
-      if (!rowTextareas.length) {
-        return;
-      }
+  const bindSpellTextarea = (textarea) => {
+    if (textarea.dataset.resizeBound) return;
+    textarea.dataset.resizeBound = 'true';
+    textarea.addEventListener('input', () => resizeTextareaRow(spellList, '.spell-textarea', textarea.dataset.row));
+    resizeTextareaRow(spellList, '.spell-textarea', textarea.dataset.row);
+  };
 
-      // 変更前はここに let maxHeight = 0; がありましたが、処理を分割します
+  const addSpellRow = () => {
+    spellCount++;
+    const n = spellCount;
+    const rowHTML = `
+      <textarea name="spell_name_${n}" class="spell-textarea" rows="1" data-row="${n}"></textarea>
+      <select name="spell_type_${n}">
+        <option value="召喚">召喚</option>
+        <option value="呪文">呪文</option>
+        <option value="装備">装備</option>
+      </select>
+      <textarea name="spell_skill_${n}" class="spell-textarea" rows="1" data-row="${n}"></textarea>
+      <textarea name="spell_target_${n}" class="spell-textarea" rows="1" data-row="${n}"></textarea>
+      <textarea name="spell_cost_${n}" class="spell-textarea" rows="1" data-row="${n}"></textarea>
+      <div class="box-container">
+        <input type="checkbox" id="charge_${n}_1" class="box-check" data-charge-row="${n}" data-charge-index="1"><label for="charge_${n}_1" class="box-label"></label>
+        <input type="checkbox" id="charge_${n}_2" class="box-check" data-charge-row="${n}" data-charge-index="2"><label for="charge_${n}_2" class="box-label"></label>
+        <input type="checkbox" id="charge_${n}_3" class="box-check" data-charge-row="${n}" data-charge-index="3"><label for="charge_${n}_3" class="box-label"></label>
+        <input type="checkbox" id="charge_${n}_4" class="box-check" data-charge-row="${n}" data-charge-index="4"><label for="charge_${n}_4" class="box-label"></label>
+        <input type="checkbox" id="charge_${n}_5" class="box-check" data-charge-row="${n}" data-charge-index="5"><label for="charge_${n}_5" class="box-label"></label>
+      </div>
+      <textarea name="spell_effect_${n}" class="spell-textarea" rows="1" data-row="${n}"></textarea>
+      <div class="box-container">
+        <input type="checkbox" id="phrase_${n}" class="box-check"><label for="phrase_${n}" class="box-label"></label>
+      </div>
+      <input type="text" name="spell_reference_p_${n}" />`;
+    spellList.insertAdjacentHTML('beforeend', rowHTML);
+    spellList.querySelectorAll(`.spell-textarea[data-row="${n}"]`).forEach(bindSpellTextarea);
+    bindChargeChecks(spellList, n);
+  };
 
-      // 1. まず同じ行の【すべて】のテキストエリアの高さを一斉にリセットする
-      rowTextareas.forEach((textarea) => {
-        textarea.style.height = 'auto';
-      });
+  const removeSpellRow = () => {
+    if (!spellList || spellList.children.length <= SPELL_HEADER_COUNT || spellCount === 0) return;
+    for (let i = 0; i < SPELL_ROW_SIZE; i++) {
+      if (spellList.lastElementChild) spellList.removeChild(spellList.lastElementChild);
+    }
+    spellCount = Math.max(0, spellCount - 1);
+  };
 
-      // 2. その後、リセットされた状態での本来の高さ（scrollHeight）から最大値を取得する
-      let maxHeight = 0;
-      rowTextareas.forEach((textarea) => {
-        maxHeight = Math.max(maxHeight, textarea.scrollHeight);
-      });
+  if (spellList) {
+    addSpellRow();
+    addSpellRow();
+    spellList.querySelectorAll('.spell-textarea').forEach(bindSpellTextarea);
 
-      // 3. 全てのテキストエリアに最大の高さを設定する
-      rowTextareas.forEach((textarea) => {
-        textarea.style.height = `${maxHeight}px`;
-      });
+    const setVal = (sel, val) => {
+      const el = spellList.querySelector(sel);
+      if (el) { el.value = val; el.dispatchEvent(new Event('input')); }
     };
-
-    const bindSpellTextarea = (textarea) => {
-      if (textarea.dataset.resizeBound) {
-        return;
-      }
-      const rowId = textarea.dataset.row;
-      textarea.dataset.resizeBound = 'true';
-      textarea.addEventListener('input', () => {
-        resizeSpellRow(rowId);
-      });
-      resizeSpellRow(rowId);
-    };
-
-    function addSpellRow() {
-        spellCount++;
-        
-        // ▼▼ ここから下の rowHTML の中身を変更 ▼▼
-        const rowHTML = `
-            <textarea name="spell_name_${spellCount}" class="spell-textarea" rows="1" data-row="${spellCount}"></textarea>
-            
-            <select name="spell_type_${spellCount}">
-                <option value="召喚">召喚</option>
-                <option value="呪文">呪文</option>
-                <option value="装備">装備</option>
-            </select>
-            
-            <textarea name="spell_skill_${spellCount}" class="spell-textarea" rows="1" data-row="${spellCount}"></textarea>
-            <textarea name="spell_target_${spellCount}" class="spell-textarea" rows="1" data-row="${spellCount}"></textarea>
-            <textarea name="spell_cost_${spellCount}" class="spell-textarea" rows="1" data-row="${spellCount}"></textarea>
-            
-            <div class="box-container">
-              <input type="checkbox" id="charge_${spellCount}_1" class="box-check" data-charge-row="${spellCount}" data-charge-index="1"><label for="charge_${spellCount}_1" class="box-label"></label>
-              <input type="checkbox" id="charge_${spellCount}_2" class="box-check" data-charge-row="${spellCount}" data-charge-index="2"><label for="charge_${spellCount}_2" class="box-label"></label>
-              <input type="checkbox" id="charge_${spellCount}_3" class="box-check" data-charge-row="${spellCount}" data-charge-index="3"><label for="charge_${spellCount}_3" class="box-label"></label>
-              <input type="checkbox" id="charge_${spellCount}_4" class="box-check" data-charge-row="${spellCount}" data-charge-index="4"><label for="charge_${spellCount}_4" class="box-label"></label>
-              <input type="checkbox" id="charge_${spellCount}_5" class="box-check" data-charge-row="${spellCount}" data-charge-index="5"><label for="charge_${spellCount}_5" class="box-label"></label>
-            </div>
-            
-            <textarea name="spell_effect_${spellCount}" class="spell-textarea" rows="1" data-row="${spellCount}"></textarea>
-            
-            <div class="box-container">
-              <input type="checkbox" id="phrase_${spellCount}" class="box-check"><label for="phrase_${spellCount}" class="box-label"></label>
-            </div>
-
-            <input type="text" name="spell_reference_p_${spellCount}" />
-        `;
-        // ▲▲ 変更はここまで ▲▲
-        
-        spellList.insertAdjacentHTML('beforeend', rowHTML);
-
-        const newTextareas = spellList.querySelectorAll(`.spell-textarea[data-row="${spellCount}"]`);
-        newTextareas.forEach(bindSpellTextarea);
-
-        const chargeChecks = spellList.querySelectorAll(`input[type="checkbox"][data-charge-row="${spellCount}"]`);
-        chargeChecks.forEach((checkbox) => {
-          checkbox.addEventListener('change', () => {
-            const currentIndex = Number(checkbox.dataset.chargeIndex || 0);
-            chargeChecks.forEach((other) => {
-              const otherIndex = Number(other.dataset.chargeIndex || 0);
-              if (checkbox.checked) {
-                other.checked = otherIndex <= currentIndex;
-              } else if (otherIndex >= currentIndex) {
-                other.checked = false;
-              }
-            });
-          });
-        });
-    }
-
-      function removeSpellRow() {
-        if (!spellList) {
-          return;
-        }
-
-        const totalCells = spellList.children.length;
-        if (totalCells <= headerCount || spellCount === 0) {
-          return;
-        }
-
-        for (let i = 0; i < rowSize; i++) {
-          const lastCell = spellList.lastElementChild;
-          if (!lastCell) {
-            break;
-          }
-          spellList.removeChild(lastCell);
-        }
-
-        spellCount = Math.max(0, spellCount - 1);
-      }
-
-    if (spellList) {
-        addSpellRow();
-        addSpellRow();
-      spellList.querySelectorAll('.spell-textarea').forEach(bindSpellTextarea);
-
-      const setSpellValue = (selector, value) => {
-        const field = spellList.querySelector(selector);
-        if (!field) {
-          return;
-        }
-        field.value = value;
-        field.dispatchEvent(new Event('input'));
-      };
-
-      setSpellValue('textarea[name="spell_name_1"]', '緊急召喚');
-      setSpellValue('select[name="spell_type_1"]', '召喚');
-      setSpellValue('textarea[name="spell_skill_1"]', '可変');
-      setSpellValue('textarea[name="spell_cost_1"]', 'なし');
-      setSpellValue(
-        'textarea[name="spell_effect_1"]',
-        '１Ｄ６を振って分野をランダムに決め、その後２Ｄ６を振ってランダムに特技一つを選ぶ。それが指定特技になる。その特技の判定に成功すると、その特技に対応した精霊一体を召喚できる'
-      );
-      resizeSpellRow(1);
-    }
-
-    if (addSpellBtn) {
-        addSpellBtn.addEventListener('click', addSpellRow);
-    }
-
-    if (removeSpellBtn) {
-      removeSpellBtn.addEventListener('click', removeSpellRow);
-    }
-});
-
-document.addEventListener('DOMContentLoaded', () => {
-  const magicChecks = document.querySelectorAll('.magic-meter input[type="checkbox"][data-magic-group]');
-  if (!magicChecks.length) {
-    return;
+    setVal('textarea[name="spell_name_1"]', '緊急召喚');
+    setVal('select[name="spell_type_1"]', '召喚');
+    setVal('textarea[name="spell_skill_1"]', '可変');
+    setVal('textarea[name="spell_cost_1"]', 'なし');
+    setVal('textarea[name="spell_effect_1"]',
+      '１Ｄ６を振って分野をランダムに決め、その後２Ｄ６を振ってランダムに特技一つを選ぶ。それが指定特技になる。その特技の判定に成功すると、その特技に対応した精霊一体を召喚できる'
+    );
+    resizeTextareaRow(spellList, '.spell-textarea', '1');
   }
+  if (addSpellBtn) addSpellBtn.addEventListener('click', addSpellRow);
+  if (removeSpellBtn) removeSpellBtn.addEventListener('click', removeSpellRow);
 
-  const groupMap = new Map();
-  magicChecks.forEach((checkbox) => {
-    const group = checkbox.dataset.magicGroup || '';
-    if (!groupMap.has(group)) {
-      groupMap.set(group, []);
-    }
-    groupMap.get(group).push(checkbox);
+  // ──────────────────────────────
+  // 2. 魔力メーター
+  // ──────────────────────────────
+  const magicGroupMap = new Map();
+  document.querySelectorAll('.magic-meter input[type="checkbox"][data-magic-group]').forEach(cb => {
+    const g = cb.dataset.magicGroup || '';
+    if (!magicGroupMap.has(g)) magicGroupMap.set(g, []);
+    magicGroupMap.get(g).push(cb);
   });
-
-  groupMap.forEach((groupChecks) => {
-    groupChecks.forEach((checkbox) => {
-      checkbox.addEventListener('change', () => {
-        const currentIndex = Number(checkbox.dataset.magicIndex || 0);
-        groupChecks.forEach((other) => {
-          const otherIndex = Number(other.dataset.magicIndex || 0);
-          if (checkbox.checked) {
-            other.checked = otherIndex <= currentIndex;
-          } else if (otherIndex >= currentIndex) {
-            other.checked = false;
-          }
+  magicGroupMap.forEach(groupChecks => {
+    groupChecks.forEach(cb => {
+      cb.addEventListener('change', () => {
+        const idx = Number(cb.dataset.magicIndex || 0);
+        groupChecks.forEach(other => {
+          const oi = Number(other.dataset.magicIndex || 0);
+          if (cb.checked) other.checked = oi <= idx;
+          else if (oi >= idx) other.checked = false;
         });
       });
     });
   });
-});
 
-// 領域選択時に対応するギャップを黒くする処理
-document.addEventListener('DOMContentLoaded', () => {
+  // ──────────────────────────────
+  // 3. 領域 → ギャップ連動
+  // ──────────────────────────────
   const areaSelect = document.getElementById('area');
-  // gap1 〜 gap5 のチェックボックスを取得
-  const gaps = [
-    document.getElementById('gap1'),
-    document.getElementById('gap2'),
-    document.getElementById('gap3'),
-    document.getElementById('gap4'),
-    document.getElementById('gap5')
-  ];
+  const gaps = [1, 2, 3, 4, 5].map(n => document.getElementById(`gap${n}`));
+  const AREA_GAP_MAP = { '星': [0], '獣': [0, 1], '力': [1, 2], '歌': [2, 3], '夢': [3, 4], '闇': [4] };
 
   if (areaSelect) {
     areaSelect.addEventListener('change', (e) => {
-      // 領域が変更されたら、一度すべてのギャップの黒塗り（チェック）をリセットする
-      gaps.forEach(gap => {
-        if (gap) gap.checked = false;
-      });
-
-      // 選択された領域に対応するギャップを黒くする
-      const selectedArea = e.target.value;
-      switch (selectedArea) {
-        case '星':
-          if (gaps[0]) gaps[0].checked = true; // gap1 (星と獣の間)
-          break;
-        case '獣':
-          if (gaps[0]) gaps[0].checked = true; // gap2 (獣と力の間)
-          if (gaps[1]) gaps[1].checked = true; // gap2 (獣と力の間)
-          break;
-        case '力':
-          if (gaps[1]) gaps[1].checked = true; // gap2 (獣と力の間)
-          if (gaps[2]) gaps[2].checked = true; // gap3 (力と歌の間)
-          break;
-        case '歌':
-          if (gaps[2]) gaps[2].checked = true; // gap3 (力と歌の間)
-          if (gaps[3]) gaps[3].checked = true; // gap4 (歌と夢の間)
-          break;
-        case '夢':
-          if (gaps[3]) gaps[3].checked = true; // gap4 (歌と夢の間)
-          if (gaps[4]) gaps[4].checked = true; // gap5 (夢と闇の間)
-          break;
-        case '闇':
-          if (gaps[4]) gaps[4].checked = true; // gap5 (夢と闇の間)
-          // ルール上は「星の左側」のギャップを塗りつぶしますが、
-          // 現在のHTMLには6つ目のギャップがないため何もしません。
-          // （HTMLに gap0 や gap6 を追加した場合はここに処理を追記してください）
-          break;
-      }
+      gaps.forEach(g => { if (g) g.checked = false; });
+      (AREA_GAP_MAP[e.target.value] || []).forEach(i => { if (gaps[i]) gaps[i].checked = true; });
     });
   }
-});
 
-document.addEventListener('DOMContentLoaded', () => {
-  // --- 関係セクションの処理 ---
+  // ──────────────────────────────
+  // 4. 関係セクション
+  // ──────────────────────────────
   const relationList = document.getElementById('relation_list');
   const addRelationBtn = document.getElementById('add_relation_btn');
   const removeRelationBtn = document.getElementById('remove_relation_btn');
-  
   let relationCount = 0;
-  const relationHeaderCount = 5; // ヘッダーのセル数
-  const relationRowSize = 5;     // 1行あたりのセル数
+  const RELATION_HEADER_COUNT = 5;
+  const RELATION_ROW_SIZE = 5;
 
-  // テキストエリアの高さを自動調整する関数
   const bindRelationTextarea = (textarea) => {
-    textarea.addEventListener('input', () => {
-      const rowId = textarea.dataset.row;
-      resizeRelationRow(rowId);
-    });
-    resizeRelationRow(textarea.dataset.row);
-  };
-
-  const resizeRelationRow = (rowId) => {
-    const rowTextareas = relationList.querySelectorAll(`.relation-textarea[data-row="${rowId}"]`);
-    if (!rowTextareas.length) return;
-
-    // 1. まず一斉に高さをリセット
-    rowTextareas.forEach((textarea) => {
-      textarea.style.height = 'auto';
-    });
-
-    // 2. 最大の高さを取得
-    let maxHeight = 0;
-    rowTextareas.forEach((textarea) => {
-      maxHeight = Math.max(maxHeight, textarea.scrollHeight);
-    });
-
-    // 3. 最大の高さをすべてのテキストエリアに適用
-    rowTextareas.forEach((textarea) => {
-      textarea.style.height = `${maxHeight}px`;
-    });
+    textarea.addEventListener('input', () => resizeTextareaRow(relationList, '.relation-textarea', textarea.dataset.row));
+    resizeTextareaRow(relationList, '.relation-textarea', textarea.dataset.row);
   };
 
   const addRelationRow = () => {
     relationCount++;
-    const rowHTML = `
+    const n = relationCount;
+    relationList.insertAdjacentHTML('beforeend', `
       <div class="relation-checkbox-cell">
         <div class="box-container">
-          <input type="checkbox" id="relation_check_${relationCount}" class="box-check" />
-          <label for="relation_check_${relationCount}" class="box-label"></label>
+          <input type="checkbox" id="relation_check_${n}" class="box-check" />
+          <label for="relation_check_${n}" class="box-label"></label>
         </div>
       </div>
-      <textarea name="relation_anchor_${relationCount}" class="relation-textarea" rows="1" data-row="${relationCount}"></textarea>
-      <textarea name="relation_fate_${relationCount}" class="relation-textarea" rows="1" data-row="${relationCount}"></textarea>
-      <textarea name="relation_attr_${relationCount}" class="relation-textarea" rows="1" data-row="${relationCount}"></textarea>
-      <textarea name="relation_setting_${relationCount}" class="relation-textarea" rows="1" data-row="${relationCount}"></textarea>
-    `;
-    
-    relationList.insertAdjacentHTML('beforeend', rowHTML);
-
-    const newTextareas = relationList.querySelectorAll(`.relation-textarea[data-row="${relationCount}"]`);
-    newTextareas.forEach(bindRelationTextarea);
+      <textarea name="relation_anchor_${n}" class="relation-textarea" rows="1" data-row="${n}"></textarea>
+      <textarea name="relation_fate_${n}" class="relation-textarea" rows="1" data-row="${n}"></textarea>
+      <textarea name="relation_attr_${n}" class="relation-textarea" rows="1" data-row="${n}"></textarea>
+      <textarea name="relation_setting_${n}" class="relation-textarea" rows="1" data-row="${n}"></textarea>`);
+    relationList.querySelectorAll(`.relation-textarea[data-row="${n}"]`).forEach(bindRelationTextarea);
   };
 
   const removeRelationRow = () => {
-    if (!relationList) return;
-    const totalCells = relationList.children.length;
-    // ヘッダー行以下がない場合は何もしない
-    if (totalCells <= relationHeaderCount || relationCount === 0) return;
-
-    // 1行分（5セル）を削除
-    for (let i = 0; i < relationRowSize; i++) {
-      const lastCell = relationList.lastElementChild;
-      if (!lastCell) break;
-      relationList.removeChild(lastCell);
+    if (!relationList || relationList.children.length <= RELATION_HEADER_COUNT || relationCount === 0) return;
+    for (let i = 0; i < RELATION_ROW_SIZE; i++) {
+      if (relationList.lastElementChild) relationList.removeChild(relationList.lastElementChild);
     }
     relationCount = Math.max(0, relationCount - 1);
   };
 
-  // 初期化：最初から3行ほど関係の入力欄を作っておく場合
-  if (relationList) {
-    addRelationRow();
-  }
-
-  // ボタンにイベントを登録
+  if (relationList) addRelationRow();
   if (addRelationBtn) addRelationBtn.addEventListener('click', addRelationRow);
   if (removeRelationBtn) removeRelationBtn.addEventListener('click', removeRelationRow);
-});
 
-// ==========================================
-// ▼▼ ここからセーブ・ロード機能の追加コード ▼▼
-// ==========================================
-document.addEventListener('DOMContentLoaded', () => {
+  // ──────────────────────────────
+  // 5. セーブ・ロード
+  // ──────────────────────────────
   const saveBtn = document.getElementById('save_data_btn');
   const loadFile = document.getElementById('load_data_file');
-
-  // 画像をJSONに保存するため、Base64形式のデータを保持する変数
   let savedImageBase64 = null;
-  const imageInput = document.getElementById("setting_image");
-  
-  // 既存の画像選択処理に相乗りしてBase64化する
-  imageInput.addEventListener("change", () => {
+
+  imageInput.addEventListener('change', () => {
     const file = imageInput.files && imageInput.files[0];
-    if (file && file.type.startsWith("image/")) {
+    if (file && file.type.startsWith('image/')) {
       const reader = new FileReader();
       reader.onload = (e) => { savedImageBase64 = e.target.result; };
       reader.readAsDataURL(file);
@@ -390,82 +308,28 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 
-  // -------------------------
-  // データを保存（エクスポート）
-  // -------------------------
   if (saveBtn) {
     saveBtn.addEventListener('click', () => {
-      const data = {
-        inputs: {},
-        checkboxes: {},
-        spells: [],
-        relations: [],
-        image: savedImageBase64
-      };
+      const data = { inputs: {}, checkboxes: {}, spells: [], relations: [], image: savedImageBase64 };
 
-      // 1. 基本的な入力欄（テキスト、数値、セレクトなど）を取得
-      const textElements = document.querySelectorAll('input[type="text"], input[type="number"], select, textarea');
-      textElements.forEach(el => {
-        // 動的生成される魔法・関係の要素はここでは除外
+      document.querySelectorAll('input[type="text"], input[type="number"], select, textarea').forEach(el => {
         if (!el.name.startsWith('spell_') && !el.name.startsWith('relation_')) {
           data.inputs[el.id || el.name] = el.value;
         }
       });
-
-      // 2. 基本的なチェックボックスを取得（特技、魔力メーター、ギャップなど）
-      const checkElements = document.querySelectorAll('input[type="checkbox"]');
-      checkElements.forEach(el => {
+      document.querySelectorAll('input[type="checkbox"]').forEach(el => {
         if (!el.id.startsWith('charge_') && !el.id.startsWith('phrase_') && !el.id.startsWith('relation_check_')) {
           data.checkboxes[el.id] = el.checked;
         }
       });
+      data.spells = collectSpells();
+      data.relations = collectRelations();
 
-      // 3. 動的リスト：蔵書（魔法）を取得
-      let i = 1;
-      while (document.querySelector(`[name="spell_name_${i}"]`)) {
-        const spell = {
-          name: document.querySelector(`[name="spell_name_${i}"]`).value,
-          type: document.querySelector(`[name="spell_type_${i}"]`).value,
-          skill: document.querySelector(`[name="spell_skill_${i}"]`).value,
-          target: document.querySelector(`[name="spell_target_${i}"]`).value,
-          cost: document.querySelector(`[name="spell_cost_${i}"]`).value,
-          effect: document.querySelector(`[name="spell_effect_${i}"]`).value,
-          phrase: document.getElementById(`phrase_${i}`) ? document.getElementById(`phrase_${i}`).checked : false,
-          ref: document.querySelector(`[name="spell_reference_p_${i}"]`).value,
-          charges: []
-        };
-        for (let c = 1; c <= 5; c++) {
-          const cb = document.getElementById(`charge_${i}_${c}`);
-          if (cb) spell.charges.push(cb.checked);
-        }
-        data.spells.push(spell);
-        i++;
-      }
-
-      // 4. 動的リスト：関係を取得
-      let j = 1;
-      while (document.querySelector(`[name="relation_anchor_${j}"]`)) {
-        data.relations.push({
-          check: document.getElementById(`relation_check_${j}`) ? document.getElementById(`relation_check_${j}`).checked : false,
-          anchor: document.querySelector(`[name="relation_anchor_${j}"]`).value,
-          fate: document.querySelector(`[name="relation_fate_${j}"]`).value,
-          attr: document.querySelector(`[name="relation_attr_${j}"]`).value,
-          setting: document.querySelector(`[name="relation_setting_${j}"]`).value,
-        });
-        j++;
-      }
-
-      // JSONファイルとしてダウンロードさせる処理
-      const jsonStr = JSON.stringify(data, null, 2);
-      const blob = new Blob([jsonStr], { type: 'application/json' });
+      const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      
-      // キャラクター名をファイル名にする（空なら 'character'）
-      const charName = document.getElementById('name').value || 'character';
-      a.download = `${charName}_マギロギCS.json`;
-      
+      a.download = `${getFieldValue('name', 'character')}_マギロギCS.json`;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
@@ -473,197 +337,103 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  // -------------------------
-  // データを読み込み（インポート）
-  // -------------------------
   if (loadFile) {
     loadFile.addEventListener('change', (e) => {
       const file = e.target.files[0];
       if (!file) return;
-
       const reader = new FileReader();
       reader.onload = (event) => {
         try {
           const data = JSON.parse(event.target.result);
-          
-          // 1. テキストなどの復元
+
           if (data.inputs) {
             for (const [key, value] of Object.entries(data.inputs)) {
               const el = document.getElementById(key) || document.querySelector(`[name="${key}"]`);
-              if (el) {
-                el.value = value;
-                // 領域の変更を検知してギャップの黒塗りを自動実行
-                if (key === 'area') el.dispatchEvent(new Event('change'));
-              }
+              if (el) { el.value = value; if (key === 'area') el.dispatchEvent(new Event('change')); }
             }
           }
-
-          // 2. チェックボックスの復元
           if (data.checkboxes) {
             for (const [key, checked] of Object.entries(data.checkboxes)) {
               const el = document.getElementById(key);
-              if (el) {
-                el.checked = checked;
-              }
+              if (el) el.checked = checked;
             }
           }
-
-          // 3. 蔵書（魔法）リストの復元
           if (data.spells) {
-            const addBtn = document.getElementById('add_spell_btn');
-            const removeBtn = document.getElementById('remove_spell_btn');
-            
-            // 一旦現在の行をすべて削除する
-            while(document.querySelectorAll('.spell-textarea[name^="spell_name_"]').length > 0) {
-              removeBtn.click();
-            }
-            
-            // 保存データ数に合わせて行を追加し、データを代入
+            while (document.querySelectorAll('.spell-textarea[name^="spell_name_"]').length > 0) removeSpellRow();
             data.spells.forEach((spell, idx) => {
-              addBtn.click();
+              addSpellRow();
               const i = idx + 1;
-              document.querySelector(`[name="spell_name_${i}"]`).value = spell.name || '';
-              document.querySelector(`[name="spell_type_${i}"]`).value = spell.type || '召喚';
-              document.querySelector(`[name="spell_skill_${i}"]`).value = spell.skill || '';
-              document.querySelector(`[name="spell_target_${i}"]`).value = spell.target || '';
-              document.querySelector(`[name="spell_cost_${i}"]`).value = spell.cost || '';
-              document.querySelector(`[name="spell_effect_${i}"]`).value = spell.effect || '';
-              document.querySelector(`[name="spell_reference_p_${i}"]`).value = spell.ref || '';
-              
-              if (document.getElementById(`phrase_${i}`)) {
-                document.getElementById(`phrase_${i}`).checked = spell.phrase || false;
-              }
-              
-              if (spell.charges) {
-                spell.charges.forEach((checked, cIdx) => {
-                  const cb = document.getElementById(`charge_${i}_${cIdx + 1}`);
-                  if (cb) cb.checked = checked;
-                });
-              }
-              // テキストエリアの高さ自動調整を発火させる
-              document.querySelector(`[name="spell_effect_${i}"]`).dispatchEvent(new Event('input'));
+              const q = (s) => document.querySelector(s);
+              q(`[name="spell_name_${i}"]`).value = spell.name || '';
+              q(`[name="spell_type_${i}"]`).value = spell.type || '召喚';
+              q(`[name="spell_skill_${i}"]`).value = spell.skill || '';
+              q(`[name="spell_target_${i}"]`).value = spell.target || '';
+              q(`[name="spell_cost_${i}"]`).value = spell.cost || '';
+              q(`[name="spell_effect_${i}"]`).value = spell.effect || '';
+              q(`[name="spell_reference_p_${i}"]`).value = spell.ref || '';
+              if (document.getElementById(`phrase_${i}`)) document.getElementById(`phrase_${i}`).checked = spell.phrase || false;
+              if (spell.charges) spell.charges.forEach((ck, ci) => { const cb = document.getElementById(`charge_${i}_${ci + 1}`); if (cb) cb.checked = ck; });
+              q(`[name="spell_effect_${i}"]`).dispatchEvent(new Event('input'));
             });
           }
-
-          // 4. 関係リストの復元
           if (data.relations) {
-            const addBtn = document.getElementById('add_relation_btn');
-            const removeBtn = document.getElementById('remove_relation_btn');
-            
-            // 一旦削除
-            while(document.querySelectorAll('.relation-textarea[name^="relation_anchor_"]').length > 0) {
-              removeBtn.click();
-            }
-            
-            // 追加と代入
+            while (document.querySelectorAll('.relation-textarea[name^="relation_anchor_"]').length > 0) removeRelationRow();
             data.relations.forEach((rel, idx) => {
-              addBtn.click();
+              addRelationRow();
               const j = idx + 1;
               document.querySelector(`[name="relation_anchor_${j}"]`).value = rel.anchor || '';
               document.querySelector(`[name="relation_fate_${j}"]`).value = rel.fate || '';
               document.querySelector(`[name="relation_attr_${j}"]`).value = rel.attr || '';
               document.querySelector(`[name="relation_setting_${j}"]`).value = rel.setting || '';
-              
-              if (document.getElementById(`relation_check_${j}`)) {
-                document.getElementById(`relation_check_${j}`).checked = rel.check || false;
-              }
-              // テキストエリアの高さ自動調整を発火させる
+              if (document.getElementById(`relation_check_${j}`)) document.getElementById(`relation_check_${j}`).checked = rel.check || false;
               document.querySelector(`[name="relation_anchor_${j}"]`).dispatchEvent(new Event('input'));
             });
           }
-
-          // 5. 画像の復元
           if (data.image) {
             savedImageBase64 = data.image;
-            const imagePreview = document.getElementById("setting_image_preview");
-            const imageEmpty = document.getElementById("setting_image_empty");
-            
             imagePreview.src = data.image;
-            imagePreview.classList.add("is-visible");
+            imagePreview.classList.add('is-visible');
             imageEmpty.hidden = true;
           }
-
           alert('データの読み込みが完了しました！');
-
         } catch (error) {
           console.error(error);
           alert('データの読み込みに失敗しました。');
         }
-        
-        // 同じファイルを連続で選べるようにクリアしておく
         e.target.value = '';
       };
       reader.readAsText(file);
     });
   }
-});
 
-// ==========================================
-// ▼▼ ココフォリア用：キャラクター駒データをコピーする機能 ▼▼
-// ==========================================
-document.addEventListener('DOMContentLoaded', () => {
+  // ──────────────────────────────
+  // 6. ココフォリア用コピー
+  // ──────────────────────────────
   const copyNameBtn = document.getElementById('copy_name_btn');
   const nameInput = document.getElementById('name');
-
-  // 要素を id または name の両方から探し、空欄なら "0" を返すお助け関数
-  const getVal = (idOrNameList) => {
-    for (const key of idOrNameList) {
-      const elById = document.getElementById(key);
-      if (elById && elById.value) return elById.value;
-      const elByName = document.querySelector(`[name="${key}"]`);
-      if (elByName && elByName.value) return elByName.value;
-    }
-    return "0";
-  };
 
   if (copyNameBtn && nameInput) {
     copyNameBtn.addEventListener('click', () => {
       const nameValue = nameInput.value;
+      if (!nameValue) { alert('かりそめの名前が入力されていません。'); return; }
 
-      if (!nameValue) {
-        alert('かりそめの名前が入力されていません。');
-        return;
-      }
+      let commands = 'ーーー特技ーーー\n';
+      document.querySelectorAll('.skill-check:checked').forEach(cb => { commands += `2d6>=5《${cb.value}》\n`; });
+      const soulSkill = getFirstValue(['soul_skill', 'true_skill']);
+      if (soulSkill !== '0') commands += `2d6>=6《${soulSkill}》\n`;
 
-      // -----------------------------
-      // 1. チャットパレット（commands）の作成
-      // -----------------------------
-      let commands = "ーーー特技ーーー\n";
-      
-      const checkboxes = document.querySelectorAll('.skill-check:checked');
-      checkboxes.forEach(cb => {
-        commands += `2d6>=5《${cb.value}》\n`;
+      commands += '\nーーー魔法ーーー\n';
+      collectSpells().forEach(sp => {
+        if (sp.name) commands += `【${sp.name}】取得=/種別=${sp.type}/特技=${sp.skill}/目標=${sp.target}/コスト=${sp.cost}/${sp.ref}　効果：${sp.effect}\n`;
       });
 
-      const soulSkill = getVal(['soul_skill', 'true_skill']);
-      if (soulSkill && soulSkill !== "0") {
-        commands += `2d6>=6《${soulSkill}》\n`;
-      }
+      const trueName = getFirstValue(['true_name']);
+      const trueEffect = getFirstValue(['true_effect']);
+      commands += `\nーーー真の姿ーーー\n「${trueName === '0' ? '' : trueName}」【${trueEffect === '0' ? '' : trueEffect}】\n`;
 
-      commands += "\nーーー魔法ーーー\n";
-      let i = 1;
-      while (document.querySelector(`[name="spell_name_${i}"]`)) {
-        const sName = document.querySelector(`[name="spell_name_${i}"]`).value || "";
-        const sType = document.querySelector(`[name="spell_type_${i}"]`).value || "";
-        const sSkill = document.querySelector(`[name="spell_skill_${i}"]`).value || "";
-        const sTarget = document.querySelector(`[name="spell_target_${i}"]`).value || "";
-        const sCost = document.querySelector(`[name="spell_cost_${i}"]`).value || "";
-        const sRef = document.querySelector(`[name="spell_reference_p_${i}"]`).value || "";
-        const sEffect = document.querySelector(`[name="spell_effect_${i}"]`).value || "";
-        
-        if (sName) {
-          commands += `【${sName}】取得=/種別=${sType}/特技=${sSkill}/目標=${sTarget}/コスト=${sCost}/${sRef}　効果：${sEffect}\n`;
-        }
-        i++;
-      }
-
-      const trueName = getVal(['true_name']);
-      const trueEffect = getVal(['true_effect']);
-      commands += `\nーーー真の姿ーーー\n「${trueName === "0" ? "" : trueName}」【${trueEffect === "0" ? "" : trueEffect}】\n`;
-
-      const attackVal = getVal(['attack', 'attack_power', 'kougeki']);
-      const defenseVal = getVal(['defense', 'defense_power', 'bougyo']);
-      const rootVal = getVal(['kongen', 'root', 'kongenryoku']);
+      const attackVal = getFirstValue(['attack']);
+      const defenseVal = getFirstValue(['defense']);
+      const rootVal = getFirstValue(['kongen']);
 
       commands += `\nーーー戦闘ーーー
 s1d1　　攻撃プロット（攻撃力={攻撃力}）
@@ -727,69 +497,221 @@ MLT　同盟票
 FFT　落花表
 FLT　その後表`;
 
-      // -----------------------------
-      // 2. ステータス（status）の作成
-      // ※ status の value/max は数値(Number)で渡す必要があります
-      // -----------------------------
-      const magicMax = getVal(['magic_max', 'magic']);
-      const tempMagic = getVal(['magic_temp', 'temp_magic']);
+      const magicMax = getFirstValue(['magic_max']);
+      const tempMagic = getFirstValue(['magic_temp']);
+      const statusArr = [
+        { label: '魔力', value: Number(magicMax), max: Number(magicMax) },
+        { label: '一時的魔力', value: Number(tempMagic), max: Number(tempMagic) }
+      ];
+      collectSpells().forEach(sp => {
+        if (sp.name) statusArr.push({ label: `${sp.name}:${sp.cost}`, value: 0, max: Number(rootVal) });
+      });
 
-      let statusArr = [
-        { label: "魔力", value: Number(magicMax), max: Number(magicMax) },
-        { label: "一時的魔力", value: Number(tempMagic), max: Number(tempMagic) }
+      const paramsArr = [
+        { label: '攻撃力', value: String(attackVal) },
+        { label: '防御力', value: String(defenseVal) },
+        { label: '根源力', value: String(rootVal) }
       ];
 
-      let j = 1;
-      while (document.querySelector(`[name="spell_name_${j}"]`)) {
-        const sName = document.querySelector(`[name="spell_name_${j}"]`).value;
-        const sCost = document.querySelector(`[name="spell_cost_${j}"]`).value;
-        if (sName) {
-          statusArr.push({
-            label: `${sName}:${sCost}`,
-            value: 0,
-            max: Number(rootVal)
-          });
-        }
-        j++;
-      }
-
-      // -----------------------------
-      // 3. パラメータ（params）の作成
-      // ★ ここが原因でした！ value を文字列(String)として渡すように修正 ★
-      // -----------------------------
-      let paramsArr = [
-        { label: "攻撃力", value: String(attackVal) },
-        { label: "防御力", value: String(defenseVal) },
-        { label: "根源力", value: String(rootVal) }
-      ];
-
-      // -----------------------------
-      // 4. ココフォリア用データの結合とコピー
-      // -----------------------------
       const ccfoliaData = {
-        kind: "character",
-        data: {
-          name: nameValue,
-          initiative: 1,
-          commands: commands,
-          status: statusArr,
-          params: paramsArr
-        }
+        kind: 'character',
+        data: { name: nameValue, initiative: 1, commands, status: statusArr, params: paramsArr }
       };
 
-      const textToCopy = JSON.stringify(ccfoliaData);
-
-      navigator.clipboard.writeText(textToCopy)
-        .then(() => {
-          alert('ココフォリア用のキャラクターデータをクリップボードにコピーしました！\nそのままココフォリアの盤面で Ctrl+V（ペースト）してください。');
-        })
-        .catch(err => {
-          console.error('コピーに失敗しました', err);
-          alert('コピーに失敗しました。');
-        });
+      navigator.clipboard.writeText(JSON.stringify(ccfoliaData))
+        .then(() => alert('ココフォリア用のキャラクターデータをクリップボードにコピーしました！\nそのままココフォリアの盤面で Ctrl+V（ペースト）してください。'))
+        .catch(err => { console.error('コピーに失敗しました', err); alert('コピーに失敗しました。'); });
     });
   }
-});
 
+  // ──────────────────────────────
+  // 7. キャラシ画像生成 & コピー
+  // ──────────────────────────────
+  const screenshotBtn = document.getElementById('screenshot_btn');
+  if (!screenshotBtn) return;
 
-clearPreview();
+  const getMagicChecked = (group) => {
+    let max = 0;
+    document.querySelectorAll(`input[data-magic-group="${group}"]:checked`).forEach(cb => {
+      max = Math.max(max, Number(cb.dataset.magicIndex || 0));
+    });
+    return max;
+  };
+
+  const AREA_NAMES = ['星', '獣', '力', '歌', '夢', '闇'];
+  const SKILL_TABLE = [
+    ['黄金','肉','重力','物語','追憶','深淵'],
+    ['大地','蟲','風','旋律','謎','腐敗'],
+    ['森','花','流れ','涙','嘘','裏切り'],
+    ['道','血','水','別れ','不安','迷い'],
+    ['海','鱗','波','微笑み','眠り','怠惰'],
+    ['静寂','混沌','自由','想い','偶然','歪み'],
+    ['雨','牙','衝撃','勝利','幻','不幸'],
+    ['嵐','叫び','雷','恋','狂気','バカ'],
+    ['太陽','怒り','炎','情熱','祈り','悪意'],
+    ['天空','翼','光','癒し','希望','絶望'],
+    ['異界','エロス','円環','時','未来','死']
+  ];
+
+  const chargeStr = (charges) => charges.map(c => c ? '■' : '□').join('');
+
+  const magicBar = (current, max) => {
+    const n = Number(max) || 0;
+    const c = Number(current) || 0;
+    if (!n) return '―';
+    let bar = '';
+    for (let i = 1; i <= n; i++) bar += i <= c ? '●' : '○';
+    return bar;
+  };
+
+  const buildPreviewHTML = () => {
+    const v = (id) => escapeHTML(getFieldValue(id));
+    const magicMax = getFieldValue('magic_max');
+    const magicTemp = getFieldValue('magic_temp');
+    const setting = getFieldValue('setting');
+    const trueDesc = getFieldValue('true_description');
+    const soulSkill = getFieldValue('soul_skill');
+    const skills = getAcquiredSkills();
+    const spells = collectSpells().filter(sp => sp.name);
+    const relations = collectRelations().filter(r => r.anchor);
+
+    const imgEl = document.getElementById('setting_image_preview');
+    const imageSrc = (imgEl && imgEl.classList.contains('is-visible') && imgEl.src) ? imgEl.src : '';
+
+    let skillHTML = '<table class="pv-skill-table"><thead><tr><th></th>';
+    AREA_NAMES.forEach(a => { skillHTML += `<th>${a}</th>`; });
+    skillHTML += '</tr></thead><tbody>';
+    SKILL_TABLE.forEach((row, ri) => {
+      skillHTML += `<tr><td class="pv-num">${ri + 2}</td>`;
+      row.forEach(s => { skillHTML += `<td class="${skills.includes(s) ? 'pv-skill-on' : ''}">${s}</td>`; });
+      skillHTML += '</tr>';
+    });
+    skillHTML += '</tbody></table>';
+
+    let spellHTML = '';
+    if (spells.length) {
+      spellHTML = '<table class="pv-table"><thead><tr><th>魔法名</th><th>タイプ</th><th>指定特技</th><th>対象</th><th>コスト</th><th>チャージ</th><th>効果</th><th>呪句</th><th>参照p</th></tr></thead><tbody>';
+      spells.forEach(sp => {
+        spellHTML += `<tr><td>${escapeHTML(sp.name)}</td><td>${escapeHTML(sp.type)}</td><td>${escapeHTML(sp.skill)}</td><td>${escapeHTML(sp.target)}</td><td>${escapeHTML(sp.cost)}</td><td class="pv-charge">${chargeStr(sp.charges)}</td><td class="pv-effect">${escapeHTML(sp.effect)}</td><td>${sp.phrase ? '■' : '□'}</td><td>${escapeHTML(sp.ref)}</td></tr>`;
+      });
+      spellHTML += '</tbody></table>';
+    }
+
+    let relHTML = '';
+    if (relations.length) {
+      relHTML = '<table class="pv-table"><thead><tr><th></th><th>アンカー名</th><th>運命</th><th>属性</th><th>設定</th></tr></thead><tbody>';
+      relations.forEach(r => {
+        relHTML += `<tr><td>${r.check ? '■' : '□'}</td><td>${escapeHTML(r.anchor)}</td><td>${escapeHTML(r.fate)}</td><td>${escapeHTML(r.attr)}</td><td>${escapeHTML(r.setting)}</td></tr>`;
+      });
+      relHTML += '</tbody></table>';
+    }
+
+    return `
+    <div class="pv-sheet">
+      <h1 class="pv-title">マギカロギア キャラクターシート</h1>
+      <div class="pv-columns">
+        <div class="pv-col">
+          <div class="pv-section">
+            <h2>基本情報</h2>
+            <dl class="pv-dl">
+              <dt>かりそめの名前</dt><dd>${v('name')}</dd>
+              <dt>魔法名</dt><dd>${v('m_name')}</dd>
+              <dt>性別</dt><dd>${v('gender')}</dd>
+              <dt>年齢</dt><dd>${v('age')}</dd>
+              <dt>功績点</dt><dd>${v('points')}</dd>
+              <dt>階梯</dt><dd>第${v('tier_number')}階梯 ${v('tier_name')}</dd>
+              <dt>領域</dt><dd>${v('area')}</dd>
+              <dt>攻撃力</dt><dd>${v('attack')}</dd>
+              <dt>防御力</dt><dd>${v('defense')}</dd>
+              <dt>根源力</dt><dd>${v('kongen')}</dd>
+              <dt>経歴/機関</dt><dd>${v('history')}</dd>
+              <dt>信条</dt><dd>${v('belief')}</dd>
+              <dt>表の顔</dt><dd>${v('face')}</dd>
+            </dl>
+          </div>
+          <div class="pv-section">
+            <h2>魔力</h2>
+            <dl class="pv-dl">
+              <dt>魔力の最大値 (${escapeHTML(magicMax)})</dt><dd class="pv-bar">${magicBar(getMagicChecked('magic_max'), magicMax)}</dd>
+              <dt>一時的魔力 (${escapeHTML(magicTemp)})</dt><dd class="pv-bar">${magicBar(getMagicChecked('magic_temp'), magicTemp)}</dd>
+            </dl>
+          </div>
+        </div>
+        <div class="pv-col">
+          <div class="pv-section">
+            <h2>設定</h2>
+            ${imageSrc ? `<div class="pv-image-wrap"><img src="${imageSrc}" class="pv-image" alt="設定画像" /></div>` : ''}
+            <p class="pv-text">${escapeHTML(setting).replace(/\n/g, '<br>')}</p>
+          </div>
+          <div class="pv-section">
+            <h2>真の姿</h2>
+            <dl class="pv-dl">
+              <dt>名称</dt><dd>${v('true_name')}</dd>
+              <dt>効果</dt><dd>${v('true_effect')}</dd>
+            </dl>
+            <p class="pv-text">${escapeHTML(trueDesc).replace(/\n/g, '<br>')}</p>
+          </div>
+        </div>
+      </div>
+      <div class="pv-section pv-full">
+        <h2>特技</h2>
+        ${skillHTML}
+        ${soulSkill ? `<p class="pv-soul">魂の特技：<strong>${escapeHTML(soulSkill)}</strong></p>` : ''}
+      </div>
+      <div class="pv-section pv-full">
+        <h2>蔵書（修得魔法）</h2>
+        ${spellHTML || '<p class="pv-empty">なし</p>'}
+      </div>
+      <div class="pv-section pv-full">
+        <h2>関係</h2>
+        ${relHTML || '<p class="pv-empty">なし</p>'}
+      </div>
+    </div>`;
+  };
+
+  screenshotBtn.addEventListener('click', async () => {
+    const originalText = screenshotBtn.textContent;
+    screenshotBtn.textContent = '⏳ 生成中...';
+    screenshotBtn.disabled = true;
+
+    try {
+      const container = document.createElement('div');
+      container.id = 'preview-render-container';
+      container.innerHTML = buildPreviewHTML();
+      document.body.appendChild(container);
+
+      await new Promise(resolve => setTimeout(resolve, 200));
+
+      const canvas = await html2canvas(container.querySelector('.pv-sheet'), {
+        useCORS: true, scale: 2, backgroundColor: '#f7efe3'
+      });
+      document.body.removeChild(container);
+
+      canvas.toBlob(async (blob) => {
+        if (!blob) { alert('画像の生成に失敗しました。'); return; }
+        try {
+          await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]);
+          alert('キャラクターシートの画像をクリップボードにコピーしました！\nCtrl+V で貼り付けできます。');
+        } catch (err) {
+          console.error('クリップボードへのコピーに失敗:', err);
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = `${getFieldValue('name', 'character')}_キャラシ.png`;
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+          URL.revokeObjectURL(url);
+          alert('クリップボードへのコピーに失敗したため、画像をダウンロードしました。');
+        }
+      }, 'image/png');
+    } catch (err) {
+      console.error('画像生成に失敗:', err);
+      alert('画像の生成に失敗しました。');
+    } finally {
+      screenshotBtn.textContent = originalText;
+      screenshotBtn.disabled = false;
+    }
+  });
+
+}); // end DOMContentLoaded
