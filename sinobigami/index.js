@@ -547,39 +547,43 @@ document.addEventListener('DOMContentLoaded', () => {
 
       let commands = 'ーーー特技ーーー\n';
       document.querySelectorAll('.skill-check:checked').forEach(cb => {
-        commands += `2d6>=5《${cb.value}》\n`;
+        commands += `SG>=5 《${cb.value}》\n`;
       });
       const specialSkill = getFieldValue('special_skill');
       if (specialSkill) commands += `\n特記: ${specialSkill}\n`;
 
-      commands += '\nーーー奥義ーーー\n';
-      collectOugi().forEach(og => {
-        if (og.name) commands += `「${og.name}」指定特技=${og.skill}/間合=${og.range}/コスト=${og.cost}/${og.ref}\n効果：${og.effect}\n`;
-      });
+      // commands += '\nーーー奥義ーーー\n';
+      // collectOugi().forEach(og => {
+      //   if (og.name) commands += `「${og.name}」/指定特技=${og.skill}/効果・改造=${og.kaizou}/${og.ref}エフェクト：${og.effect}\n`;
+      // });
 
       commands += '\nーーー忍法ーーー\n';
       collectNinpo().forEach(np => {
-        if (np.name) commands += `【${np.name}】タイプ=${np.type}/特技=${np.skill}/間合=${np.range}/コスト=${np.cost}/${np.ref}　効果：${np.effect}\n`;
+        if (np.name) commands += `【${np.name}】(${np.type}/指定特技:${np.skill}/間合:${np.range}/コスト:${np.cost})　効果:${np.effect}\n`;
       });
 
       commands += `\nーーー表ーーー
-ST　シーン表
+ST　通常シーン表
 FT　ファンブル表
+RTT　ランダム特技決定表
 ET　感情表
 WT　変調表
-BT　戦場表
-GST　汎用シーン表
-GAST　汎用先攻シーン表
-GKT　汎用感情表`;
+GWT　戦国変調表`;
 
-      const lifeExtra = getFieldValue('life_extra', '0');
-
+      // シノビガミ用ステータス配列
       const statusArr = [
-        { label: '追加生命力', value: Number(lifeExtra), max: Number(lifeExtra) }
+        { label: '器術', value: Number(getFieldValue('kijutsu', '1')), max: Number(getFieldValue('kijutsu', '1')) },
+        { label: '体術', value: Number(getFieldValue('taijutsu', '1')), max: Number(getFieldValue('taijutsu', '1')) },
+        { label: '忍術', value: Number(getFieldValue('ninjutsu', '1')), max: Number(getFieldValue('ninjutsu', '1')) },
+        { label: '謀術', value: Number(getFieldValue('boujutsu', '1')), max: Number(getFieldValue('boujutsu', '1')) },
+        { label: '戦術', value: Number(getFieldValue('senjutsu', '1')), max: Number(getFieldValue('senjutsu', '1')) },
+        { label: '妖術', value: Number(getFieldValue('youjutsu', '1')), max: Number(getFieldValue('youjutsu', '1')) },
+        { label: '頑健', value: Number(getFieldValue('life_extra', '0')), max: Number(getFieldValue('life_extra', '0')) },
+        { label: '忍具', value: Number(getFieldValue('ningu_total', '0')), max: Number(getFieldValue('ningu_total', '0')) }
       ];
 
       const paramsArr = [
-        { label: '功績点', value: String(getFieldValue('points', '0')) }
+        // { label: '功績点', value: String(getFieldValue('points', '0')) }
       ];
 
       const ccfoliaData = {
