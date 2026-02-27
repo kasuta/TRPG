@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+    <meta charset="UTF-8">
+    <title>シノビガミ キャラシ作成サイト</title>
+    <link rel="stylesheet" href="stylesheet.css">
+    <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+    <script src="index.js" defer></script>
+</head>
+
+<body>
+  <h1>シノビガミのCS作成用サイト</h1>
+  <main class="top-content">
+    <div class="input-left-stack">
+      <section class="input-left-top">
+        <h2>基本情報</h2>
+        <form class="input-form">
+          <div class="form-row">
+            <label for="name">名前</label>
+            <input id="name" name="name" type="text"/>
+          </div>
+          <div class="form-row">
+            <label for="age">年齢</label>
+            <input id="age" name="age" type="text"/>
+          </div>
+          <div class="form-row">
+            <label for="gender">性別</label>
+            <input id="gender" name="gender" type="text"/>
+          </div>
+          <div class="form-row">
+            <label for="school">上位流派</label>
+            <select id="school" name="school">
+              <option value="">選択してください</option>
+              <option value="斜歯忍軍">斜歯忍軍</option>
+              <option value="鞍馬神流">鞍馬神流</option>
+              <option value="ハグレモノ">ハグレモノ</option>
+              <option value="比良坂機関">比良坂機関</option>
+              <option value="私立御斎学園">私立御斎学園</option>
+              <option value="隠忍の血統">隠忍の血統</option>
+            </select>
+          </div>
+          <div class="form-row">
+            <label for="sub_school">流派</label>
+            <input id="sub_school" name="sub_school" type="text"/>
+          </div>          
+          <div class="form-row">
+            <label for="rank">階級</label>
+            <input id="rank" name="rank" type="text"/>
+          </div>
+          <div class="form-row">
+            <label for="manner">流儀</label>
+            <input id="manner" name="manner" type="text"/>
+          </div>
+          <div class="form-row">
+            <label for="face">表の顔</label>
+            <input id="face" name="face" type="text"/>
+          </div>
+          <div class="form-row">
+            <label for="belief">信念</label>
+            <input id="belief" name="belief" type="text"/>
+          </div>
+          <div class="form-row">
+            <label for="points">功績</label>
+            <input id="points" name="points" type="text"/>
+          </div>
+        </form>
+      </section>
+      <section class="input-left-bottom">
+        <h2>生命力</h2>
+        <form class="input-form">
+          <div class="form-row">
+            <label for="life_extra">追加生命力</label>
+            <input id="life_extra" name="life_extra" type="text"/>
+          </div>
+        </form>
+      </section>
+    </div>
+    <div class="input-right">
+      <h2>背景</h2>
+      <div class="form-row single-field">
+        <input id="setting_image" name="setting_image" type="file" accept="image/*" aria-label="背景の画像" />
+      </div>
+      <div class="image-preview-area" aria-live="polite">
+        <p id="setting_image_empty" class="image-preview-empty">画像がまだ選択されていません</p>
+        <img id="setting_image_preview" class="image-preview" alt="背景画像のプレビュー" />
+      </div>
+      <div class="form-row">
+        <label for="setting">設定</label>
+        <textarea id="setting" name="setting"></textarea>
+      </div>
+    </div>
+  </main>
+  <section class="bottom-content">
+    <section class="input-panel skill-form">
+      <h2>特技</h2>
+      <div class="stack-form">
+        <div class="form-row">
+          <!-- <label>特技</label> -->
+          <div class="skill-grid-wrap" aria-label="特技 11行6列">
+            <div class="skill-grid">
+              <div class="skill-num-head"></div>
+              <div class="skill-head"><input type="checkbox" class="damage-check" id="damage_kijutsu" title="ダメージ" />器術</div><div class="skill-head-gap"></div>
+              <div class="skill-head"><input type="checkbox" class="damage-check" id="damage_taijutsu" title="ダメージ" />体術</div><div class="skill-head-gap"></div>
+              <div class="skill-head"><input type="checkbox" class="damage-check" id="damage_ninjutsu" title="ダメージ" />忍術</div><div class="skill-head-gap"></div>
+              <div class="skill-head"><input type="checkbox" class="damage-check" id="damage_boujutsu" title="ダメージ" />謀術</div><div class="skill-head-gap"></div>
+              <div class="skill-head"><input type="checkbox" class="damage-check" id="damage_senjutsu" title="ダメージ" />戦術</div><div class="skill-head-gap"></div>
+              <div class="skill-head"><input type="checkbox" class="damage-check" id="damage_youjutsu" title="ダメージ" />妖術</div>
+
+              <input type="checkbox" id="gap1" class="gap-check"><label for="gap1" class="gap-col" style="grid-column: 3; grid-row: 2 / 13;"></label>
+              <input type="checkbox" id="gap2" class="gap-check"><label for="gap2" class="gap-col" style="grid-column: 5; grid-row: 2 / 13;"></label>
+              <input type="checkbox" id="gap3" class="gap-check"><label for="gap3" class="gap-col" style="grid-column: 7; grid-row: 2 / 13;"></label>
+              <input type="checkbox" id="gap4" class="gap-check"><label for="gap4" class="gap-col" style="grid-column: 9; grid-row: 2 / 13;"></label>
+              <input type="checkbox" id="gap5" class="gap-check"><label for="gap5" class="gap-col" style="grid-column: 11; grid-row: 2 / 13;"></label>
+              <input type="checkbox" id="gap6" class="gap-check" style="display:none;">
+
+              <!-- Row 2 -->
+              <div class="skill-num">2</div>
+              <input id="skill_r2_c1" class="skill-check" name="skill_r2_c1" type="checkbox" value="絡繰術" /><label for="skill_r2_c1" class="skill-label">絡繰術</label>
+              <input id="skill_r2_c2" class="skill-check" name="skill_r2_c2" type="checkbox" value="騎乗術" /><label for="skill_r2_c2" class="skill-label">騎乗術</label>
+              <input id="skill_r2_c3" class="skill-check" name="skill_r2_c3" type="checkbox" value="生存術" /><label for="skill_r2_c3" class="skill-label">生存術</label>
+              <input id="skill_r2_c4" class="skill-check" name="skill_r2_c4" type="checkbox" value="医術" /><label for="skill_r2_c4" class="skill-label">医術</label>
+              <input id="skill_r2_c5" class="skill-check" name="skill_r2_c5" type="checkbox" value="兵糧術" /><label for="skill_r2_c5" class="skill-label">兵糧術</label>
+              <input id="skill_r2_c6" class="skill-check" name="skill_r2_c6" type="checkbox" value="異形化" /><label for="skill_r2_c6" class="skill-label">異形化</label>
+
+              <!-- Row 3 -->
+              <div class="skill-num">3</div>
+              <input id="skill_r3_c1" class="skill-check" name="skill_r3_c1" type="checkbox" value="火術" /><label for="skill_r3_c1" class="skill-label">火術</label>
+              <input id="skill_r3_c2" class="skill-check" name="skill_r3_c2" type="checkbox" value="砲術" /><label for="skill_r3_c2" class="skill-label">砲術</label>
+              <input id="skill_r3_c3" class="skill-check" name="skill_r3_c3" type="checkbox" value="潜伏術" /><label for="skill_r3_c3" class="skill-label">潜伏術</label>
+              <input id="skill_r3_c4" class="skill-check" name="skill_r3_c4" type="checkbox" value="毒術" /><label for="skill_r3_c4" class="skill-label">毒術</label>
+              <input id="skill_r3_c5" class="skill-check" name="skill_r3_c5" type="checkbox" value="鳥獣術" /><label for="skill_r3_c5" class="skill-label">鳥獣術</label>
+              <input id="skill_r3_c6" class="skill-check" name="skill_r3_c6" type="checkbox" value="召喚術" /><label for="skill_r3_c6" class="skill-label">召喚術</label>
+
+              <!-- Row 4 -->
+              <div class="skill-num">4</div>
+              <input id="skill_r4_c1" class="skill-check" name="skill_r4_c1" type="checkbox" value="水術" /><label for="skill_r4_c1" class="skill-label">水術</label>
+              <input id="skill_r4_c2" class="skill-check" name="skill_r4_c2" type="checkbox" value="手裏剣術" /><label for="skill_r4_c2" class="skill-label">手裏剣術</label>
+              <input id="skill_r4_c3" class="skill-check" name="skill_r4_c3" type="checkbox" value="遁走術" /><label for="skill_r4_c3" class="skill-label">遁走術</label>
+              <input id="skill_r4_c4" class="skill-check" name="skill_r4_c4" type="checkbox" value="罠術" /><label for="skill_r4_c4" class="skill-label">罠術</label>
+              <input id="skill_r4_c5" class="skill-check" name="skill_r4_c5" type="checkbox" value="野戦術" /><label for="skill_r4_c5" class="skill-label">野戦術</label>
+              <input id="skill_r4_c6" class="skill-check" name="skill_r4_c6" type="checkbox" value="死霊術" /><label for="skill_r4_c6" class="skill-label">死霊術</label>
+
+              <!-- Row 5 -->
+              <div class="skill-num">5</div>
+              <input id="skill_r5_c1" class="skill-check" name="skill_r5_c1" type="checkbox" value="針術" /><label for="skill_r5_c1" class="skill-label">針術</label>
+              <input id="skill_r5_c2" class="skill-check" name="skill_r5_c2" type="checkbox" value="手練" /><label for="skill_r5_c2" class="skill-label">手練</label>
+              <input id="skill_r5_c3" class="skill-check" name="skill_r5_c3" type="checkbox" value="盗聴術" /><label for="skill_r5_c3" class="skill-label">盗聴術</label>
+              <input id="skill_r5_c4" class="skill-check" name="skill_r5_c4" type="checkbox" value="調査術" /><label for="skill_r5_c4" class="skill-label">調査術</label>
+              <input id="skill_r5_c5" class="skill-check" name="skill_r5_c5" type="checkbox" value="地の利" /><label for="skill_r5_c5" class="skill-label">地の利</label>
+              <input id="skill_r5_c6" class="skill-check" name="skill_r5_c6" type="checkbox" value="結界術" /><label for="skill_r5_c6" class="skill-label">結界術</label>
+
+              <!-- Row 6 -->
+              <div class="skill-num">6</div>
+              <input id="skill_r6_c1" class="skill-check" name="skill_r6_c1" type="checkbox" value="仕込み" /><label for="skill_r6_c1" class="skill-label">仕込み</label>
+              <input id="skill_r6_c2" class="skill-check" name="skill_r6_c2" type="checkbox" value="身体操術" /><label for="skill_r6_c2" class="skill-label">身体操術</label>
+              <input id="skill_r6_c3" class="skill-check" name="skill_r6_c3" type="checkbox" value="腹話術" /><label for="skill_r6_c3" class="skill-label">腹話術</label>
+              <input id="skill_r6_c4" class="skill-check" name="skill_r6_c4" type="checkbox" value="詐術" /><label for="skill_r6_c4" class="skill-label">詐術</label>
+              <input id="skill_r6_c5" class="skill-check" name="skill_r6_c5" type="checkbox" value="意気" /><label for="skill_r6_c5" class="skill-label">意気</label>
+              <input id="skill_r6_c6" class="skill-check" name="skill_r6_c6" type="checkbox" value="封術" /><label for="skill_r6_c6" class="skill-label">封術</label>
+
+              <!-- Row 7 -->
+              <div class="skill-num">7</div>
+              <input id="skill_r7_c1" class="skill-check" name="skill_r7_c1" type="checkbox" value="衣装術" /><label for="skill_r7_c1" class="skill-label">衣装術</label>
+              <input id="skill_r7_c2" class="skill-check" name="skill_r7_c2" type="checkbox" value="歩法" /><label for="skill_r7_c2" class="skill-label">歩法</label>
+              <input id="skill_r7_c3" class="skill-check" name="skill_r7_c3" type="checkbox" value="隠形術" /><label for="skill_r7_c3" class="skill-label">隠形術</label>
+              <input id="skill_r7_c4" class="skill-check" name="skill_r7_c4" type="checkbox" value="対人術" /><label for="skill_r7_c4" class="skill-label">対人術</label>
+              <input id="skill_r7_c5" class="skill-check" name="skill_r7_c5" type="checkbox" value="用兵術" /><label for="skill_r7_c5" class="skill-label">用兵術</label>
+              <input id="skill_r7_c6" class="skill-check" name="skill_r7_c6" type="checkbox" value="言霊術" /><label for="skill_r7_c6" class="skill-label">言霊術</label>
+
+              <!-- Row 8 -->
+              <div class="skill-num">8</div>
+              <input id="skill_r8_c1" class="skill-check" name="skill_r8_c1" type="checkbox" value="縄術" /><label for="skill_r8_c1" class="skill-label">縄術</label>
+              <input id="skill_r8_c2" class="skill-check" name="skill_r8_c2" type="checkbox" value="走法" /><label for="skill_r8_c2" class="skill-label">走法</label>
+              <input id="skill_r8_c3" class="skill-check" name="skill_r8_c3" type="checkbox" value="変装術" /><label for="skill_r8_c3" class="skill-label">変装術</label>
+              <input id="skill_r8_c4" class="skill-check" name="skill_r8_c4" type="checkbox" value="遊芸" /><label for="skill_r8_c4" class="skill-label">遊芸</label>
+              <input id="skill_r8_c5" class="skill-check" name="skill_r8_c5" type="checkbox" value="記憶術" /><label for="skill_r8_c5" class="skill-label">記憶術</label>
+              <input id="skill_r8_c6" class="skill-check" name="skill_r8_c6" type="checkbox" value="幻術" /><label for="skill_r8_c6" class="skill-label">幻術</label>
+
+              <!-- Row 9 -->
+              <div class="skill-num">9</div>
+              <input id="skill_r9_c1" class="skill-check" name="skill_r9_c1" type="checkbox" value="登術" /><label for="skill_r9_c1" class="skill-label">登術</label>
+              <input id="skill_r9_c2" class="skill-check" name="skill_r9_c2" type="checkbox" value="飛術" /><label for="skill_r9_c2" class="skill-label">飛術</label>
+              <input id="skill_r9_c3" class="skill-check" name="skill_r9_c3" type="checkbox" value="香術" /><label for="skill_r9_c3" class="skill-label">香術</label>
+              <input id="skill_r9_c4" class="skill-check" name="skill_r9_c4" type="checkbox" value="九ノ一術" /><label for="skill_r9_c4" class="skill-label">九ノ一術</label>
+              <input id="skill_r9_c5" class="skill-check" name="skill_r9_c5" type="checkbox" value="見敵術" /><label for="skill_r9_c5" class="skill-label">見敵術</label>
+              <input id="skill_r9_c6" class="skill-check" name="skill_r9_c6" type="checkbox" value="瞳術" /><label for="skill_r9_c6" class="skill-label">瞳術</label>
+
+              <!-- Row 10 -->
+              <div class="skill-num">10</div>
+              <input id="skill_r10_c1" class="skill-check" name="skill_r10_c1" type="checkbox" value="拷問術" /><label for="skill_r10_c1" class="skill-label">拷問術</label>
+              <input id="skill_r10_c2" class="skill-check" name="skill_r10_c2" type="checkbox" value="骨法術" /><label for="skill_r10_c2" class="skill-label">骨法術</label>
+              <input id="skill_r10_c3" class="skill-check" name="skill_r10_c3" type="checkbox" value="分身の術" /><label for="skill_r10_c3" class="skill-label">分身の術</label>
+              <input id="skill_r10_c4" class="skill-check" name="skill_r10_c4" type="checkbox" value="傀儡の術" /><label for="skill_r10_c4" class="skill-label">傀儡の術</label>
+              <input id="skill_r10_c5" class="skill-check" name="skill_r10_c5" type="checkbox" value="暗号術" /><label for="skill_r10_c5" class="skill-label">暗号術</label>
+              <input id="skill_r10_c6" class="skill-check" name="skill_r10_c6" type="checkbox" value="千里眼の術" /><label for="skill_r10_c6" class="skill-label">千里眼の術</label>
+
+              <!-- Row 11 -->
+              <div class="skill-num">11</div>
+              <input id="skill_r11_c1" class="skill-check" name="skill_r11_c1" type="checkbox" value="壊器術" /><label for="skill_r11_c1" class="skill-label">壊器術</label>
+              <input id="skill_r11_c2" class="skill-check" name="skill_r11_c2" type="checkbox" value="刀術" /><label for="skill_r11_c2" class="skill-label">刀術</label>
+              <input id="skill_r11_c3" class="skill-check" name="skill_r11_c3" type="checkbox" value="隠蔽術" /><label for="skill_r11_c3" class="skill-label">隠蔽術</label>
+              <input id="skill_r11_c4" class="skill-check" name="skill_r11_c4" type="checkbox" value="流言の術" /><label for="skill_r11_c4" class="skill-label">流言の術</label>
+              <input id="skill_r11_c5" class="skill-check" name="skill_r11_c5" type="checkbox" value="伝達術" /><label for="skill_r11_c5" class="skill-label">伝達術</label>
+              <input id="skill_r11_c6" class="skill-check" name="skill_r11_c6" type="checkbox" value="憑依術" /><label for="skill_r11_c6" class="skill-label">憑依術</label>
+
+              <!-- Row 12 -->
+              <div class="skill-num">12</div>
+              <input id="skill_r12_c1" class="skill-check" name="skill_r12_c1" type="checkbox" value="掘削術" /><label for="skill_r12_c1" class="skill-label">掘削術</label>
+              <input id="skill_r12_c2" class="skill-check" name="skill_r12_c2" type="checkbox" value="怪力" /><label for="skill_r12_c2" class="skill-label">怪力</label>
+              <input id="skill_r12_c3" class="skill-check" name="skill_r12_c3" type="checkbox" value="第六感" /><label for="skill_r12_c3" class="skill-label">第六感</label>
+              <input id="skill_r12_c4" class="skill-check" name="skill_r12_c4" type="checkbox" value="経済力" /><label for="skill_r12_c4" class="skill-label">経済力</label>
+              <input id="skill_r12_c5" class="skill-check" name="skill_r12_c5" type="checkbox" value="人脈" /><label for="skill_r12_c5" class="skill-label">人脈</label>
+              <input id="skill_r12_c6" class="skill-check" name="skill_r12_c6" type="checkbox" value="呪術" /><label for="skill_r12_c6" class="skill-label">呪術</label>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+    <section class="input-panel">
+      <h2>忍法</h2>
+      <div class="spell-grid-wrap">
+        <div class="ninpo-grid" id="ninpo_list">
+          <div class="spell-head">忍法名</div>
+          <div class="spell-head">タイプ</div>
+          <div class="spell-head">指定特技</div>
+          <div class="spell-head">間合い</div>
+          <div class="spell-head">コスト</div>
+          <div class="spell-head">効果</div>
+          <div class="spell-head">参照p</div>
+        </div>
+      </div>
+      <div class="control-row">
+        <button type="button" id="add_ninpo_btn" class="btn">＋ 忍法を追加</button>
+        <button type="button" id="remove_ninpo_btn" class="btn btn-outline">－ 忍法を削除</button>
+      </div>
+    </section>
+    <section class="input-panel">
+      <h2>背景</h2>
+      <div class="spell-grid-wrap">
+        <div class="haikei-grid" id="haikei_list">
+          <div class="spell-head">背景名</div>
+          <div class="spell-head">長所/短所</div>
+          <div class="spell-head">功績点</div>
+          <div class="spell-head">効果</div>
+          <div class="spell-head">参照p</div>
+        </div>
+      </div>
+      <div class="control-row">
+        <button type="button" id="add_haikei_btn" class="btn">＋ 背景を追加</button>
+        <button type="button" id="remove_haikei_btn" class="btn btn-outline">－ 背景を削除</button>
+      </div>
+    </section>
+    <section class="input-panel" id="ougi_section">
+      <h2>奥義</h2>
+      <div class="spell-grid-wrap">
+        <div class="ougi-grid" id="ougi_list">
+          <div class="spell-head">奥義名</div>
+          <div class="spell-head">指定特技</div>
+          <div class="spell-head">効果/改造</div>
+          <div class="spell-head">エフェクト</div>
+          <div class="spell-head">参照p</div>
+        </div>
+      </div>
+      <div class="control-row">
+        <button type="button" id="add_ougi_btn" class="btn">＋ 奥義を追加</button>
+        <button type="button" id="remove_ougi_btn" class="btn btn-outline">－ 奥義を削除</button>
+      </div>
+    </section>
+    <div class="relation-ningu-row">
+    <section class="input-panel relation-panel">
+      <h2>関係</h2>
+      <div class="spell-grid-wrap">
+        <div class="relation-grid" id="relation_list">
+          <div class="relation-head">人物名</div>
+          <div class="relation-head">居所</div>
+          <div class="relation-head">秘密</div>
+          <div class="relation-head">奥義</div>
+          <div class="relation-head">感情</div>
+        </div>
+      </div>
+      <div class="control-row">
+        <button type="button" id="add_relation_btn" class="btn">＋ 関係を追加</button>
+        <button type="button" id="remove_relation_btn" class="btn btn-outline">－ 削除</button>
+      </div>
+    </section>
+    <section class="input-panel ningu-panel" id="ningu_section">
+      <h2>忍具</h2>
+      <div class="ningu-grid">
+        <div class="ningu-label">兵糧丸</div>
+        <input id="ningu_hyorogan" name="ningu_hyorogan" type="text" class="ningu-input" />
+        <div class="ningu-label">神通丸</div>
+        <input id="ningu_jintsumaru" name="ningu_jintsumaru" type="text" class="ningu-input" />
+        <div class="ningu-label">遁甲符</div>
+        <input id="ningu_tonkofu" name="ningu_tonkofu" type="text" class="ningu-input" />
+        <div class="ningu-label">その他</div>
+        <input id="ningu_other" name="ningu_other" type="text" class="ningu-input" />
+      </div>
+    </section>
+    </div>
+    <div class="button-bar">
+      <div class="button-group">
+        <button type="button" id="hide_toggle_btn" class="btn btn-outline">隠す</button>
+        <button type="button" id="save_data_btn" class="btn btn-outline">データを保存 (.json)</button>
+        <label for="load_data_file" class="btn btn-outline">データを読み込む</label>
+        <input type="file" id="load_data_file" accept=".json" style="display: none;" />
+      </div>
+      <div class="button-group">
+        <button type="button" id="copy_name_btn" class="btn btn-outline">CCFOLIA形式でコピー</button>
+        <button type="button" id="screenshot_btn" class="btn btn-outline">キャラシ画像をコピー</button>
+      </div>
+    </div>
+  </section>
+  <footer class="site-footer">
+    <small>本作は、「河嶋陶一朗」「冒険支援株式会社」及び「株式会社新紀元社」が権利を有する『忍術バトルRPG シノビガミ』の二次創作物です。<br>（C）河嶋陶一朗／冒険企画局</small>
+  </footer>
+</body>
+
+</html>

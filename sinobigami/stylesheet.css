@@ -1,0 +1,1236 @@
+@import url("https://fonts.googleapis.com/css2?family=Zen+Kaku+Gothic+New:wght@400;600;700&family=DM+Serif+Display&display=swap");
+
+html {
+	font-size: 15px;
+}
+
+:root {
+	--bg-top: #f0e8e0;
+	--bg-bottom: #e0e3ed;
+	--ink: #1a1a2e;
+	--muted: #5a5a6e;
+	--accent: #7b2d4e;
+	--accent-strong: #4a1a30;
+	--panel: #ffffff;
+	--panel-shadow: rgba(26, 26, 46, 0.12);
+	--border: #c0b8c8;
+	--highlight: #d4a853;
+}
+
+*,
+*::before,
+*::after {
+	box-sizing: border-box;
+}
+
+body {
+	margin: 0;
+	min-height: 100vh;
+	color: var(--ink);
+	font-family: "Zen Kaku Gothic New", "Noto Sans JP", "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
+	background:
+		radial-gradient(1200px 600px at 10% 10%, rgba(139, 45, 82, 0.2), transparent 60%),
+		radial-gradient(900px 500px at 90% 15%, rgba(74, 26, 48, 0.15), transparent 65%),
+		linear-gradient(160deg, var(--bg-top), var(--bg-bottom));
+}
+
+h1 {
+	margin: 48px auto 24px;
+	max-width: 900px;
+	padding: 0 20px;
+	font-family: "DM Serif Display", "Times New Roman", serif;
+	letter-spacing: 0.04em;
+	font-size: clamp(1.8rem, 2.6vw, 2.6rem);
+	color: var(--accent-strong);
+	text-shadow: 0 2px 8px rgba(26, 26, 46, 0.15);
+	animation: fade-up 0.7s ease-out both;
+}
+
+.top-content {
+	max-width: 980px;
+	margin: 0 auto 80px;
+	padding: 0 20px;
+	display: grid;
+	grid-template-columns: repeat(2, minmax(0, 1fr));
+	gap: 32px;
+	align-items: start;
+}
+
+.bottom-content {
+	max-width: 980px;
+	margin: 0 auto 80px;
+	padding: 0 20px;
+}
+
+.site-footer {
+	max-width: 980px;
+	margin: 0 auto;
+	padding: 0 20px 40px;
+	text-align: center;
+	color: var(--muted);
+}
+
+.copyright-note {
+	font-size: 0.75rem;
+	line-height: 1.5;
+}
+
+.input-left-stack {
+	display: grid;
+	gap: 24px;
+}
+
+.input-panel,
+.input-left,
+.input-left-top,
+.input-left-bottom,
+.input-right {
+	background: var(--panel);
+	border-radius: 18px;
+	padding: 28px 32px 32px;
+	box-shadow: 0 20px 50px var(--panel-shadow);
+	border: 1px solid rgba(192, 184, 200, 0.7);
+	position: relative;
+	overflow: hidden;
+	animation: fade-up 0.8s ease-out 0.1s both;
+}
+
+.input-right {
+	display: flex;
+	flex-direction: column;
+	gap: 24px;
+}
+
+.input-panel::before,
+.input-left::before,
+.input-left-top::before,
+.input-left-bottom::before,
+.input-right::before {
+	content: "";
+	position: absolute;
+	inset: -40% 60% auto -40%;
+	height: 180px;
+	background: linear-gradient(120deg, rgba(123, 45, 78, 0.18), transparent 70%);
+	pointer-events: none;
+}
+
+.input-panel h2,
+.input-left h2,
+.input-left-top h2,
+.input-left-bottom h2,
+.input-right h2 {
+	margin: 0 0 20px;
+	font-size: clamp(1.1rem, 2vw, 1.4rem);
+	color: var(--accent-strong);
+}
+
+.input-form {
+	display: grid;
+	gap: 16px;
+}
+
+.form-group {
+	margin: 0;
+	padding: 16px 16px 18px;
+	border: 1px solid var(--border);
+	border-radius: 12px;
+	background: rgba(212, 168, 83, 0.12);
+	display: grid;
+	gap: 16px;
+}
+
+.stack-form {
+	display: grid;
+	gap: 16px;
+}
+
+.stack-form .form-row {
+	grid-template-columns: 1fr;
+	align-items: start;
+}
+
+.stack-form .form-row.inline-label {
+	grid-template-columns: minmax(90px, 0.3fr) 1fr;
+	column-gap: 6px;
+	align-items: center;
+}
+
+.stack-form .form-row.inline-label input[type="text"] {
+	width: 100%;
+}
+
+/* 特記事項の行 */
+.skill-form .special-skill-row.form-row.inline-label {
+	margin-top: 16px;
+	grid-template-columns: max-content auto;
+	column-gap: 8px;
+}
+
+.skill-form .special-skill-row.form-row.inline-label input[type="text"] {
+	width: calc(24ch + 72px);
+	justify-self: start;
+}
+
+.skill-grid-wrap {
+	overflow-x: auto;
+}
+
+/* 特技表の枠組み */
+.skill-grid {
+	display: grid;
+	grid-template-columns:
+		40px
+		1fr 16px
+		1fr 16px
+		1fr 16px
+		1fr 16px
+		1fr 16px
+		1fr;
+	gap: 1px;
+	background-color: var(--border);
+	border: 1px solid var(--border);
+	border-radius: 8px;
+	min-width: 860px;
+	overflow: hidden;
+}
+
+/* ヘッダー */
+.skill-head {
+	background: var(--ink);
+	color: #ffffff;
+	text-align: center;
+	padding: 8px 0;
+	font-weight: 700;
+	letter-spacing: 0.2em;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	gap: 4px;
+}
+
+/* ダメージチェックボックス */
+.damage-check {
+	-webkit-appearance: none;
+	appearance: none;
+	width: 14px;
+	height: 14px;
+	border: 2px solid #ffffff;
+	border-radius: 2px;
+	background: transparent;
+	cursor: pointer;
+	position: relative;
+	flex-shrink: 0;
+	margin: 0;
+}
+
+.damage-check:checked {
+	background: #e53e3e;
+	border-color: #e53e3e;
+}
+
+.damage-check:checked::after {
+	content: '✕';
+	position: absolute;
+	top: 50%;
+	left: 50%;
+	transform: translate(-50%, -50%);
+	font-size: 10px;
+	line-height: 1;
+	color: #ffffff;
+	font-weight: 700;
+}
+
+.skill-head-gap, .skill-num-head {
+	background: var(--ink);
+}
+
+/* 分野の隙間（クリックで塗りつぶし） */
+.gap-check {
+	display: none;
+}
+.gap-col {
+	background: #f6f8fb;
+	cursor: pointer;
+	transition: background 0.2s ease;
+	margin: 0;
+	position: relative;
+	z-index: 2;
+}
+.gap-col:hover {
+	background: #e2e8f0;
+}
+.gap-check:checked + .gap-col {
+	background: var(--ink);
+}
+
+.skill-grid input[type="text"] {
+	width: 100%;
+	min-width: 0;
+	padding: 8px 10px;
+	border: none;
+	border-radius: 0;
+	background-color: #ffffff;
+	margin: 0;
+	font-size: 0.95rem;
+}
+
+.skill-toggle {
+	position: absolute;
+	opacity: 0;
+	pointer-events: none;
+}
+
+.skill-button {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	height: 100%;
+	border: none;
+	border-radius: 0;
+	background: #f6f8fb;
+	font-weight: 600;
+	color: var(--muted);
+	cursor: pointer;
+	transition: background 0.2s ease, color 0.2s ease;
+	margin: 0;
+}
+
+.skill-toggle:checked + .skill-button {
+	background: var(--ink);
+	color: #ffffff;
+}
+
+.skill-toggle:focus-visible + .skill-button,
+.skill-grid input[type="text"]:focus {
+	outline: none;
+	position: relative;
+	z-index: 1;
+	box-shadow: 0 0 0 3px rgba(123, 45, 78, 0.3);
+}
+
+/* 特技のマス */
+.skill-check {
+	position: absolute;
+	opacity: 0;
+	pointer-events: none;
+}
+
+.skill-label {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	background: #ffffff;
+	padding: 8px 4px;
+	margin: 0;
+	cursor: pointer;
+	font-size: 0.95rem;
+	transition: background 0.2s ease, color 0.2s ease;
+}
+
+.skill-label:hover {
+	background: #f0f0f8;
+}
+
+.skill-check:checked + .skill-label {
+	background: var(--ink);
+	color: #ffffff;
+	font-weight: bold;
+}
+
+.skill-check:focus-visible + .skill-label {
+	outline: none;
+	position: relative;
+	z-index: 1;
+	box-shadow: 0 0 0 3px rgba(123, 45, 78, 0.3);
+}
+
+.skill-num {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	background: #f6f8fb;
+	font-weight: 700;
+	color: var(--accent-strong);
+	font-size: 1.1rem;
+	font-family: "DM Serif Display", serif;
+	margin: 0;
+}
+
+.stack-form label {
+	margin-bottom: 6px;
+}
+
+.input-right .form-row {
+	grid-template-columns: 1fr;
+	align-items: stretch;
+	flex: 1;
+}
+
+.form-row {
+	display: grid;
+	grid-template-columns: minmax(140px, 0.45fr) 1fr;
+	gap: 12px 16px;
+	align-items: center;
+}
+
+.form-row.single-field {
+	grid-template-columns: 1fr;
+}
+
+.life-input {
+	display: grid;
+	gap: 8px;
+}
+
+.life-meter {
+	display: flex;
+	flex-direction: row-reverse;
+	gap: 6px;
+	align-items: center;
+}
+
+.life-meter input[type="checkbox"] {
+	position: absolute;
+	top: auto;
+	left: -9999px;
+}
+
+.life-meter label {
+	width: 18px;
+	height: 18px;
+	border-radius: 4px;
+	border: 1px solid var(--border);
+	background: #ffffff;
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	font-size: 0.7rem;
+	font-weight: 600;
+	color: var(--muted);
+	cursor: pointer;
+	transition: background 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.life-meter input[type="checkbox"]:checked + label,
+.life-meter input[type="checkbox"]:checked ~ label {
+	background: var(--ink);
+	border-color: var(--ink);
+	color: #ffffff;
+}
+
+.life-meter input[type="checkbox"]:focus-visible + label {
+	box-shadow: 0 0 0 3px rgba(123, 45, 78, 0.2);
+}
+
+label {
+	font-weight: 600;
+	color: var(--muted);
+}
+
+input,
+select,
+textarea {
+	width: 100%;
+	min-width: 0;
+	padding: 10px 12px;
+	border-radius: 10px;
+	border: 1px solid var(--border);
+	background: #fbfcfd;
+	font-size: 1rem;
+	transition: border-color 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+}
+
+input[type="text"] {
+	width: 24ch;
+}
+
+select {
+	width: 24ch;
+}
+
+.inline-fields input[type="text"] {
+	width: 8ch;
+}
+
+input[type="file"] {
+	padding: 8px 10px;
+	background: #f6f8fb;
+}
+
+input:focus,
+select:focus,
+textarea:focus {
+	outline: none;
+	border-color: var(--accent);
+	box-shadow: 0 0 0 4px rgba(123, 45, 78, 0.18);
+	background: #ffffff;
+}
+
+select {
+	appearance: none;
+	background-image:
+		linear-gradient(45deg, transparent 50%, var(--accent) 50%),
+		linear-gradient(135deg, var(--accent) 50%, transparent 50%),
+		linear-gradient(to right, #d0c0d8, #d0c0d8);
+	background-position:
+		calc(100% - 18px) calc(50% - 2px),
+		calc(100% - 12px) calc(50% - 2px),
+		calc(100% - 32px) 50%;
+	background-size: 6px 6px, 6px 6px, 1px 16px;
+	background-repeat: no-repeat;
+	padding-right: 40px;
+}
+
+.inline-fields {
+	display: grid;
+	grid-template-columns: auto auto auto 1fr;
+	align-items: center;
+	gap: 8px;
+}
+
+.inline-text {
+	color: var(--muted);
+	font-weight: 600;
+	white-space: nowrap;
+}
+
+.form-row input[type="text"]:hover,
+.form-row select:hover,
+.form-row textarea:hover {
+	border-color: #9a8aaa;
+}
+
+textarea {
+	min-height: 220px;
+	width: 100%;
+	flex: 1;
+	resize: vertical;
+	line-height: 1.6;
+}
+
+.true-form textarea {
+	min-height: 140px;
+}
+
+.image-preview-area {
+	margin-top: 12px;
+	padding: 12px;
+	border-radius: 12px;
+	border: 1px dashed var(--border);
+	background: #f7f5fb;
+	text-align: center;
+}
+
+.image-preview-empty {
+	margin: 0;
+	color: var(--muted);
+	font-size: 0.95rem;
+}
+
+.image-preview {
+	display: none;
+	width: 100%;
+	max-height: 240px;
+	margin-top: 8px;
+	border-radius: 10px;
+	object-fit: contain;
+	background: #ffffff;
+	box-shadow: 0 8px 20px rgba(26, 26, 46, 0.08);
+}
+
+.image-preview.is-visible {
+	display: block;
+}
+
+/* ▼ 忍法のスタイル ▼ */
+.spell-grid-wrap {
+	overflow-x: auto;
+	margin-bottom: 24px;
+}
+
+.ougi-grid {
+	display: grid;
+	grid-template-columns:
+		minmax(80px, 1.2fr)
+		minmax(60px, 0.8fr)
+		minmax(80px, 1fr)
+		minmax(100px, 2fr)
+		minmax(40px, 0.5fr);
+	gap: 1px;
+	background-color: var(--border);
+	border: 1px solid var(--border);
+	border-radius: 8px;
+	overflow: hidden;
+}
+
+.ougi-grid input[type="text"],
+.ougi-grid textarea,
+.ougi-grid select {
+	width: 100%;
+	border: none;
+	border-radius: 0;
+	margin: 0;
+	padding: 10px 8px;
+	background: #ffffff;
+	font-size: 0.95rem;
+}
+
+.ougi-grid textarea {
+	resize: none;
+	overflow: hidden;
+	min-height: 0;
+	line-height: 1.5;
+}
+
+.ninpo-grid {
+	display: grid;
+	grid-template-columns:
+		minmax(80px, 1.2fr)
+		120px
+		minmax(60px, 0.8fr)
+		64px
+		64px
+		minmax(60px, 1fr)
+		minmax(40px, 0.5fr);
+	gap: 1px;
+	background-color: var(--border);
+	border: 1px solid var(--border);
+	border-radius: 8px;
+	overflow: hidden;
+}
+
+.spell-head {
+	background: var(--ink);
+	color: #ffffff;
+	text-align: center;
+	padding: 10px 8px;
+	font-weight: 700;
+	font-size: 0.95rem;
+	white-space: nowrap;
+}
+
+/* 忍法グリッド内の入力欄 */
+.ninpo-grid input[type="text"],
+.ninpo-grid textarea,
+.ninpo-grid select {
+	width: 100%;
+	border: none;
+	border-radius: 0;
+	margin: 0;
+	padding: 10px 8px;
+	background: #ffffff;
+	font-size: 0.95rem;
+}
+
+.ninpo-grid textarea {
+	resize: none;
+	overflow: hidden;
+	min-height: 0;
+	line-height: 1.5;
+}
+
+.ninpo-grid select {
+	padding-right: 24px;
+	background-position: calc(100% - 8px) center;
+}
+
+/* 背景グリッド */
+.haikei-grid {
+	display: grid;
+	grid-template-columns:
+		minmax(80px, 1.2fr)
+		80px
+		80px
+		minmax(120px, 2fr)
+		minmax(40px, 0.5fr);
+	gap: 1px;
+	background-color: var(--border);
+	border: 1px solid var(--border);
+	border-radius: 8px;
+	overflow: hidden;
+}
+
+.haikei-grid input[type="text"],
+.haikei-grid textarea,
+.haikei-grid select {
+	width: 100%;
+	border: none;
+	border-radius: 0;
+	margin: 0;
+	padding: 10px 8px;
+	background: #ffffff;
+	font-size: 0.95rem;
+}
+
+.haikei-grid textarea {
+	resize: none;
+	overflow: hidden;
+	min-height: 0;
+	line-height: 1.5;
+}
+
+.haikei-grid select {
+	padding-right: 24px;
+	background-position: calc(100% - 8px) center;
+}
+
+/* チェックボックス */
+.box-container {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	gap: 4px;
+	background: #ffffff;
+	padding: 0 8px;
+	margin: 0;
+}
+
+.box-check {
+	position: absolute;
+	opacity: 0;
+	pointer-events: none;
+}
+
+.box-label {
+	display: inline-block;
+	width: 16px;
+	height: 16px;
+	border: 1px solid var(--muted);
+	background-color: #ffffff;
+	cursor: pointer;
+	transition: background 0.2s ease, border-color 0.2s ease;
+}
+
+.box-label:hover {
+	border-color: var(--ink);
+	background-color: #f0f0f8;
+}
+
+.box-check:checked + .box-label {
+	background-color: var(--ink);
+	border-color: var(--ink);
+}
+
+.box-check:checked + .box-label::after {
+	content: '✔';
+	display: block;
+	text-align: center;
+	line-height: 16px;
+	font-size: 12px;
+	color: #ffffff;
+}
+
+.box-check:focus-visible + .box-label {
+	outline: none;
+	box-shadow: 0 0 0 3px rgba(123, 45, 78, 0.3);
+}
+
+/* --- 関係セクション --- */
+.relation-grid {
+	display: grid;
+	grid-template-columns:
+		minmax(4em, 5fr)
+		40px
+		40px
+		40px
+		minmax(4em, 3fr);
+	gap: 1px;
+	background-color: var(--border);
+	border: 1px solid var(--border);
+	border-radius: 8px;
+	overflow: hidden;
+}
+
+.relation-head {
+	background: var(--ink);
+	color: #ffffff;
+	padding: 10px 8px;
+	font-weight: 700;
+	text-align: center;
+	font-size: 0.95rem;
+	white-space: nowrap;
+}
+
+.relation-textarea {
+	width: 100%;
+	border: none;
+	border-radius: 0;
+	resize: none;
+	margin: 0;
+	padding: 10px 8px;
+	font-family: inherit;
+	font-size: 0.95rem;
+	line-height: 1.5;
+	min-height: 0;
+	outline: none;
+	background: #ffffff;
+	overflow: hidden;
+}
+
+.relation-textarea:focus {
+	background-color: #ffffff;
+}
+
+/* 感情欄（チェックボックス付き） */
+.emotion-cell {
+	display: flex;
+	align-items: center;
+	gap: 0;
+	background: #ffffff;
+}
+
+.emotion-sign-toggle {
+	-webkit-appearance: none;
+	appearance: none;
+	width: 28px;
+	height: 100%;
+	min-height: 36px;
+	border: none;
+	border-right: 1px solid var(--border);
+	background: #f6f8fb;
+	cursor: pointer;
+	font-size: 1rem;
+	font-weight: 700;
+	color: var(--accent);
+	text-align: center;
+	line-height: 1;
+	margin: 0;
+	flex-shrink: 0;
+	transition: background 0.15s ease;
+}
+
+.emotion-sign-toggle:hover {
+	background: #e2e8f0;
+}
+
+.emotion-sign-toggle::after {
+	content: '＋';
+	color: #e53e3e;
+}
+
+.emotion-sign-toggle:checked::after {
+	content: '－';
+	color: #3182ce;
+}
+
+.emotion-cell .relation-textarea {
+	flex: 1;
+	min-width: 0;
+}
+
+.relation-checkbox-cell {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	background-color: #ffffff;
+}
+
+/* 関係・忍具横並び */
+.relation-ningu-row {
+	display: flex;
+	gap: 24px;
+	align-items: flex-start;
+}
+
+.relation-panel {
+	flex: 2;
+	min-width: 0;
+}
+
+.ningu-panel {
+	flex: 1;
+	min-width: 0;
+}
+
+/* 忍具セクション */
+.ningu-grid {
+	display: grid;
+	grid-template-columns: auto 1fr;
+	gap: 1px;
+	background-color: var(--border);
+	border: 1px solid var(--border);
+	border-radius: 8px;
+	overflow: hidden;
+}
+
+.ningu-label {
+	background: var(--ink);
+	color: #ffffff;
+	padding: 10px 16px;
+	font-weight: 700;
+	font-size: 0.95rem;
+	white-space: nowrap;
+}
+
+.ningu-input {
+	width: 100%;
+	border: none;
+	border-radius: 0;
+	margin: 0;
+	padding: 10px 8px;
+	background: #ffffff;
+	font-size: 0.95rem;
+}
+
+/* 隠すモード */
+.hidden-mode .hideable-section {
+	position: relative;
+	pointer-events: none;
+	user-select: none;
+}
+
+.hidden-mode .hideable-section::after {
+	content: attr(data-hide-label);
+	position: absolute;
+	inset: 0;
+	background: var(--ink);
+	color: #ffffff;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	font-size: 1.2rem;
+	font-weight: 700;
+	letter-spacing: 0.2em;
+	border-radius: 18px;
+	z-index: 10;
+}
+
+/* ボタン共通 */
+.control-row {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 10px;
+	margin-top: 12px;
+	align-items: center;
+}
+
+.btn {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	padding: 10px 22px;
+	background: var(--accent);
+	color: #ffffff;
+	font-weight: 700;
+	font-size: 0.95rem;
+	border: 2px solid var(--accent);
+	border-radius: 8px;
+	cursor: pointer;
+	white-space: nowrap;
+	transition: background 0.2s ease, transform 0.1s ease, box-shadow 0.2s ease;
+	box-shadow: 0 4px 12px rgba(123, 45, 78, 0.2);
+	text-decoration: none;
+	line-height: 1.4;
+}
+
+.btn:hover {
+	background: var(--accent-strong);
+	border-color: var(--accent-strong);
+	box-shadow: 0 6px 16px rgba(123, 45, 78, 0.35);
+	transform: translateY(-1px);
+}
+
+.btn:active {
+	transform: translateY(1px);
+	box-shadow: 0 2px 8px rgba(123, 45, 78, 0.2);
+}
+
+.btn:disabled {
+	opacity: 0.6;
+	cursor: not-allowed;
+	transform: none;
+}
+
+.btn-outline {
+	background: transparent;
+	color: var(--accent);
+	border: 2px solid var(--accent);
+}
+
+.btn-outline:hover {
+	background: var(--accent);
+	color: #ffffff;
+}
+
+/* ボタングループ横並び */
+.button-bar {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 24px;
+	justify-content: flex-end;
+	padding: 0 20px;
+	margin-bottom: 20px;
+}
+
+.button-group {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 10px;
+	align-items: center;
+}
+
+@media (max-width: 720px) {
+	h1 {
+		margin: 32px auto 20px;
+	}
+
+	.top-content {
+		grid-template-columns: 1fr;
+	}
+
+	.input-panel {
+		padding: 22px 20px 26px;
+	}
+
+	.form-row {
+		grid-template-columns: 1fr;
+		align-items: start;
+	}
+
+	.life-meter {
+		justify-content: flex-start;
+	}
+
+	label {
+		margin-bottom: 4px;
+	}
+
+	.inline-fields {
+		grid-template-columns: auto 1fr;
+		grid-auto-rows: auto;
+	}
+
+	.inline-fields .inline-text:nth-of-type(2) {
+		grid-column: 1 / 2;
+	}
+
+	.form-row > label {
+		text-align: left;
+	}
+}
+
+/* ============================
+   キャラシ プレビュー (画像生成用)
+   ============================ */
+#preview-render-container {
+	position: absolute;
+	left: -9999px;
+	top: 0;
+}
+
+.pv-sheet {
+	width: 960px;
+	padding: 36px 40px 48px;
+	font-family: "Zen Kaku Gothic New", "Noto Sans JP", "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
+	color: #1a1a2e;
+	background: #f0e8e0;
+	line-height: 1.6;
+}
+
+.pv-title {
+	margin: 0 0 24px;
+	font-size: 22px;
+	font-family: "DM Serif Display", serif;
+	color: #4a1a30;
+	border-bottom: 3px solid #7b2d4e;
+	padding-bottom: 10px;
+}
+
+.pv-columns {
+	display: flex;
+	gap: 28px;
+	margin-bottom: 24px;
+}
+
+.pv-col {
+	flex: 1;
+	display: flex;
+	flex-direction: column;
+	gap: 20px;
+}
+
+.pv-section {
+	background: #ffffff;
+	border-radius: 12px;
+	padding: 18px 22px;
+	box-shadow: 0 2px 8px rgba(26, 26, 46, 0.08);
+	border: 1px solid #c0b8c8;
+}
+
+.pv-section h2 {
+	margin: 0 0 12px;
+	font-size: 15px;
+	color: #4a1a30;
+	border-left: 4px solid #7b2d4e;
+	padding-left: 10px;
+}
+
+.pv-full {
+	margin-bottom: 20px;
+}
+
+.pv-dl {
+	display: grid;
+	grid-template-columns: auto 1fr;
+	gap: 4px 14px;
+	margin: 0;
+	font-size: 13px;
+}
+
+.pv-dl dt {
+	font-weight: 700;
+	color: #5a5a6e;
+	white-space: nowrap;
+}
+
+.pv-dl dd {
+	margin: 0;
+	word-break: break-all;
+}
+
+.pv-bar {
+	letter-spacing: 2px;
+	font-size: 14px;
+}
+
+.pv-text {
+	margin: 8px 0 0;
+	font-size: 13px;
+	white-space: pre-wrap;
+	word-break: break-all;
+}
+
+.pv-image-wrap {
+	text-align: center;
+	margin-bottom: 12px;
+}
+
+.pv-image {
+	max-width: 100%;
+	max-height: 300px;
+	border-radius: 8px;
+	object-fit: contain;
+	box-shadow: 0 2px 8px rgba(26, 26, 46, 0.1);
+}
+
+.pv-soul {
+	margin: 10px 0 0;
+	font-size: 13px;
+}
+
+.pv-empty {
+	margin: 4px 0 0;
+	font-size: 13px;
+	color: #5a5a6e;
+}
+
+/* 特技表 */
+.pv-skill-table {
+	width: 100%;
+	border-collapse: collapse;
+	font-size: 12px;
+	margin-top: 4px;
+}
+
+.pv-skill-table th,
+.pv-skill-table td {
+	border: 1px solid #c0b8c8;
+	padding: 4px 6px;
+	text-align: center;
+}
+
+.pv-skill-table th {
+	background: #1a1a2e;
+	color: #fff;
+	font-weight: 700;
+}
+
+.pv-num {
+	background: #f6f8fb;
+	font-weight: 700;
+	color: #4a1a30;
+	width: 28px;
+}
+
+.pv-skill-on {
+	background: #1a1a2e;
+	color: #fff;
+	font-weight: 700;
+}
+
+/* プレビュー特技表：ギャップ列 */
+.pv-gap-head,
+.pv-gap-cell {
+	width: 6px;
+	min-width: 6px;
+	max-width: 6px;
+	padding: 0;
+	border: none;
+	background: transparent;
+}
+
+.pv-gap-on {
+	background: #1a1a2e !important;
+}
+
+/* 忍法・関係テーブル */
+.pv-table {
+	width: 100%;
+	border-collapse: collapse;
+	font-size: 12px;
+	margin-top: 4px;
+}
+
+.pv-table th,
+.pv-table td {
+	border: 1px solid #c0b8c8;
+	padding: 6px 8px;
+	text-align: left;
+}
+
+.pv-table th {
+	background: #1a1a2e;
+	color: #fff;
+	font-weight: 700;
+	white-space: nowrap;
+}
+
+.pv-effect {
+	max-width: 280px;
+	word-break: break-all;
+}
+
+.pv-charge {
+	letter-spacing: 2px;
+	white-space: nowrap;
+}
+
+@keyframes fade-up {
+	from {
+		opacity: 0;
+		transform: translateY(16px);
+	}
+	to {
+		opacity: 1;
+		transform: translateY(0);
+	}
+}
+
+/* スクリーンショット撮影時に不要な要素を非表示 */
+.screenshot-mode .button-bar,
+.screenshot-mode .site-footer,
+.screenshot-mode .control-row {
+	display: none !important;
+}
+
+/* プレビュー用：隠すモード黒塗りブロック */
+.pv-hidden-block {
+	background: #1a1a2e;
+	color: #ffffff;
+	text-align: center;
+	font-size: 1.2rem;
+	font-weight: 700;
+	letter-spacing: 0.2em;
+	padding: 28px 0;
+	border-radius: 8px;
+}
