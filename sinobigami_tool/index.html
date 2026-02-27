@@ -1,0 +1,726 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>シノビガミ キャラクター閲覧ツール</title>
+  <style>
+    :root {
+      --bg: #1a1a2e;
+      --surface: #16213e;
+      --card: #0f3460;
+      --accent: #e94560;
+      --text: #eee;
+      --text-muted: #aaa;
+      --skill-on: #e94560;
+      --skill-off: #222;
+      --border: #333;
+      --gap-on: rgba(233, 69, 96, 0.25);
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Segoe UI', 'Yu Gothic UI', 'Meiryo', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      padding: 20px;
+    }
+    h1 {
+      text-align: center;
+      margin-bottom: 24px;
+      font-size: 1.6em;
+      color: var(--accent);
+    }
+
+    /* ── ファイル読み込みエリア ── */
+    .load-area {
+      display: flex;
+      justify-content: center;
+      gap: 12px;
+      margin-bottom: 30px;
+      flex-wrap: wrap;
+    }
+    .load-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 24px;
+      background: var(--accent);
+      color: #fff;
+      border: none;
+      border-radius: 6px;
+      font-size: 1em;
+      cursor: pointer;
+      transition: opacity .2s;
+    }
+    .load-btn:hover { opacity: .85; }
+    .clear-btn {
+      padding: 10px 20px;
+      background: transparent;
+      color: var(--text-muted);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      font-size: 1em;
+      cursor: pointer;
+      transition: background .2s;
+    }
+    .clear-btn:hover { background: rgba(255,255,255,.05); }
+    #load_file { display: none; }
+
+    /* ── キャラクターカード ── */
+    .characters { display: flex; flex-direction: column; gap: 28px; max-width: 960px; margin: 0 auto; }
+    .char-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 20px;
+      animation: fadeIn .3s;
+    }
+    @keyframes fadeIn { from { opacity:0; transform:translateY(8px) } to { opacity:1; transform:translateY(0) } }
+
+    .char-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 16px;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+    .char-name {
+      font-size: 1.35em;
+      font-weight: bold;
+      color: #fff;
+    }
+    .char-meta {
+      font-size: .85em;
+      color: var(--text-muted);
+    }
+    .char-meta span + span::before { content: ' / '; }
+    .remove-char-btn {
+      background: none;
+      border: 1px solid var(--border);
+      color: var(--text-muted);
+      border-radius: 4px;
+      padding: 4px 10px;
+      cursor: pointer;
+      font-size: .8em;
+    }
+    .remove-char-btn:hover { border-color: var(--accent); color: var(--accent); }
+
+    /* ── 特技テーブル ── */
+    .skill-section h3 {
+      font-size: 1em;
+      color: var(--accent);
+      margin-bottom: 10px;
+    }
+    .skill-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: .82em;
+      table-layout: fixed;
+    }
+    .skill-table th,
+    .skill-table td {
+      border: 1px solid var(--border);
+      text-align: center;
+      padding: 4px 2px;
+    }
+    .skill-table thead th {
+      background: var(--card);
+      color: var(--accent);
+      font-weight: bold;
+      padding: 6px 2px;
+    }
+    .skill-table .num-col { width: 30px; color: var(--text-muted); }
+    .skill-table .gap-col {
+      width: 6px;
+      padding: 0;
+      border: none;
+      background: transparent;
+    }
+    .skill-table .gap-col.gap-on {
+      background: var(--gap-on);
+    }
+    .skill-table td.skill-cell {
+      background: var(--skill-off);
+      cursor: default;
+      transition: background .15s;
+    }
+    .skill-table td.skill-on {
+      background: var(--skill-on);
+      color: #fff;
+      font-weight: bold;
+    }
+
+    /* ── 習得スキル一覧 ── */
+    .acquired-skills {
+      margin-top: 14px;
+    }
+    .acquired-skills h3 {
+      font-size: 1em;
+      color: var(--accent);
+      margin-bottom: 8px;
+    }
+    .skill-tags {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+    .skill-tag {
+      background: var(--accent);
+      color: #fff;
+      padding: 3px 10px;
+      border-radius: 12px;
+      font-size: .82em;
+    }
+    .no-data {
+      color: var(--text-muted);
+      text-align: center;
+      margin-top: 60px;
+      font-size: 1.1em;
+    }
+
+    /* ── マスター特技表 ── */
+    .master-section {
+      max-width: 960px;
+      margin: 0 auto 30px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 20px;
+    }
+    .master-section h2 {
+      font-size: 1.1em;
+      color: var(--accent);
+      margin-bottom: 6px;
+    }
+    .master-section .master-hint {
+      font-size: .82em;
+      color: var(--text-muted);
+      margin-bottom: 12px;
+    }
+    .master-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: .85em;
+      table-layout: fixed;
+      user-select: none;
+    }
+    .master-table th,
+    .master-table td {
+      border: 1px solid var(--border);
+      text-align: center;
+      padding: 5px 2px;
+    }
+    .master-table thead th {
+      background: var(--card);
+      color: var(--accent);
+      font-weight: bold;
+      padding: 7px 2px;
+    }
+    .master-table .num-col { width: 30px; color: var(--text-muted); }
+    .master-table .gap-col {
+      width: 6px;
+      padding: 0;
+      border: none;
+      background: transparent;
+    }
+    .master-table td.m-skill {
+      background: var(--skill-off);
+      cursor: pointer;
+      transition: background .15s, box-shadow .15s;
+    }
+    .master-table td.m-skill:hover {
+      background: #333;
+      box-shadow: inset 0 0 0 2px var(--accent);
+    }
+    .master-table td.m-skill.m-selected {
+      background: var(--accent);
+      color: #fff;
+      font-weight: bold;
+      box-shadow: 0 0 8px var(--accent);
+    }
+
+    /* ── 距離結果エリア ── */
+    .distance-results {
+      max-width: 960px;
+      margin: 0 auto 30px;
+      display: none;
+    }
+    .distance-results.visible { display: block; }
+    .distance-results h2 {
+      font-size: 1.1em;
+      color: var(--accent);
+      margin-bottom: 14px;
+      text-align: center;
+    }
+    .dist-cards {
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+    .dist-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 16px;
+    }
+    .dist-card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 10px;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+    .dist-card-name {
+      font-size: 1.15em;
+      font-weight: bold;
+      color: #fff;
+    }
+    .dist-card-min {
+      background: var(--accent);
+      color: #fff;
+      padding: 4px 14px;
+      border-radius: 16px;
+      font-size: .95em;
+      font-weight: bold;
+    }
+    .dist-detail-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: .82em;
+    }
+    .dist-detail-table th,
+    .dist-detail-table td {
+      border: 1px solid var(--border);
+      padding: 5px 8px;
+      text-align: center;
+    }
+    .dist-detail-table thead th {
+      background: var(--card);
+      color: var(--accent);
+    }
+    .dist-detail-table td.dist-min-cell {
+      background: rgba(233, 69, 96, 0.2);
+      font-weight: bold;
+      color: var(--accent);
+    }
+    .dist-no-skills {
+      color: var(--text-muted);
+      font-size: .9em;
+    }
+  </style>
+</head>
+<body>
+
+  <h1>シノビガミ キャラクター閲覧ツール</h1>
+
+  <div class="load-area">
+    <input type="file" id="load_file" accept=".json" multiple />
+    <button class="load-btn" id="load_btn">JSONファイルを読み込む</button>
+    <button class="clear-btn" id="clear_btn">すべてクリア</button>
+  </div>
+
+  <div class="master-section" id="master_section">
+    <h2>特技表（クリックで達成値を計算）</h2>
+    <p class="master-hint">特技をクリックすると、各キャラクターの習得特技ごとの達成値を表示します</p>
+    <div id="master_table_wrap"></div>
+  </div>
+
+  <div class="distance-results" id="distance_results">
+    <h2 id="dist_title"></h2>
+    <div class="dist-cards" id="dist_cards"></div>
+  </div>
+
+  <div class="characters" id="characters">
+    <p class="no-data" id="no_data">JSONファイルを読み込んでキャラクターを表示します</p>
+  </div>
+
+<script>
+// ==========================================
+// 特技テーブル定義（sinobigami/index.html 準拠）
+// ==========================================
+const AREA_NAMES = ['器術', '体術', '忍術', '謀術', '戦術', '妖術'];
+
+const SKILL_TABLE = [
+  // row 2 ~ row 12
+  ['絡繰術','騎乗術','生存術','医術','兵糧術','異形化'],
+  ['火術','砲術','潜伏術','毒術','鳥獣術','召喚術'],
+  ['水術','手裏剣術','遁走術','罠術','野戦術','死霊術'],
+  ['針術','手練','盗聴術','調査術','地の利','結界術'],
+  ['仕込み','身体操術','腹話術','詐術','意気','封術'],
+  ['衣装術','歩法','隠形術','対人術','用兵術','言霊術'],
+  ['縄術','走法','変装術','遊芸','記憶術','幻術'],
+  ['登術','飛術','香術','九ノ一術','見敵術','瞳術'],
+  ['拷問術','骨法術','分身の術','傀儡の術','暗号術','千里眼の術'],
+  ['壊器術','刀術','隠蔽術','流言の術','伝達術','憑依術'],
+  ['掘削術','怪力','第六感','経済力','人脈','呪術'],
+];
+
+// skill_r{row}_c{col} → 特技名 マッピング生成
+const SKILL_ID_MAP = {};
+SKILL_TABLE.forEach((row, ri) => {
+  row.forEach((name, ci) => {
+    SKILL_ID_MAP[`skill_r${ri + 2}_c${ci + 1}`] = name;
+  });
+});
+
+// ギャップID
+const GAP_IDS = ['gap1','gap2','gap3','gap4','gap5','gap6'];
+
+// ==========================================
+// マスター特技表の描画
+// ==========================================
+const masterTableWrap = document.getElementById('master_table_wrap');
+const distResultsEl = document.getElementById('distance_results');
+const distTitleEl = document.getElementById('dist_title');
+const distCardsEl = document.getElementById('dist_cards');
+
+let selectedSkill = null; // { row, col, id, name }
+
+function buildMasterTable() {
+  let html = '<table class="master-table"><thead><tr><th class="num-col"></th>';
+  AREA_NAMES.forEach((a, ai) => {
+    html += `<th>${a}</th>`;
+    if (ai < 5) html += '<th class="gap-col"></th>';
+  });
+  html += '</tr></thead><tbody>';
+  SKILL_TABLE.forEach((row, ri) => {
+    const rowNum = ri + 2;
+    html += `<tr><td class="num-col">${rowNum}</td>`;
+    row.forEach((skillName, ci) => {
+      const skillId = `skill_r${rowNum}_c${ci + 1}`;
+      html += `<td class="m-skill" data-skill-id="${skillId}" data-row="${rowNum}" data-col="${ci + 1}">${skillName}</td>`;
+      if (ci < 5) html += '<td class="gap-col"></td>';
+    });
+    html += '</tr>';
+  });
+  html += '</tbody></table>';
+  masterTableWrap.innerHTML = html;
+
+  // クリックイベント
+  masterTableWrap.querySelectorAll('.m-skill').forEach(td => {
+    td.addEventListener('click', () => {
+      const skillId = td.dataset.skillId;
+      const row = parseInt(td.dataset.row, 10);
+      const col = parseInt(td.dataset.col, 10);
+      const name = td.textContent;
+
+      // 選択状態の切り替え
+      masterTableWrap.querySelectorAll('.m-selected').forEach(el => el.classList.remove('m-selected'));
+      td.classList.add('m-selected');
+      selectedSkill = { row, col, id: skillId, name };
+
+      updateDistanceResults();
+    });
+  });
+}
+buildMasterTable();
+
+// ==========================================
+// 距離計算ロジック
+// ==========================================
+
+/**
+ * 2つの分野列間の最短距離を計算（ギャップ考慮、円環）
+ * col1, col2: 1〜6
+ * gaps: { gap1: bool, ..., gap6: bool }
+ * gap_i は col_i と col_(i%6)+1 の間にある
+ *   塗りつぶし(true)  → ギャップ0マス + 移動1マス = 1マス
+ *   塗りつぶしなし(false) → ギャップ1マス + 移動1マス = 2マス
+ */
+function calcColumnDistance(col1, col2, gaps) {
+  if (col1 === col2) return 0;
+
+  function tryPath(from, to, direction) {
+    let steps = 0;
+    let current = from;
+    while (current !== to) {
+      let next, gapIdx;
+      if (direction === 1) {
+        // 時計回り: current → (current%6)+1
+        next = (current % 6) + 1;
+        gapIdx = current;
+      } else {
+        // 反時計回り: current → ((current-2+6)%6)+1
+        next = ((current - 2 + 6) % 6) + 1;
+        gapIdx = next;
+      }
+      // 隣の分野への移動で1マス消費
+      steps++;
+      // 塗りつぶしなし → ギャップでさらに1マス追加
+      if (!gaps[`gap${gapIdx}`]) steps++;
+      current = next;
+    }
+    return steps;
+  }
+
+  return Math.min(tryPath(col1, col2, 1), tryPath(col1, col2, -1));
+}
+
+/**
+ * 2つの特技間の距離を計算
+ * skill_r{row}_c{col} 形式のIDから (row, col) を取得し、
+ * 距離 = 分野間距離 + 行の差 で算出
+ */
+function calcSkillDistance(row1, col1, row2, col2, gaps) {
+  const hDist = calcColumnDistance(col1, col2, gaps);
+  const vDist = Math.abs(row1 - row2);
+  return hDist + vDist;
+}
+
+/** skill ID から (row, col) を解析 */
+function parseSkillId(id) {
+  const m = id.match(/^skill_r(\d+)_c(\d+)$/);
+  if (!m) return null;
+  return { row: parseInt(m[1], 10), col: parseInt(m[2], 10) };
+}
+
+/** 距離結果を更新 */
+function updateDistanceResults() {
+  if (!selectedSkill || characters.length === 0) {
+    distResultsEl.classList.remove('visible');
+    return;
+  }
+
+  distResultsEl.classList.add('visible');
+  distTitleEl.textContent = `「${selectedSkill.name}」の達成値`;
+
+  let html = '';
+  characters.forEach((charData, ci) => {
+    if (charData.acquiredSkillIds.length === 0) {
+      html += `
+        <div class="dist-card">
+          <div class="dist-card-header">
+            <span class="dist-card-name">${escapeHTML(charData.name)}</span>
+          </div>
+          <p class="dist-no-skills">習得特技なし</p>
+        </div>`;
+      return;
+    }
+
+    // 各習得特技への達成値を計算（達成値 = 5 + 距離）
+    const results = [];
+    charData.acquiredSkillIds.forEach(sid => {
+      const parsed = parseSkillId(sid);
+      if (!parsed) return;
+      const dist = calcSkillDistance(selectedSkill.row, selectedSkill.col, parsed.row, parsed.col, charData.gaps);
+      const target = 5 + dist;
+      const skillName = SKILL_ID_MAP[sid] || sid;
+      results.push({ name: skillName, dist, target, id: sid });
+    });
+
+    // 達成値の低い順（＝使いやすい順）にソート
+    results.sort((a, b) => a.target - b.target);
+    const minTarget = results.length > 0 ? results[0].target : '—';
+
+    let tableRows = '';
+    results.forEach(d => {
+      const minClass = (d.target === minTarget) ? ' dist-min-cell' : '';
+      tableRows += `<tr><td>${escapeHTML(d.name)}</td><td class="${minClass}">${d.target}</td></tr>`;
+    });
+
+    html += `
+      <div class="dist-card">
+        <div class="dist-card-header">
+          <span class="dist-card-name">${escapeHTML(charData.name)}</span>
+          <span class="dist-card-min">最低達成値: ${minTarget}</span>
+        </div>
+        <table class="dist-detail-table">
+          <thead><tr><th>習得特技</th><th>達成値</th></tr></thead>
+          <tbody>${tableRows}</tbody>
+        </table>
+      </div>`;
+  });
+
+  distCardsEl.innerHTML = html;
+}
+
+// ==========================================
+// キャラクター管理
+// ==========================================
+const characters = [];
+const charactersEl = document.getElementById('characters');
+const noDataEl = document.getElementById('no_data');
+const loadFileEl = document.getElementById('load_file');
+const loadBtn = document.getElementById('load_btn');
+const clearBtn = document.getElementById('clear_btn');
+
+/** JSONデータからキャラ情報を抽出 */
+function parseCharData(data) {
+  const name = (data.inputs && data.inputs.name) || '名前なし';
+  const school = (data.inputs && data.inputs.school) || '';
+  const subSchool = (data.inputs && data.inputs.sub_school) || '';
+  const rank = (data.inputs && data.inputs.rank) || '';
+  const belief = (data.inputs && data.inputs.belief) || '';
+
+  // 習得特技IDリスト
+  const acquiredSkillIds = [];
+  if (data.checkboxes) {
+    for (const [id, checked] of Object.entries(data.checkboxes)) {
+      if (checked && id.startsWith('skill_r')) {
+        acquiredSkillIds.push(id);
+      }
+    }
+  }
+
+  // 習得特技名リスト
+  const acquiredSkills = acquiredSkillIds
+    .map(id => SKILL_ID_MAP[id])
+    .filter(Boolean);
+
+  // ギャップ状態
+  const gaps = {};
+  GAP_IDS.forEach(gid => {
+    gaps[gid] = !!(data.checkboxes && data.checkboxes[gid]);
+  });
+
+  return { name, school, subSchool, rank, belief, acquiredSkillIds, acquiredSkills, gaps };
+}
+
+/** 特技テーブルHTMLを生成 */
+function buildSkillTableHTML(acquiredSkillIds, gaps) {
+  const idSet = new Set(acquiredSkillIds);
+
+  // gap1=器術↔体術(col1-2), gap2=体術↔忍術(col2-3), gap3=忍術↔謀術(col3-4),
+  // gap4=謀術↔戦術(col4-5), gap5=戦術↔妖術(col5-6), gap6=妖術↔器術
+  // gap6 は表では直接可視化しにくいため省略
+
+  let html = '<table class="skill-table"><thead><tr><th class="num-col"></th>';
+  AREA_NAMES.forEach((a, ai) => {
+    html += `<th>${a}</th>`;
+    if (ai < 5) {
+      const gapOn = gaps[`gap${ai + 1}`] ? ' gap-on' : '';
+      html += `<th class="gap-col${gapOn}"></th>`;
+    }
+  });
+  html += '</tr></thead><tbody>';
+
+  SKILL_TABLE.forEach((row, ri) => {
+    const rowNum = ri + 2;
+    html += `<tr><td class="num-col">${rowNum}</td>`;
+    row.forEach((skillName, ci) => {
+      const skillId = `skill_r${rowNum}_c${ci + 1}`;
+      const on = idSet.has(skillId) ? ' skill-on' : '';
+      html += `<td class="skill-cell${on}">${skillName}</td>`;
+      if (ci < 5) {
+        const gapOn = gaps[`gap${ci + 1}`] ? ' gap-on' : '';
+        html += `<td class="gap-col${gapOn}"></td>`;
+      }
+    });
+    html += '</tr>';
+  });
+
+  html += '</tbody></table>';
+  return html;
+}
+
+/** キャラクターカードHTMLを生成 */
+function buildCharCardHTML(charData, index) {
+  const metaParts = [];
+  if (charData.school) metaParts.push(`<span>${charData.school}</span>`);
+  if (charData.subSchool) metaParts.push(`<span>${charData.subSchool}</span>`);
+  if (charData.rank) metaParts.push(`<span>${charData.rank}</span>`);
+  if (charData.belief) metaParts.push(`<span>${charData.belief}</span>`);
+
+  return `
+    <div class="char-card" data-index="${index}">
+      <div class="char-header">
+        <div>
+          <span class="char-name">${escapeHTML(charData.name)}</span>
+          <div class="char-meta">${metaParts.join('')}</div>
+        </div>
+        <button class="remove-char-btn" data-index="${index}">✕ 削除</button>
+      </div>
+      <div class="skill-section">
+        <h3>特技表</h3>
+        ${buildSkillTableHTML(charData.acquiredSkillIds, charData.gaps)}
+      </div>
+      <div class="acquired-skills">
+        <h3>習得特技一覧（${charData.acquiredSkills.length}個）</h3>
+        <div class="skill-tags">
+          ${charData.acquiredSkills.length
+            ? charData.acquiredSkills.map(s => `<span class="skill-tag">${escapeHTML(s)}</span>`).join('')
+            : '<span style="color:var(--text-muted)">なし</span>'}
+        </div>
+      </div>
+    </div>`;
+}
+
+/** HTMLエスケープ */
+function escapeHTML(str) {
+  return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+/** 表示を再描画 */
+function render() {
+  if (characters.length === 0) {
+    charactersEl.innerHTML = '<p class="no-data">JSONファイルを読み込んでキャラクターを表示します</p>';
+    return;
+  }
+  charactersEl.innerHTML = characters.map((c, i) => buildCharCardHTML(c, i)).join('');
+  // 削除ボタンのイベント
+  charactersEl.querySelectorAll('.remove-char-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const idx = parseInt(btn.dataset.index, 10);
+      characters.splice(idx, 1);
+      render();
+    });
+  });
+}
+
+/** JSONファイルを読み込み */
+function loadJSON(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      try {
+        const data = JSON.parse(e.target.result);
+        resolve(data);
+      } catch (err) {
+        reject(err);
+      }
+    };
+    reader.onerror = reject;
+    reader.readAsText(file);
+  });
+}
+
+// ── イベントリスナー ──
+loadBtn.addEventListener('click', () => loadFileEl.click());
+
+loadFileEl.addEventListener('change', async (e) => {
+  const files = Array.from(e.target.files);
+  if (!files.length) return;
+
+  let loadedCount = 0;
+  for (const file of files) {
+    try {
+      const data = await loadJSON(file);
+      const charData = parseCharData(data);
+      characters.push(charData);
+      loadedCount++;
+    } catch (err) {
+      console.error(`読み込み失敗: ${file.name}`, err);
+      alert(`「${file.name}」の読み込みに失敗しました。`);
+    }
+  }
+
+  if (loadedCount > 0) {
+    render();
+    updateDistanceResults();
+  }
+  e.target.value = ''; // 同じファイルの再読み込みを許可
+});
+
+clearBtn.addEventListener('click', () => {
+  characters.length = 0;
+  render();
+  updateDistanceResults();
+});
+
+</script>
+</body>
+</html>
