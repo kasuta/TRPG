@@ -100,12 +100,12 @@
           <div class="skill-grid-wrap" aria-label="特技 11行6列">
             <div class="skill-grid">
               <div class="skill-num-head"></div>
-              <div class="skill-head"><input type="checkbox" class="damage-check" id="damage_kijutsu" title="ダメージ" />器術</div><div class="skill-head-gap"></div>
-              <div class="skill-head"><input type="checkbox" class="damage-check" id="damage_taijutsu" title="ダメージ" />体術</div><div class="skill-head-gap"></div>
-              <div class="skill-head"><input type="checkbox" class="damage-check" id="damage_ninjutsu" title="ダメージ" />忍術</div><div class="skill-head-gap"></div>
-              <div class="skill-head"><input type="checkbox" class="damage-check" id="damage_boujutsu" title="ダメージ" />謀術</div><div class="skill-head-gap"></div>
-              <div class="skill-head"><input type="checkbox" class="damage-check" id="damage_senjutsu" title="ダメージ" />戦術</div><div class="skill-head-gap"></div>
-              <div class="skill-head"><input type="checkbox" class="damage-check" id="damage_youjutsu" title="ダメージ" />妖術</div>
+              <div class="skill-head"><span class="damage-check" id="damage_kijutsu" data-state="0" title="ダメージ"></span>器術</div><div class="skill-head-gap"></div>
+              <div class="skill-head"><span class="damage-check" id="damage_taijutsu" data-state="0" title="ダメージ"></span>体術</div><div class="skill-head-gap"></div>
+              <div class="skill-head"><span class="damage-check" id="damage_ninjutsu" data-state="0" title="ダメージ"></span>忍術</div><div class="skill-head-gap"></div>
+              <div class="skill-head"><span class="damage-check" id="damage_boujutsu" data-state="0" title="ダメージ"></span>謀術</div><div class="skill-head-gap"></div>
+              <div class="skill-head"><span class="damage-check" id="damage_senjutsu" data-state="0" title="ダメージ"></span>戦術</div><div class="skill-head-gap"></div>
+              <div class="skill-head"><span class="damage-check" id="damage_youjutsu" data-state="0" title="ダメージ"></span>妖術</div>
 
               <input type="checkbox" id="gap1" class="gap-check"><label for="gap1" class="gap-col" style="grid-column: 3; grid-row: 2 / 13;"></label>
               <input type="checkbox" id="gap2" class="gap-check"><label for="gap2" class="gap-col" style="grid-column: 5; grid-row: 2 / 13;"></label>
@@ -228,11 +228,20 @@
           <div class="spell-head">コスト</div>
           <div class="spell-head">効果</div>
           <div class="spell-head">参照p</div>
+          <div class="spell-head spell-head-move"></div>
         </div>
       </div>
       <div class="control-row">
         <button type="button" id="add_ninpo_btn" class="btn">＋ 忍法を追加</button>
         <button type="button" id="remove_ninpo_btn" class="btn btn-outline">－ 忍法を削除</button>
+        <span class="help-tooltip">
+          <span class="help-icon">？</span>
+          <span class="help-tooltip-text" id="ninpo_help_text">
+            ×ボタンをクリックすると、忍法のアクティブ、非アクティブ状態を切り替えることができます。<br>
+            非アクティブ状態の忍法は画像コピーよびココフォリア形式のコピーで反映されません。<br>
+            忍法のメモなどにご活用ください。
+          </span>
+        </span>
       </div>
     </section>
     <section class="input-panel">
@@ -259,7 +268,7 @@
           <div class="spell-head">指定特技</div>
           <div class="spell-head">効果/改造</div>
           <div class="spell-head">エフェクト</div>
-          <div class="spell-head">参照p</div>
+          <div class="spell-head">コピー</div>
         </div>
       </div>
       <div class="control-row">

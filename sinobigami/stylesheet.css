@@ -208,7 +208,7 @@ h1 {
 	gap: 4px;
 }
 
-/* ダメージチェックボックス */
+/* ダメージチェックボックス (三状態: 空→✕→空) */
 .damage-check {
 	-webkit-appearance: none;
 	appearance: none;
@@ -223,12 +223,12 @@ h1 {
 	margin: 0;
 }
 
-.damage-check:checked {
+.damage-check[data-state="1"] {
 	background: #e53e3e;
 	border-color: #e53e3e;
 }
 
-.damage-check:checked::after {
+.damage-check[data-state="1"]::after {
 	content: '✕';
 	position: absolute;
 	top: 50%;
@@ -551,16 +551,54 @@ textarea {
 .ougi-grid {
 	display: grid;
 	grid-template-columns:
-		minmax(80px, 1.2fr)
 		minmax(60px, 0.8fr)
-		minmax(80px, 1fr)
-		minmax(100px, 2fr)
-		minmax(40px, 0.5fr);
+		minmax(60px, 0.8fr)
+		minmax(60px, 0.8fr)
+		minmax(60px, 1fr)
+		72px;
 	gap: 1px;
 	background-color: var(--border);
 	border: 1px solid var(--border);
 	border-radius: 8px;
 	overflow: hidden;
+}
+
+.ougi-copy-btn {
+	width: auto;
+	max-width: 64px;
+	height: 32px;
+	border: none;
+	border-radius: 5px;
+	background: #38a169;
+	color: #ffffff;
+	cursor: pointer;
+	font-size: 0.75rem;
+	font-weight: 600;
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	transition: background 0.15s, box-shadow 0.15s;
+	padding: 0 8px;
+	align-self: center;
+	box-shadow: 0 2px 4px rgba(0,0,0,0.15);
+	white-space: nowrap;
+}
+
+.ougi-copy-btn:hover {
+	background: #2f855a;
+	box-shadow: 0 3px 6px rgba(0,0,0,0.2);
+}
+
+.ougi-copy-btn:active {
+	background: #276749;
+	box-shadow: 0 1px 2px rgba(0,0,0,0.15);
+}
+
+.ougi-grid .ougi-copy-cell {
+	background: #ffffff;
+	display: flex;
+	align-items: center;
+	justify-content: center;
 }
 
 .ougi-grid input[type="text"],
@@ -591,12 +629,61 @@ textarea {
 		64px
 		64px
 		minmax(60px, 1fr)
-		minmax(40px, 0.5fr);
+		minmax(40px, 0.5fr)
+		56px;
 	gap: 1px;
 	background-color: var(--border);
 	border: 1px solid var(--border);
 	border-radius: 8px;
 	overflow: hidden;
+}
+
+/* 忍法並び替えボタン */
+.ninpo-move-btns {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	justify-content: center;
+	gap: 2px;
+	background: #ffffff;
+	padding: 2px;
+}
+
+.btn-move {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	width: 26px;
+	height: 20px;
+	padding: 0;
+	border: 1px solid var(--border);
+	border-radius: 4px;
+	background: var(--bg-card);
+	cursor: pointer;
+	font-size: 0.7rem;
+	line-height: 1;
+	color: var(--ink);
+	transition: background 0.15s;
+}
+
+.btn-move:hover {
+	background: var(--accent);
+	color: #fff;
+}
+
+.btn-ninpo-disable.is-disabled {
+	background: var(--accent);
+	color: #fff;
+}
+
+/* 忍法行の無効化スタイル */
+.ninpo-cell-disabled {
+	background: #e0e0e0 !important;
+	color: #999 !important;
+}
+
+.spell-head-move {
+	font-size: 0.8rem;
 }
 
 .spell-head {
@@ -902,6 +989,63 @@ textarea {
 	gap: 10px;
 	margin-top: 12px;
 	align-items: center;
+}
+
+/* ヘルプツールチップ */
+.help-tooltip {
+	position: relative;
+	display: inline-flex;
+	align-items: center;
+	margin-left: 4px;
+}
+
+.help-icon {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: 24px;
+	height: 24px;
+	border-radius: 50%;
+	background: var(--border, #cbd5e0);
+	color: var(--ink, #1a1a2e);
+	font-size: 0.85rem;
+	font-weight: 700;
+	cursor: help;
+	line-height: 1;
+}
+
+.help-tooltip-text {
+	visibility: hidden;
+	opacity: 0;
+	position: absolute;
+	bottom: calc(100% + 8px);
+	left: 50%;
+	transform: translateX(-50%);
+	background: var(--ink, #1a1a2e);
+	color: #ffffff;
+	padding: 8px 12px;
+	border-radius: 6px;
+	font-size: 0.82rem;
+	line-height: 1.5;
+	white-space: nowrap;
+	z-index: 100;
+	transition: opacity 0.2s, visibility 0.2s;
+	pointer-events: none;
+}
+
+.help-tooltip-text::after {
+	content: '';
+	position: absolute;
+	top: 100%;
+	left: 50%;
+	transform: translateX(-50%);
+	border: 6px solid transparent;
+	border-top-color: var(--ink, #1a1a2e);
+}
+
+.help-tooltip:hover .help-tooltip-text {
+	visibility: visible;
+	opacity: 1;
 }
 
 .btn {

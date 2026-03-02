@@ -29,18 +29,20 @@ const collectOugi = () => {
       skill: document.querySelector(`[name="ougi_skill_${i}"]`).value || '',
       kaizou: document.querySelector(`[name="ougi_kaizou_${i}"]`).value || '',
       effect: document.querySelector(`[name="ougi_effect_${i}"]`).value || '',
-      ref: document.querySelector(`[name="ougi_ref_${i}"]`).value || '',
     });
     i++;
   }
   return ougi;
 };
 
-/** 忍法データを収集 */
-const collectNinpo = () => {
+/** 忍法データを収集 (disabled行を除外するかどうか選択可能) */
+const collectNinpo = ({ includeDisabled = true } = {}) => {
   const ninpo = [];
   let i = 1;
   while (document.querySelector(`[name="ninpo_name_${i}"]`)) {
+    const isDisabled = document.querySelector(`[name="ninpo_name_${i}"]`)?.closest('.ninpo-grid, .ninpo-row')?.querySelector(`.btn-ninpo-disable[data-ninpo-row="${i}"]`)?.classList.contains('is-disabled')
+      || document.querySelector(`.btn-ninpo-disable[data-ninpo-row="${i}"]`)?.classList.contains('is-disabled');
+    if (!includeDisabled && isDisabled) { i++; continue; }
     ninpo.push({
       name: document.querySelector(`[name="ninpo_name_${i}"]`).value || '',
       type: document.querySelector(`[name="ninpo_type_${i}"]`).value || '',
@@ -155,6 +157,39 @@ clearPreview();
 document.addEventListener('DOMContentLoaded', () => {
 
   // ──────────────────────────────
+  // ダメージチェック 三状態サイクル (空→✕→黒→空)
+  // ──────────────────────────────
+  document.querySelectorAll('.damage-check').forEach(el => {
+    el.addEventListener('click', () => {
+      const current = parseInt(el.dataset.state || '0', 10);
+      el.dataset.state = String((current + 1) % 3);
+    });
+  });
+
+  /** 奥義の情報をクリップボードにコピー */
+  const copyOugiToClipboard = (n) => {
+    const name = (document.querySelector(`[name="ougi_name_${n}"]`)?.value || '').trim();
+    const skill = (document.querySelector(`[name="ougi_skill_${n}"]`)?.value || '').trim();
+    const kaizou = (document.querySelector(`[name="ougi_kaizou_${n}"]`)?.value || '').trim();
+    const effect = (document.querySelector(`[name="ougi_effect_${n}"]`)?.value || '').trim();
+    const lines = [];
+    if (name) lines.push(`奥義名: ${name}`);
+    if (skill) lines.push(`指定特技: ${skill}`);
+    if (kaizou) lines.push(`効果/改造: ${kaizou}`);
+    if (effect) lines.push(`エフェクト: ${effect}`);
+    const text = lines.join('\n');
+    if (!text) return;
+    navigator.clipboard.writeText(text).then(() => {
+      const btn = document.querySelector(`.ougi-copy-btn[data-ougi-index="${n}"]`);
+      if (btn) {
+        const orig = btn.textContent;
+        btn.textContent = '✔';
+        setTimeout(() => { btn.textContent = orig; }, 1000);
+      }
+    });
+  };
+
+  // ──────────────────────────────
   // 1a. 奥義セクション
   // ──────────────────────────────
   const ougiList = document.getElementById('ougi_list');
@@ -179,9 +214,10 @@ document.addEventListener('DOMContentLoaded', () => {
       <textarea name="ougi_skill_${n}" class="ougi-textarea" rows="1" data-row="o${n}"></textarea>
       <textarea name="ougi_kaizou_${n}" class="ougi-textarea" rows="1" data-row="o${n}"></textarea>
       <textarea name="ougi_effect_${n}" class="ougi-textarea" rows="1" data-row="o${n}"></textarea>
-      <input type="text" name="ougi_ref_${n}" />`;
+      <div class="ougi-copy-cell"><button type="button" class="btn ougi-copy-btn" data-ougi-index="${n}" title="奥義情報をコピー">コピー</button></div>`;
     ougiList.insertAdjacentHTML('beforeend', rowHTML);
     ougiList.querySelectorAll(`.ougi-textarea[data-row="o${n}"]`).forEach(bindOugiTextarea);
+    ougiList.querySelector(`.ougi-copy-btn[data-ougi-index="${n}"]`).addEventListener('click', () => copyOugiToClipboard(n));
   };
 
   const removeOugiRow = () => {
@@ -206,14 +242,45 @@ document.addEventListener('DOMContentLoaded', () => {
   const addNinpoBtn = document.getElementById('add_ninpo_btn');
   const removeNinpoBtn = document.getElementById('remove_ninpo_btn');
   let ninpoCount = 0;
-  const NINPO_HEADER_COUNT = 7;
-  const NINPO_ROW_SIZE = 7;
+  const NINPO_HEADER_COUNT = 8;
+  const NINPO_ROW_SIZE = 8;
 
   const bindNinpoTextarea = (textarea) => {
     if (textarea.dataset.resizeBound) return;
     textarea.dataset.resizeBound = 'true';
     textarea.addEventListener('input', () => resizeTextareaRow(ninpoList, '.ninpo-textarea', textarea.dataset.row));
     resizeTextareaRow(ninpoList, '.ninpo-textarea', textarea.dataset.row);
+  };
+
+  /** 忍法の行を入れ替える */
+  const swapNinpoRows = (rowA, rowB) => {
+    if (rowA < 1 || rowB < 1 || rowA > ninpoCount || rowB > ninpoCount || rowA === rowB) return;
+    const fields = ['name', 'type', 'skill', 'range', 'cost', 'effect', 'ref'];
+    fields.forEach(f => {
+      const elA = document.querySelector(`[name="ninpo_${f}_${rowA}"]`);
+      const elB = document.querySelector(`[name="ninpo_${f}_${rowB}"]`);
+      if (elA && elB) {
+        const tmp = elA.value;
+        elA.value = elB.value;
+        elB.value = tmp;
+      }
+    });
+    // 無効化状態も入れ替え
+    const btnA = document.querySelector(`.btn-ninpo-disable[data-ninpo-row="${rowA}"]`);
+    const btnB = document.querySelector(`.btn-ninpo-disable[data-ninpo-row="${rowB}"]`);
+    if (btnA && btnB) {
+      const disA = btnA.classList.contains('is-disabled');
+      const disB = btnB.classList.contains('is-disabled');
+      if (disA !== disB) {
+        // 一旦両方リセットしてから正しい状態にトグル
+        if (disA) { toggleNinpoDisable(rowA); toggleNinpoDisable(rowB); }
+        else { toggleNinpoDisable(rowB); toggleNinpoDisable(rowA); }
+      }
+    }
+    // textarea の高さを再計算
+    [rowA, rowB].forEach(r => {
+      resizeTextareaRow(ninpoList, '.ninpo-textarea', String(r));
+    });
   };
 
   const addNinpoRow = () => {
@@ -230,10 +297,47 @@ document.addEventListener('DOMContentLoaded', () => {
       <textarea name="ninpo_range_${n}" class="ninpo-textarea" rows="1" data-row="${n}"></textarea>
       <textarea name="ninpo_cost_${n}" class="ninpo-textarea" rows="1" data-row="${n}"></textarea>
       <textarea name="ninpo_effect_${n}" class="ninpo-textarea" rows="1" data-row="${n}"></textarea>
-      <input type="text" name="ninpo_ref_${n}" />`;
+      <input type="text" name="ninpo_ref_${n}" />
+      <div class="ninpo-move-btns">
+        <button type="button" class="btn-move btn-move-up" data-ninpo-row="${n}" title="上へ移動">▲</button>
+        <button type="button" class="btn-move btn-ninpo-disable" data-ninpo-row="${n}" title="無効化切替">✕</button>
+        <button type="button" class="btn-move btn-move-down" data-ninpo-row="${n}" title="下へ移動">▼</button>
+      </div>`;
     ninpoList.insertAdjacentHTML('beforeend', rowHTML);
     ninpoList.querySelectorAll(`.ninpo-textarea[data-row="${n}"]`).forEach(bindNinpoTextarea);
   };
+
+  /** 忍法行の無効化状態を切り替え */
+  const toggleNinpoDisable = (row) => {
+    const btn = document.querySelector(`.btn-ninpo-disable[data-ninpo-row="${row}"]`);
+    if (!btn) return;
+    const isDisabled = btn.classList.toggle('is-disabled');
+    // 同じ行の全セルに灰色クラスを付与/除去
+    const fields = ['name', 'type', 'skill', 'range', 'cost', 'effect', 'ref'];
+    fields.forEach(f => {
+      const el = document.querySelector(`[name="ninpo_${f}_${row}"]`);
+      if (el) el.classList.toggle('ninpo-cell-disabled', isDisabled);
+    });
+    // 移動ボタンコンテナにも適用
+    const moveContainer = btn.closest('.ninpo-move-btns');
+    if (moveContainer) moveContainer.classList.toggle('ninpo-cell-disabled', isDisabled);
+  };
+
+  // 忍法の並び替え・無効化ボタンのイベント委譲
+  if (ninpoList) {
+    ninpoList.addEventListener('click', (e) => {
+      const btn = e.target.closest('.btn-move');
+      if (!btn) return;
+      const row = parseInt(btn.dataset.ninpoRow, 10);
+      if (btn.classList.contains('btn-move-up')) {
+        swapNinpoRows(row, row - 1);
+      } else if (btn.classList.contains('btn-move-down')) {
+        swapNinpoRows(row, row + 1);
+      } else if (btn.classList.contains('btn-ninpo-disable')) {
+        toggleNinpoDisable(row);
+      }
+    });
+  }
 
   const removeNinpoRow = () => {
     if (!ninpoList || ninpoList.children.length <= NINPO_HEADER_COUNT || ninpoCount === 0) return;
@@ -255,6 +359,8 @@ document.addEventListener('DOMContentLoaded', () => {
     setVal('ninpo_ref_1', '基78');
     addNinpoRow();
     ninpoList.querySelectorAll('.ninpo-textarea').forEach(bindNinpoTextarea);
+    // デフォルト値設定後にtextareaの高さを再計算
+    resizeTextareaRow(ninpoList, '.ninpo-textarea', '1');
   }
   if (addNinpoBtn) addNinpoBtn.addEventListener('click', addNinpoRow);
   if (removeNinpoBtn) removeNinpoBtn.addEventListener('click', removeNinpoRow);
@@ -469,7 +575,6 @@ document.addEventListener('DOMContentLoaded', () => {
               q(`[name="ougi_skill_${i}"]`).value = og.skill || '';
               q(`[name="ougi_kaizou_${i}"]`).value = og.kaizou || '';
               q(`[name="ougi_effect_${i}"]`).value = og.effect || '';
-              q(`[name="ougi_ref_${i}"]`).value = og.ref || '';
               q(`[name="ougi_effect_${i}"]`).dispatchEvent(new Event('input'));
             });
           }
@@ -558,7 +663,7 @@ document.addEventListener('DOMContentLoaded', () => {
       // });
 
       commands += '\nーーー忍法ーーー\n';
-      collectNinpo().forEach(np => {
+      collectNinpo({ includeDisabled: false }).forEach(np => {
         if (np.name) commands += `【${np.name}】(${np.type}/指定特技:${np.skill}/間合:${np.range}/コスト:${np.cost})　効果:${np.effect}\n`;
       });
 
@@ -629,17 +734,17 @@ GWT　戦国変調表`;
 
   const AREA_NAMES = ['器術', '体術', '忍術', '謀術', '戦術', '妖術'];
   const SKILL_TABLE = [
-    ['絡繰術','騎馬術','生存術','医術','兵糧術','異形化'],
-    ['火術','砲術','潜伏術','毒術','鳴子術','召喚術'],
-    ['水術','手裏剣術','遁走術','罠術','写し身の術','死霊術'],
-    ['針術','手練','盗聴術','詐術','地の利','結界術'],
-    ['仕込み','身体操術','腹話術','対人術','罠術','封術'],
-    ['衣装術','歩法','隠形術','遊芸','意気','言霊術'],
-    ['縄術','走法','変装術','九ノ一の術','用兵術','幻術'],
-    ['登術','飛術','香術','傀儡の術','記憶術','瞳術'],
-    ['盗術','骨法術','分身の術','流言の術','見敵術','千里眼の術'],
-    ['幻術','刀術','壁抜けの術','経済力','暗号術','憑依術'],
-    ['対人術','怪力','偵察術','混乱術','軍略','呪術']
+    ['絡繰術','騎乗術','生存術','医術','兵糧術','異形化'],
+    ['火術','砲術','潜伏術','毒術','鳥獣術','召喚術'],
+    ['水術','手裏剣術','遁走術','罠術','野戦術','死霊術'],
+    ['針術','手練','盗聴術','調査術','地の利','結界術'],
+    ['仕込み','身体操術','腹話術','詐術','意気','封術'],
+    ['衣装術','歩法','隠形術','対人術','用兵術','言霊術'],
+    ['縄術','走法','変装術','遊芸','記憶術','幻術'],
+    ['登術','飛術','香術','九ノ一術','見敵術','瞳術'],
+    ['拷問術','骨法術','分身の術','傀儡の術','暗号術','千里眼の術'],
+    ['壊器術','刀術','隠蔽術','流言の術','伝達術','憑依術'],
+    ['掘削術','怪力','第六感','経済力','人脈','呪術']
   ];
 
   const buildPreviewHTML = () => {
@@ -680,17 +785,18 @@ GWT　戦国変調表`;
 
     let ougiHTML = '';
     if (ougi.length) {
-      ougiHTML = '<table class="pv-table"><thead><tr><th>奥義名</th><th>指定特技</th><th>改造</th><th>エフェクト</th><th>参照p</th></tr></thead><tbody>';
+      ougiHTML = '<table class="pv-table"><thead><tr><th>奥義名</th><th>指定特技</th><th>改造</th><th>エフェクト</th></tr></thead><tbody>';
       ougi.forEach(og => {
-        ougiHTML += `<tr><td>${escapeHTML(og.name)}</td><td>${escapeHTML(og.skill)}</td><td>${escapeHTML(og.kaizou)}</td><td class="pv-effect">${escapeHTML(og.effect)}</td><td>${escapeHTML(og.ref)}</td></tr>`;
+        ougiHTML += `<tr><td>${escapeHTML(og.name)}</td><td>${escapeHTML(og.skill)}</td><td>${escapeHTML(og.kaizou)}</td><td class="pv-effect">${escapeHTML(og.effect)}</td></tr>`;
       });
       ougiHTML += '</tbody></table>';
     }
 
     let ninpoHTML = '';
-    if (ninpo.length) {
+    const ninpoForPreview = collectNinpo({ includeDisabled: false }).filter(np => np.name);
+    if (ninpoForPreview.length) {
       ninpoHTML = '<table class="pv-table"><thead><tr><th>忍法名</th><th>タイプ</th><th>指定特技</th><th>間合い</th><th>コスト</th><th>効果</th><th>参照p</th></tr></thead><tbody>';
-      ninpo.forEach(np => {
+      ninpoForPreview.forEach(np => {
         ninpoHTML += `<tr><td>${escapeHTML(np.name)}</td><td>${escapeHTML(np.type)}</td><td>${escapeHTML(np.skill)}</td><td>${escapeHTML(np.range)}</td><td>${escapeHTML(np.cost)}</td><td class="pv-effect">${escapeHTML(np.effect)}</td><td>${escapeHTML(np.ref)}</td></tr>`;
       });
       ninpoHTML += '</tbody></table>';
