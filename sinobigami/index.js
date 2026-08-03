@@ -152,7 +152,7 @@ const collectNinpoFromGrid = ({ includeDisabled = true } = {}) => {
       || document.querySelector(`.btn-ninpo-disable[data-ninpo-row="${i}"]`)?.classList.contains('is-disabled');
     if (!includeDisabled && isDisabled) { i++; continue; }
     ninpo.push({
-      name: document.querySelector(`[name="ninpo_name_${i}"]`).value || '',
+      name: normalizeNinpoName(document.querySelector(`[name="ninpo_name_${i}"]`).value || ''),
       type: document.querySelector(`[name="ninpo_type_${i}"]`).value || '',
       skill: document.querySelector(`[name="ninpo_skill_${i}"]`).value || '',
       range: document.querySelector(`[name="ninpo_range_${i}"]`).value || '',
@@ -164,6 +164,19 @@ const collectNinpoFromGrid = ({ includeDisabled = true } = {}) => {
   }
   return ninpo;
 };
+
+const collectNinpoFromText = () => {
+  const ninpoTextList = document.getElementById('ninpo_text_list');
+  if (!ninpoTextList) return [];
+  return Array.from(ninpoTextList.querySelectorAll('.ninpo-text-block'))
+    .map(textarea => parseNinpoBlock(textarea.value || ''))
+    .filter(row => !isEmptyNinpoRow(row));
+};
+
+const isEmptyNinpoRow = (row = {}) => !row.name && !row.type && !row.skill && !row.range && !row.cost && !row.effect && !row.ref;
+const isEmptyOugiRow = (row = {}) => !row.name && !row.skill && !row.kaizou && !row.effect;
+const isEmptyHaikeiRow = (row = {}) => !row.name && !row.merit && !row.cost && !row.effect && !row.ref;
+const isEmptyRelationRow = (row = {}) => !row.name && !row.location && !row.secret && !row.ougi && !row.emotion_sign && !row.emotion;
 
 /** 忍法データを収集 (disabled行を除外するかどうか選択可能) */
 const collectNinpo = ({ includeDisabled = true } = {}) => {
@@ -439,11 +452,6 @@ document.addEventListener('DOMContentLoaded', () => {
     ninpoTextList.innerHTML = '';
   };
 
-  const collectNinpoFromText = () => {
-    if (!ninpoTextList) return [];
-    return Array.from(ninpoTextList.querySelectorAll('.ninpo-text-block')).map(textarea => parseNinpoBlock(textarea.value || ''));
-  };
-
   const syncNinpoTextFromGrid = () => {
     if (!ninpoTextList) return;
     clearNinpoTextRows();
@@ -522,7 +530,7 @@ document.addEventListener('DOMContentLoaded', () => {
     [rowA, rowB].forEach(r => resizeTextareaRow(ninpoList, '.ninpo-textarea', String(r)));
   };
 
-  const addNinpoRow = (row = {}) => {
+  const addNinpoRow = (row = {}, { skipResize = false } = {}) => {
     ninpoCount++;
     const n = ninpoCount;
     const rowHTML = `
@@ -555,7 +563,7 @@ document.addEventListener('DOMContentLoaded', () => {
     setValue('effect', row.effect);
     setValue('ref', row.ref);
     ninpoList.querySelectorAll(`.ninpo-textarea[data-row="${n}"]`).forEach(bindNinpoTextarea);
-    resizeTextareaRow(ninpoList, '.ninpo-textarea', String(n));
+    if (!skipResize) resizeTextareaRow(ninpoList, '.ninpo-textarea', String(n));
   };
 
   /** 忍法行の無効化状態を切り替え */
@@ -783,10 +791,10 @@ document.addEventListener('DOMContentLoaded', () => {
           data.checkboxes[el.id] = el.checked;
         }
       });
-      data.ougi = collectOugi();
-      data.ninpo = collectNinpo();
-      data.haikei = collectHaikei();
-      data.relations = collectRelations();
+      data.ougi = collectOugi().filter(row => !isEmptyOugiRow(row));
+      data.ninpo = collectNinpo().filter(row => !isEmptyNinpoRow(row));
+      data.haikei = collectHaikei().filter(row => !isEmptyHaikeiRow(row));
+      data.relations = collectRelations().filter(row => !isEmptyRelationRow(row));
 
       const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
       const url = URL.createObjectURL(blob);
@@ -823,7 +831,7 @@ document.addEventListener('DOMContentLoaded', () => {
           }
           if (data.ougi) {
             while (document.querySelectorAll('.ougi-textarea[name^="ougi_name_"]').length > 0) removeOugiRow();
-            data.ougi.forEach((og, idx) => {
+            data.ougi.filter(row => !isEmptyOugiRow(row)).forEach((og, idx) => {
               addOugiRow();
               const i = idx + 1;
               const q = (s) => document.querySelector(s);
@@ -835,25 +843,19 @@ document.addEventListener('DOMContentLoaded', () => {
             });
           }
           if (data.ninpo) {
-            while (document.querySelectorAll('.ninpo-textarea[name^="ninpo_name_"]').length > 0) removeNinpoRow();
-            data.ninpo.forEach((np, idx) => {
-              addNinpoRow();
-              const i = idx + 1;
-              const q = (s) => document.querySelector(s);
-              q(`[name="ninpo_name_${i}"]`).value = np.name || '';
-              q(`[name="ninpo_type_${i}"]`).value = np.type || '攻撃';
-              q(`[name="ninpo_skill_${i}"]`).value = np.skill || '';
-              q(`[name="ninpo_range_${i}"]`).value = np.range || '';
-              q(`[name="ninpo_cost_${i}"]`).value = np.cost || '';
-              q(`[name="ninpo_effect_${i}"]`).value = np.effect || '';
-              q(`[name="ninpo_ref_${i}"]`).value = np.ref || '';
-              q(`[name="ninpo_effect_${i}"]`).dispatchEvent(new Event('input'));
-            });
-            resizeNinpoGridRows();
+            if (ninpoInputMode === 'text') {
+              clearNinpoTextRows();
+              data.ninpo.filter(row => !isEmptyNinpoRow(row)).forEach(row => addNinpoTextRow(row));
+              renumberNinpoTextRows();
+            } else {
+              clearNinpoGridRows();
+              data.ninpo.filter(row => !isEmptyNinpoRow(row)).forEach(row => addNinpoRow(row, { skipResize: true }));
+              resizeNinpoGridRows();
+            }
           }
           if (data.haikei) {
             while (document.querySelectorAll('.haikei-textarea[name^="haikei_name_"]').length > 0) removeHaikeiRow();
-            data.haikei.forEach((hk, idx) => {
+            data.haikei.filter(row => !isEmptyHaikeiRow(row)).forEach((hk, idx) => {
               addHaikeiRow();
               const i = idx + 1;
               const q = (s) => document.querySelector(s);
@@ -867,7 +869,7 @@ document.addEventListener('DOMContentLoaded', () => {
           }
           if (data.relations) {
             while (document.querySelectorAll('.relation-textarea[name^="relation_name_"]').length > 0) removeRelationRow();
-            data.relations.forEach((rel, idx) => {
+            data.relations.filter(row => !isEmptyRelationRow(row)).forEach((rel, idx) => {
               addRelationRow();
               const j = idx + 1;
               document.querySelector(`[name="relation_name_${j}"]`).value = rel.name || '';
