@@ -638,6 +638,75 @@ textarea {
 	overflow: hidden;
 }
 
+.ninpo-mode-row {
+	justify-content: space-between;
+	align-items: center;
+	gap: 12px;
+	margin-bottom: 12px;
+}
+
+.ninpo-mode-label {
+	font-size: 0.9rem;
+	color: var(--muted);
+	white-space: nowrap;
+}
+
+.ninpo-text-wrap {
+	display: none;
+	margin-bottom: 24px;
+}
+
+.ninpo-text-list {
+	display: grid;
+	gap: 12px;
+}
+
+.ninpo-text-row {
+	border: 1px solid var(--border);
+	border-radius: 8px;
+	overflow: hidden;
+	background: #ffffff;
+}
+
+.ninpo-text-row-head {
+	padding: 8px 12px;
+	background: var(--ink);
+	color: #fff;
+	font-size: 0.9rem;
+	font-weight: 700;
+}
+
+.ninpo-text-block {
+	width: 100%;
+	min-height: 210px;
+	padding: 14px 16px;
+	border: none;
+	border-radius: 0;
+	background: #ffffff;
+	color: var(--ink);
+	font: inherit;
+	font-family: monospace;
+	resize: vertical;
+	box-shadow: none;
+}
+
+.ninpo-text-block:focus {
+	outline: none;
+	box-shadow: inset 0 0 0 2px rgba(0, 0, 0, 0.08);
+}
+
+#ninpo_section.ninpo-mode-text .ninpo-grid-wrap {
+	display: none;
+}
+
+#ninpo_section.ninpo-mode-text .ninpo-text-wrap {
+	display: block;
+}
+
+#ninpo_section.ninpo-mode-grid .ninpo-text-wrap {
+	display: none;
+}
+
 /* 忍法並び替えボタン */
 .ninpo-move-btns {
 	display: flex;
@@ -712,7 +781,7 @@ textarea {
 .ninpo-grid textarea {
 	resize: none;
 	overflow: hidden;
-	min-height: 0;
+	min-height: 64px;
 	line-height: 1.5;
 }
 

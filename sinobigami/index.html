@@ -217,9 +217,12 @@
         </div>
       </div>
     </section>
-    <section class="input-panel">
+    <section class="input-panel" id="ninpo_section">
       <h2>忍法</h2>
-      <div class="spell-grid-wrap">
+      <div class="control-row ninpo-mode-row">
+        <button type="button" id="ninpo_mode_toggle_btn" class="btn btn-outline">切り替え</button>
+      </div>
+      <div class="spell-grid-wrap ninpo-grid-wrap">
         <div class="ninpo-grid" id="ninpo_list">
           <div class="spell-head">忍法名</div>
           <div class="spell-head">タイプ</div>
@@ -230,6 +233,9 @@
           <div class="spell-head">参照p</div>
           <div class="spell-head spell-head-move"></div>
         </div>
+      </div>
+      <div class="ninpo-text-wrap" id="ninpo_text_wrap">
+        <div class="ninpo-text-list" id="ninpo_text_list"></div>
       </div>
       <div class="control-row">
         <button type="button" id="add_ninpo_btn" class="btn">＋ 忍法を追加</button>

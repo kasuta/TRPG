@@ -35,8 +35,116 @@ const collectOugi = () => {
   return ougi;
 };
 
-/** 忍法データを収集 (disabled行を除外するかどうか選択可能) */
-const collectNinpo = ({ includeDisabled = true } = {}) => {
+const NINPO_FIELD_ORDER = ['name', 'type', 'skill', 'range', 'cost', 'effect', 'ref'];
+const NINPO_TEXT_FIELD_ORDER = ['type', 'range', 'cost', 'skill'];
+let ninpoInputMode = 'grid';
+
+const normalizeNinpoText = (value = '') => String(value).replace(/\r\n/g, '\n');
+
+const NINPO_TYPE_LABEL_MAP = {
+  '攻撃': '攻撃忍法',
+  'サポート': 'サポート忍法',
+  '装備': '装備忍法',
+};
+
+const normalizeNinpoType = (value = '') => {
+  const trimmed = String(value).trim();
+  if (!trimmed) return '';
+  if (trimmed.endsWith('忍法')) {
+    const base = trimmed.replace(/忍法$/, '');
+    if (NINPO_TYPE_LABEL_MAP[base]) return base;
+  }
+  if (Object.values(NINPO_TYPE_LABEL_MAP).includes(trimmed)) {
+    return Object.entries(NINPO_TYPE_LABEL_MAP).find(([, label]) => label === trimmed)?.[0] || trimmed;
+  }
+  return trimmed;
+};
+
+const escapeNinpoText = (value = '') => normalizeNinpoText(value).trimEnd();
+
+const normalizeNinpoName = (value = '') => String(value).trim().split(/\s+/)[0] || '';
+
+const getNinpoFieldValue = (text, label) => {
+  const normalized = normalizeNinpoText(text);
+  const pattern = new RegExp(`^${label}[：:]\s*(.*)$`);
+  for (const line of normalized.split('\n')) {
+    const match = line.match(pattern);
+    if (match) return match[1].trim();
+  }
+  return '';
+};
+
+const parseNinpoBlock = (block = '') => {
+  const normalized = normalizeNinpoText(block).split('\n');
+  const trimmedLines = normalized.map(line => line.replace(/\s+$/, ''));
+  const firstContentIndex = trimmedLines.findIndex(line => line.trim() !== '');
+  if (firstContentIndex < 0) {
+    return { name: '', type: '', skill: '', range: '', cost: '', effect: '', ref: '' };
+  }
+
+  const name = normalizeNinpoName(trimmedLines[firstContentIndex]);
+  const restLines = trimmedLines.slice(firstContentIndex + 1);
+  const remainingLines = [];
+  let inEffect = false;
+
+  const labelSource = restLines.join('\n');
+  const type = getNinpoFieldValue(labelSource, 'タイプ');
+  const range = getNinpoFieldValue(labelSource, '間合');
+  const cost = getNinpoFieldValue(labelSource, 'コスト');
+  const skill = getNinpoFieldValue(labelSource, '指定特技');
+  const ref = getNinpoFieldValue(labelSource, '参照p');
+
+  for (let i = 0; i < restLines.length; i++) {
+    const line = restLines[i];
+    const trimmed = line.trim();
+    if (!inEffect) {
+      if (!trimmed) continue;
+      if (/^(タイプ|間合|コスト|指定特技|参照p)[：:]/.test(trimmed)) continue;
+      inEffect = true;
+      remainingLines.push(line);
+      continue;
+    }
+    if (!trimmed) break;
+    remainingLines.push(line);
+  }
+
+  return {
+    name,
+    type: normalizeNinpoType(type),
+    skill,
+    range,
+    cost,
+    effect: remainingLines.join('\n').trimEnd(),
+    ref,
+  };
+};
+
+const serializeNinpoBlock = (row = {}) => {
+  const lines = [];
+  const name = escapeNinpoText(row.name || '');
+  if (!name) return '';
+  lines.push(name);
+  NINPO_TEXT_FIELD_ORDER.forEach(field => {
+    const label = field === 'skill' ? '指定特技' : (field === 'range' ? '間合' : (field === 'type' ? 'タイプ' : 'コスト'));
+    const value = escapeNinpoText(field === 'type'
+      ? (NINPO_TYPE_LABEL_MAP[row[field]] || (row[field] ? `${row[field]}忍法` : ''))
+      : (row[field] || ''));
+    lines.push(`${label}：${value}`);
+  });
+  const effect = escapeNinpoText(row.effect || '');
+  if (effect) lines.push(effect);
+  return lines.join('\n');
+};
+
+const parseNinpoText = (text = '') => normalizeNinpoText(text)
+  .split(/\n{2,}/)
+  .map(block => block.trim())
+  .filter(block => block)
+  .map(parseNinpoBlock);
+
+const serializeNinpoText = (rows = []) => rows.map(serializeNinpoBlock).filter(Boolean).join('\n\n');
+
+const collectNinpoFromGrid = ({ includeDisabled = true } = {}) => {
   const ninpo = [];
   let i = 1;
   while (document.querySelector(`[name="ninpo_name_${i}"]`)) {
@@ -55,6 +163,14 @@ const collectNinpo = ({ includeDisabled = true } = {}) => {
     i++;
   }
   return ninpo;
+};
+
+/** 忍法データを収集 (disabled行を除外するかどうか選択可能) */
+const collectNinpo = ({ includeDisabled = true } = {}) => {
+  if (ninpoInputMode === 'text') {
+    return collectNinpoFromText();
+  }
+  return collectNinpoFromGrid({ includeDisabled });
 };
 
 /** 背景データを収集 */
@@ -238,7 +354,11 @@ document.addEventListener('DOMContentLoaded', () => {
   // ──────────────────────────────
   // 1b. 忍法セクション
   // ──────────────────────────────
+  const ninpoSection = document.getElementById('ninpo_section');
   const ninpoList = document.getElementById('ninpo_list');
+  const ninpoTextWrap = document.getElementById('ninpo_text_wrap');
+  const ninpoTextList = document.getElementById('ninpo_text_list');
+  const ninpoModeToggleBtn = document.getElementById('ninpo_mode_toggle_btn');
   const addNinpoBtn = document.getElementById('add_ninpo_btn');
   const removeNinpoBtn = document.getElementById('remove_ninpo_btn');
   let ninpoCount = 0;
@@ -250,6 +370,130 @@ document.addEventListener('DOMContentLoaded', () => {
     textarea.dataset.resizeBound = 'true';
     textarea.addEventListener('input', () => resizeTextareaRow(ninpoList, '.ninpo-textarea', textarea.dataset.row));
     resizeTextareaRow(ninpoList, '.ninpo-textarea', textarea.dataset.row);
+  };
+
+  const resizeNinpoGridRows = () => {
+    if (!ninpoList) return;
+    ninpoList.querySelectorAll('.ninpo-textarea').forEach(textarea => {
+      resizeTextareaRow(ninpoList, '.ninpo-textarea', textarea.dataset.row);
+    });
+  };
+
+  const bindNinpoTextBlock = (textarea) => {
+    if (textarea.dataset.resizeBound) return;
+    textarea.dataset.resizeBound = 'true';
+    textarea.addEventListener('input', () => resizeTextareaRow(ninpoTextList, '.ninpo-text-block', textarea.dataset.row));
+    resizeTextareaRow(ninpoTextList, '.ninpo-text-block', textarea.dataset.row);
+  };
+
+  const countNinpoTextRows = () => ninpoTextList ? ninpoTextList.querySelectorAll('.ninpo-text-row').length : 0;
+
+  const addNinpoTextRow = (row = {}) => {
+    if (!ninpoTextList) return;
+    const n = countNinpoTextRows() + 1;
+    const rowHTML = `
+      <div class="ninpo-text-row">
+        <div class="ninpo-text-row-head">忍法 ${n}</div>
+        <textarea name="ninpo_text_${n}" class="ninpo-text-block" rows="8" data-row="${n}" placeholder="${n}件目の忍法を入力"></textarea>
+      </div>`;
+    ninpoTextList.insertAdjacentHTML('beforeend', rowHTML);
+    const textarea = ninpoTextList.querySelector(`textarea[name="ninpo_text_${n}"]`);
+    if (textarea) {
+      textarea.value = row.name ? serializeNinpoBlock(row) : '';
+      bindNinpoTextBlock(textarea);
+    }
+  };
+
+  const renumberNinpoTextRows = () => {
+    if (!ninpoTextList) return;
+    ninpoTextList.querySelectorAll('.ninpo-text-row').forEach((row, index) => {
+      const rowNumber = index + 1;
+      const head = row.querySelector('.ninpo-text-row-head');
+      const textarea = row.querySelector('.ninpo-text-block');
+      if (head) head.textContent = `忍法 ${rowNumber}`;
+      if (textarea) {
+        textarea.name = `ninpo_text_${rowNumber}`;
+        textarea.dataset.row = String(rowNumber);
+      }
+    });
+  };
+
+  const removeNinpoTextRow = () => {
+    if (!ninpoTextList) return;
+    const rows = ninpoTextList.querySelectorAll('.ninpo-text-row');
+    if (rows.length <= 1) return;
+    rows[rows.length - 1].remove();
+    renumberNinpoTextRows();
+  };
+
+  const clearNinpoGridRows = () => {
+    if (!ninpoList) return;
+    while (ninpoList.children.length > NINPO_HEADER_COUNT) {
+      ninpoList.removeChild(ninpoList.lastElementChild);
+    }
+    ninpoCount = 0;
+  };
+
+  const clearNinpoTextRows = () => {
+    if (!ninpoTextList) return;
+    ninpoTextList.innerHTML = '';
+  };
+
+  const collectNinpoFromText = () => {
+    if (!ninpoTextList) return [];
+    return Array.from(ninpoTextList.querySelectorAll('.ninpo-text-block')).map(textarea => parseNinpoBlock(textarea.value || ''));
+  };
+
+  const syncNinpoTextFromGrid = () => {
+    if (!ninpoTextList) return;
+    clearNinpoTextRows();
+    const rows = collectNinpoFromGrid({ includeDisabled: true });
+    const renderRows = rows.length ? rows : [{}];
+    renderRows.forEach(row => addNinpoTextRow(row));
+    renumberNinpoTextRows();
+  };
+
+  const syncNinpoGridFromText = () => {
+    if (!ninpoList) return;
+    const rows = collectNinpoFromText();
+    clearNinpoGridRows();
+    const renderRows = rows.length ? rows : [{}];
+    renderRows.forEach(row => addNinpoRow(row));
+  };
+
+  const updateNinpoModeUI = () => {
+    if (!ninpoSection) return;
+    const isText = ninpoInputMode === 'text';
+    ninpoSection.classList.toggle('ninpo-mode-text', isText);
+    ninpoSection.classList.toggle('ninpo-mode-grid', !isText);
+    if (ninpoModeToggleBtn) ninpoModeToggleBtn.textContent = '切り替え';
+    if (ninpoTextWrap) ninpoTextWrap.setAttribute('aria-hidden', String(!isText));
+    if (ninpoList) ninpoList.setAttribute('aria-hidden', String(isText));
+  };
+
+  const setNinpoMode = (mode) => {
+    if (mode === ninpoInputMode) return;
+    if (mode === 'text') {
+      syncNinpoTextFromGrid();
+      ninpoInputMode = 'text';
+      updateNinpoModeUI();
+      if (ninpoSection) void ninpoSection.offsetHeight;
+      if (ninpoTextList) {
+        ninpoTextList.querySelectorAll('.ninpo-text-block').forEach(textarea => {
+          textarea.dispatchEvent(new Event('input', { bubbles: true }));
+        });
+      }
+      return;
+    }
+    syncNinpoGridFromText();
+    ninpoInputMode = 'grid';
+    updateNinpoModeUI();
+    if (ninpoSection) void ninpoSection.offsetHeight;
+    if (ninpoList) {
+      ninpoList.querySelectorAll('.ninpo-textarea').forEach(textarea => {
+        textarea.dispatchEvent(new Event('input', { bubbles: true }));
+      });
+    }
   };
 
   /** 忍法の行を入れ替える */
@@ -265,25 +509,20 @@ document.addEventListener('DOMContentLoaded', () => {
         elB.value = tmp;
       }
     });
-    // 無効化状態も入れ替え
     const btnA = document.querySelector(`.btn-ninpo-disable[data-ninpo-row="${rowA}"]`);
     const btnB = document.querySelector(`.btn-ninpo-disable[data-ninpo-row="${rowB}"]`);
     if (btnA && btnB) {
       const disA = btnA.classList.contains('is-disabled');
       const disB = btnB.classList.contains('is-disabled');
       if (disA !== disB) {
-        // 一旦両方リセットしてから正しい状態にトグル
         if (disA) { toggleNinpoDisable(rowA); toggleNinpoDisable(rowB); }
         else { toggleNinpoDisable(rowB); toggleNinpoDisable(rowA); }
       }
     }
-    // textarea の高さを再計算
-    [rowA, rowB].forEach(r => {
-      resizeTextareaRow(ninpoList, '.ninpo-textarea', String(r));
-    });
+    [rowA, rowB].forEach(r => resizeTextareaRow(ninpoList, '.ninpo-textarea', String(r)));
   };
 
-  const addNinpoRow = () => {
+  const addNinpoRow = (row = {}) => {
     ninpoCount++;
     const n = ninpoCount;
     const rowHTML = `
@@ -304,7 +543,19 @@ document.addEventListener('DOMContentLoaded', () => {
         <button type="button" class="btn-move btn-move-down" data-ninpo-row="${n}" title="下へ移動">▼</button>
       </div>`;
     ninpoList.insertAdjacentHTML('beforeend', rowHTML);
+    const setValue = (name, value) => {
+      const el = document.querySelector(`[name="ninpo_${name}_${n}"]`);
+      if (el) el.value = value || '';
+    };
+    setValue('name', row.name);
+    setValue('type', row.type || '攻撃');
+    setValue('skill', row.skill);
+    setValue('range', row.range);
+    setValue('cost', row.cost);
+    setValue('effect', row.effect);
+    setValue('ref', row.ref);
     ninpoList.querySelectorAll(`.ninpo-textarea[data-row="${n}"]`).forEach(bindNinpoTextarea);
+    resizeTextareaRow(ninpoList, '.ninpo-textarea', String(n));
   };
 
   /** 忍法行の無効化状態を切り替え */
@@ -312,18 +563,15 @@ document.addEventListener('DOMContentLoaded', () => {
     const btn = document.querySelector(`.btn-ninpo-disable[data-ninpo-row="${row}"]`);
     if (!btn) return;
     const isDisabled = btn.classList.toggle('is-disabled');
-    // 同じ行の全セルに灰色クラスを付与/除去
     const fields = ['name', 'type', 'skill', 'range', 'cost', 'effect', 'ref'];
     fields.forEach(f => {
       const el = document.querySelector(`[name="ninpo_${f}_${row}"]`);
       if (el) el.classList.toggle('ninpo-cell-disabled', isDisabled);
     });
-    // 移動ボタンコンテナにも適用
     const moveContainer = btn.closest('.ninpo-move-btns');
     if (moveContainer) moveContainer.classList.toggle('ninpo-cell-disabled', isDisabled);
   };
 
-  // 忍法の並び替え・無効化ボタンのイベント委譲
   if (ninpoList) {
     ninpoList.addEventListener('click', (e) => {
       const btn = e.target.closest('.btn-move');
@@ -340,7 +588,11 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   const removeNinpoRow = () => {
-    if (!ninpoList || ninpoList.children.length <= NINPO_HEADER_COUNT || ninpoCount === 0) return;
+    if (ninpoInputMode === 'text') {
+      removeNinpoTextRow();
+      return;
+    }
+    if (!ninpoList || ninpoCount <= 1) return;
     for (let i = 0; i < NINPO_ROW_SIZE; i++) {
       if (ninpoList.lastElementChild) ninpoList.removeChild(ninpoList.lastElementChild);
     }
@@ -349,7 +601,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
   if (ninpoList) {
     addNinpoRow();
-    // 1行目にデフォルト値を設定
     const setVal = (name, val) => { const el = document.querySelector(`[name="${name}"]`); if (el) el.value = val; };
     setVal('ninpo_name_1', '接近戦攻撃');
     setVal('ninpo_type_1', '攻撃');
@@ -359,11 +610,16 @@ document.addEventListener('DOMContentLoaded', () => {
     setVal('ninpo_ref_1', '基78');
     addNinpoRow();
     ninpoList.querySelectorAll('.ninpo-textarea').forEach(bindNinpoTextarea);
-    // デフォルト値設定後にtextareaの高さを再計算
-    resizeTextareaRow(ninpoList, '.ninpo-textarea', '1');
+    resizeNinpoGridRows();
   }
-  if (addNinpoBtn) addNinpoBtn.addEventListener('click', addNinpoRow);
+  if (addNinpoBtn) addNinpoBtn.addEventListener('click', () => {
+    if (ninpoInputMode === 'text') addNinpoTextRow();
+    else addNinpoRow();
+  });
   if (removeNinpoBtn) removeNinpoBtn.addEventListener('click', removeNinpoRow);
+  if (ninpoModeToggleBtn) ninpoModeToggleBtn.addEventListener('click', () => setNinpoMode(ninpoInputMode === 'grid' ? 'text' : 'grid'));
+
+  updateNinpoModeUI();
 
   // ──────────────────────────────
   // 1c. 背景セクション
@@ -593,6 +849,7 @@ document.addEventListener('DOMContentLoaded', () => {
               q(`[name="ninpo_ref_${i}"]`).value = np.ref || '';
               q(`[name="ninpo_effect_${i}"]`).dispatchEvent(new Event('input'));
             });
+            resizeNinpoGridRows();
           }
           if (data.haikei) {
             while (document.querySelectorAll('.haikei-textarea[name^="haikei_name_"]').length > 0) removeHaikeiRow();
@@ -628,6 +885,7 @@ document.addEventListener('DOMContentLoaded', () => {
             imagePreview.classList.add('is-visible');
             imageEmpty.hidden = true;
           }
+          if (ninpoInputMode === 'text') syncNinpoTextFromGrid();
           alert('データの読み込みが完了しました！');
         } catch (error) {
           console.error(error);
