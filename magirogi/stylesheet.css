@@ -945,8 +945,35 @@ textarea {
 .pv-skill-table {
 	width: 100%;
 	border-collapse: collapse;
+	table-layout: fixed;   /* ← 追加 */
 	font-size: 12px;
 	margin-top: 4px;
+}
+
+.pv-skill-col-num {
+	width: 28px;
+}
+
+.pv-skill-col-gap {
+	width: 6px;
+}
+
+.pv-skill-col-area {
+	width: auto;
+}
+
+.pv-gap-head,
+.pv-gap-cell {
+	width: 6px;
+	min-width: 6px;
+	max-width: 6px;
+	padding: 0;
+	border: none;
+	background: transparent;
+}
+
+.pv-gap-on {
+	background: #1f2328 !important;
 }
 
 .pv-skill-table th,

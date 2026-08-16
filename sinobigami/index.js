@@ -992,6 +992,51 @@ GWT　戦国変調表`;
   const screenshotBtn = document.getElementById('screenshot_btn');
   if (!screenshotBtn) return;
 
+  const renderPreviewToCanvas = async () => {
+    const container = document.createElement('div');
+    container.id = 'preview-render-container';
+    container.innerHTML = buildPreviewHTML();
+    document.body.appendChild(container);
+
+    const sheet = container.querySelector('.pv-sheet');
+    if (!sheet) {
+      container.remove();
+      throw new Error('プレビュー要素が見つかりません');
+    }
+
+    const width = Math.ceil(sheet.scrollWidth || 960);
+    const height = Math.ceil(sheet.scrollHeight || 1400);
+    container.style.width = `${width}px`;
+    container.style.height = `${height}px`;
+
+    await document.fonts.ready;
+    await Promise.all(
+      Array.from(container.querySelectorAll('img')).map(img =>
+        img.decode ? img.decode().catch(() => undefined) : Promise.resolve()
+      )
+    );
+
+    await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+
+    const canvas = await html2canvas(sheet, {
+      backgroundColor: '#f0e8e0',
+      scale: 2,
+      useCORS: true,
+      width,
+      height,
+      scrollX: 0,
+      scrollY: 0,
+      windowWidth: width,
+      windowHeight: height,
+      logging: false,
+      imageTimeout: 15000,
+      letterRendering: true,
+    });
+
+    container.remove();
+    return canvas;
+  };
+
   const AREA_NAMES = ['器術', '体術', '忍術', '謀術', '戦術', '妖術'];
   const SKILL_TABLE = [
     ['絡繰術','騎乗術','生存術','医術','兵糧術','異形化'],
@@ -1026,7 +1071,11 @@ GWT　戦国変調表`;
       gaps.push(cb ? cb.checked : false);
     }
 
-    let skillHTML = '<table class="pv-skill-table"><thead><tr><th></th>';
+    let skillHTML = '<table class="pv-skill-table"><colgroup><col class="pv-skill-col-num">';
+    AREA_NAMES.forEach(() => {
+      skillHTML += '<col class="pv-skill-col-area"><col class="pv-skill-col-gap">';
+    });
+    skillHTML += '</colgroup><thead><tr><th></th>';
     AREA_NAMES.forEach((a, ai) => {
       skillHTML += `<th>${a}</th>`;
       if (ai < 5) skillHTML += `<th class="pv-gap-head ${gaps[ai] ? 'pv-gap-on' : ''}"></th>`;
@@ -1177,17 +1226,7 @@ GWT　戦国変調表`;
     screenshotBtn.disabled = true;
 
     try {
-      const container = document.createElement('div');
-      container.id = 'preview-render-container';
-      container.innerHTML = buildPreviewHTML();
-      document.body.appendChild(container);
-
-      await new Promise(resolve => setTimeout(resolve, 200));
-
-      const canvas = await html2canvas(container.querySelector('.pv-sheet'), {
-        useCORS: true, scale: 2, backgroundColor: '#f0e8e0'
-      });
-      document.body.removeChild(container);
+      const canvas = await renderPreviewToCanvas();
 
       canvas.toBlob(async (blob) => {
         if (!blob) { alert('画像の生成に失敗しました。'); return; }

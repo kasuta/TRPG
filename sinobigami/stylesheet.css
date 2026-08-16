@@ -1226,9 +1226,12 @@ textarea {
    キャラシ プレビュー (画像生成用)
    ============================ */
 #preview-render-container {
-	position: absolute;
+	position: fixed;
 	left: -9999px;
 	top: 0;
+	pointer-events: none;
+	z-index: -1;
+	overflow: visible;
 }
 
 .pv-sheet {
@@ -1341,8 +1344,21 @@ textarea {
 .pv-skill-table {
 	width: 100%;
 	border-collapse: collapse;
+	table-layout: fixed;
 	font-size: 12px;
 	margin-top: 4px;
+}
+
+.pv-skill-col-num {
+	width: 28px;
+}
+
+.pv-skill-col-gap {
+	width: 6px;
+}
+
+.pv-skill-col-area {
+	width: auto;
 }
 
 .pv-skill-table th,
@@ -1350,6 +1366,9 @@ textarea {
 	border: 1px solid #c0b8c8;
 	padding: 4px 6px;
 	text-align: center;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
 }
 
 .pv-skill-table th {

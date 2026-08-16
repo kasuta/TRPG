@@ -578,12 +578,29 @@ FLT　その後表`;
     const imgEl = document.getElementById('setting_image_preview');
     const imageSrc = (imgEl && imgEl.classList.contains('is-visible') && imgEl.src) ? imgEl.src : '';
 
-    let skillHTML = '<table class="pv-skill-table"><thead><tr><th></th>';
-    AREA_NAMES.forEach(a => { skillHTML += `<th>${a}</th>`; });
+    // 変更後
+    const gaps = [];
+    for (let g = 1; g <= 5; g++) {
+      const cb = document.getElementById(`gap${g}`);
+      gaps.push(cb ? cb.checked : false);
+    }
+
+    let skillHTML = '<table class="pv-skill-table"><colgroup><col class="pv-skill-col-num">';
+    AREA_NAMES.forEach(() => {
+      skillHTML += '<col class="pv-skill-col-area"><col class="pv-skill-col-gap">';
+    });
+    skillHTML += '</colgroup><thead><tr><th></th>';
+    AREA_NAMES.forEach((a, ai) => {
+      skillHTML += `<th>${a}</th>`;
+      if (ai < 5) skillHTML += `<th class="pv-gap-head ${gaps[ai] ? 'pv-gap-on' : ''}"></th>`;
+    });
     skillHTML += '</tr></thead><tbody>';
     SKILL_TABLE.forEach((row, ri) => {
       skillHTML += `<tr><td class="pv-num">${ri + 2}</td>`;
-      row.forEach(s => { skillHTML += `<td class="${skills.includes(s) ? 'pv-skill-on' : ''}">${s}</td>`; });
+      row.forEach((s, ci) => {
+        skillHTML += `<td class="${skills.includes(s) ? 'pv-skill-on' : ''}">${s}</td>`;
+        if (ci < 5) skillHTML += `<td class="pv-gap-cell ${gaps[ci] ? 'pv-gap-on' : ''}"></td>`;
+      });
       skillHTML += '</tr>';
     });
     skillHTML += '</tbody></table>';
