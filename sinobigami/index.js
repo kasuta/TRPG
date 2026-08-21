@@ -36,7 +36,14 @@ const collectOugi = () => {
 };
 
 const NINPO_FIELD_ORDER = ['name', 'type', 'skill', 'range', 'cost', 'effect', 'ref'];
-const NINPO_TEXT_FIELD_ORDER = ['type', 'range', 'cost', 'skill'];
+const NINPO_TEXT_FIELD_ORDER = ['type', 'range', 'cost', 'skill', 'ref'];
+const NINPO_LABEL_MAP = {
+  type: 'タイプ',
+  range: '間合',
+  cost: 'コスト',
+  skill: '指定特技',
+  ref: '参照p',
+};
 let ninpoInputMode = 'grid';
 
 const normalizeNinpoText = (value = '') => String(value).replace(/\r\n/g, '\n');
@@ -66,7 +73,7 @@ const normalizeNinpoName = (value = '') => String(value).trim().split(/\s+/)[0] 
 
 const getNinpoFieldValue = (text, label) => {
   const normalized = normalizeNinpoText(text);
-  const pattern = new RegExp(`^${label}[：:]\s*(.*)$`);
+  const pattern = new RegExp(`^${label}(?:[：:]|[\\s\\u3000]+)\\s*(.*)$`);
   for (const line of normalized.split('\n')) {
     const match = line.match(pattern);
     if (match) return match[1].trim();
@@ -125,7 +132,7 @@ const serializeNinpoBlock = (row = {}) => {
   if (!name) return '';
   lines.push(name);
   NINPO_TEXT_FIELD_ORDER.forEach(field => {
-    const label = field === 'skill' ? '指定特技' : (field === 'range' ? '間合' : (field === 'type' ? 'タイプ' : 'コスト'));
+    const label = NINPO_LABEL_MAP[field];
     const value = escapeNinpoText(field === 'type'
       ? (NINPO_TYPE_LABEL_MAP[row[field]] || (row[field] ? `${row[field]}忍法` : ''))
       : (row[field] || ''));
