@@ -7,9 +7,9 @@
 // ==========================================
 (() => {
   const THEMES = [
-    { key: 'light', label: 'デフォルトテーマ' },
-    { key: 'dark', label: ' ダークモード1' },
-    { key: 'dark-muted', label: 'ダークモード2' },
+    { key: 'light', label: 'テーマ: 和紙' },
+    { key: 'dark', label: 'テーマ: 黒背景' },
+    { key: 'dark-muted', label: 'テーマ: 黒背景(朱を抑える)' },
   ];
   const STORAGE_KEY = 'sinobigami_theme';
   const btn = document.getElementById('theme_toggle_btn');
@@ -802,10 +802,11 @@ document.addEventListener('DOMContentLoaded', () => {
   if (schoolSelect) schoolSelect.addEventListener('change', applySchoolGaps);
 
   // ──────────────────────────────
-  // 3. セーブ・ロード
+  // 3. セーブ・ロード・共有リンク
   // ──────────────────────────────
   const saveBtn = document.getElementById('save_data_btn');
   const loadFile = document.getElementById('load_data_file');
+  const shareBtn = document.getElementById('share_link_btn');
   let savedImageBase64 = null;
 
   imageInput.addEventListener('change', () => {
@@ -819,25 +820,105 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 
+  /** 現在の入力内容からセーブデータ(JSON化可能なオブジェクト)を構築 */
+  const buildSaveData = () => {
+    const data = { inputs: {}, checkboxes: {}, ougi: [], ninpo: [], relations: [], image: savedImageBase64 };
+
+    document.querySelectorAll('input[type="text"], input[type="number"], select, textarea').forEach(el => {
+      if (!el.name.startsWith('ougi_') && !el.name.startsWith('ninpo_') && !el.name.startsWith('relation_')) {
+        data.inputs[el.id || el.name] = el.value;
+      }
+    });
+    document.querySelectorAll('input[type="checkbox"]').forEach(el => {
+      if (!el.id.startsWith('relation_secret_') && !el.id.startsWith('relation_ougi_')) {
+        data.checkboxes[el.id] = el.checked;
+      }
+    });
+    data.ougi = collectOugi().filter(row => !isEmptyOugiRow(row));
+    data.ninpo = collectNinpo().filter(row => !isEmptyNinpoRow(row));
+    data.haikei = collectHaikei().filter(row => !isEmptyHaikeiRow(row));
+    data.relations = collectRelations().filter(row => !isEmptyRelationRow(row));
+    return data;
+  };
+
+  /** セーブデータ(JSON)を現在のフォームへ反映 */
+  const applyLoadedData = (data) => {
+    if (data.inputs) {
+      for (const [key, value] of Object.entries(data.inputs)) {
+        const el = document.getElementById(key) || document.querySelector(`[name="${key}"]`);
+        if (el) el.value = value;
+      }
+    }
+    if (data.checkboxes) {
+      for (const [key, checked] of Object.entries(data.checkboxes)) {
+        const el = document.getElementById(key);
+        if (el) el.checked = checked;
+      }
+    }
+    if (data.ougi) {
+      while (document.querySelectorAll('.ougi-textarea[name^="ougi_name_"]').length > 0) removeOugiRow();
+      data.ougi.filter(row => !isEmptyOugiRow(row)).forEach((og, idx) => {
+        addOugiRow();
+        const i = idx + 1;
+        const q = (s) => document.querySelector(s);
+        q(`[name="ougi_name_${i}"]`).value = og.name || '';
+        q(`[name="ougi_skill_${i}"]`).value = og.skill || '';
+        q(`[name="ougi_kaizou_${i}"]`).value = og.kaizou || '';
+        q(`[name="ougi_effect_${i}"]`).value = og.effect || '';
+        q(`[name="ougi_effect_${i}"]`).dispatchEvent(new Event('input'));
+      });
+    }
+    if (data.ninpo) {
+      if (ninpoInputMode === 'text') {
+        clearNinpoTextRows();
+        data.ninpo.filter(row => !isEmptyNinpoRow(row)).forEach(row => addNinpoTextRow(row));
+        renumberNinpoTextRows();
+      } else {
+        clearNinpoGridRows();
+        data.ninpo.filter(row => !isEmptyNinpoRow(row)).forEach(row => addNinpoRow(row, { skipResize: true }));
+        resizeNinpoGridRows();
+      }
+    }
+    if (data.haikei) {
+      while (document.querySelectorAll('.haikei-textarea[name^="haikei_name_"]').length > 0) removeHaikeiRow();
+      data.haikei.filter(row => !isEmptyHaikeiRow(row)).forEach((hk, idx) => {
+        addHaikeiRow();
+        const i = idx + 1;
+        const q = (s) => document.querySelector(s);
+        q(`[name="haikei_name_${i}"]`).value = hk.name || '';
+        q(`[name="haikei_merit_${i}"]`).value = hk.merit || '長所';
+        q(`[name="haikei_cost_${i}"]`).value = hk.cost || '';
+        q(`[name="haikei_effect_${i}"]`).value = hk.effect || '';
+        q(`[name="haikei_ref_${i}"]`).value = hk.ref || '';
+        q(`[name="haikei_effect_${i}"]`).dispatchEvent(new Event('input'));
+      });
+    }
+    if (data.relations) {
+      while (document.querySelectorAll('.relation-textarea[name^="relation_name_"]').length > 0) removeRelationRow();
+      data.relations.filter(row => !isEmptyRelationRow(row)).forEach((rel, idx) => {
+        addRelationRow();
+        const j = idx + 1;
+        document.querySelector(`[name="relation_name_${j}"]`).value = rel.name || '';
+        if (document.getElementById(`relation_location_${j}`)) document.getElementById(`relation_location_${j}`).checked = rel.location || false;
+        if (document.getElementById(`relation_secret_${j}`)) document.getElementById(`relation_secret_${j}`).checked = rel.secret || false;
+        if (document.getElementById(`relation_ougi_${j}`)) document.getElementById(`relation_ougi_${j}`).checked = rel.ougi || false;
+        if (document.getElementById(`relation_emotion_sign_${j}`)) document.getElementById(`relation_emotion_sign_${j}`).checked = rel.emotion_sign || false;
+        document.querySelector(`[name="relation_emotion_${j}"]`).value = rel.emotion || '';
+        document.querySelector(`[name="relation_name_${j}"]`).dispatchEvent(new Event('input'));
+      });
+    }
+    if (data.image) {
+      savedImageBase64 = data.image;
+      imagePreview.src = data.image;
+      imagePreview.classList.add('is-visible');
+      imageEmpty.hidden = true;
+    }
+    if (ninpoInputMode === 'text') syncNinpoTextFromGrid();
+  };
+
   if (saveBtn) {
     saveBtn.addEventListener('click', () => {
-      const data = { inputs: {}, checkboxes: {}, ougi: [], ninpo: [], relations: [], image: savedImageBase64 };
-
-      document.querySelectorAll('input[type="text"], input[type="number"], select, textarea').forEach(el => {
-        if (!el.name.startsWith('ougi_') && !el.name.startsWith('ninpo_') && !el.name.startsWith('relation_')) {
-          data.inputs[el.id || el.name] = el.value;
-        }
-      });
-      document.querySelectorAll('input[type="checkbox"]').forEach(el => {
-        if (!el.id.startsWith('relation_secret_') && !el.id.startsWith('relation_ougi_')) {
-          data.checkboxes[el.id] = el.checked;
-        }
-      });
-      data.ougi = collectOugi().filter(row => !isEmptyOugiRow(row));
-      data.ninpo = collectNinpo().filter(row => !isEmptyNinpoRow(row));
-      data.haikei = collectHaikei().filter(row => !isEmptyHaikeiRow(row));
-      data.relations = collectRelations().filter(row => !isEmptyRelationRow(row));
-
+      const data = buildSaveData();
       const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
@@ -858,78 +939,7 @@ document.addEventListener('DOMContentLoaded', () => {
       reader.onload = (event) => {
         try {
           const data = JSON.parse(event.target.result);
-
-          if (data.inputs) {
-            for (const [key, value] of Object.entries(data.inputs)) {
-              const el = document.getElementById(key) || document.querySelector(`[name="${key}"]`);
-              if (el) el.value = value;
-            }
-          }
-          if (data.checkboxes) {
-            for (const [key, checked] of Object.entries(data.checkboxes)) {
-              const el = document.getElementById(key);
-              if (el) el.checked = checked;
-            }
-          }
-          if (data.ougi) {
-            while (document.querySelectorAll('.ougi-textarea[name^="ougi_name_"]').length > 0) removeOugiRow();
-            data.ougi.filter(row => !isEmptyOugiRow(row)).forEach((og, idx) => {
-              addOugiRow();
-              const i = idx + 1;
-              const q = (s) => document.querySelector(s);
-              q(`[name="ougi_name_${i}"]`).value = og.name || '';
-              q(`[name="ougi_skill_${i}"]`).value = og.skill || '';
-              q(`[name="ougi_kaizou_${i}"]`).value = og.kaizou || '';
-              q(`[name="ougi_effect_${i}"]`).value = og.effect || '';
-              q(`[name="ougi_effect_${i}"]`).dispatchEvent(new Event('input'));
-            });
-          }
-          if (data.ninpo) {
-            if (ninpoInputMode === 'text') {
-              clearNinpoTextRows();
-              data.ninpo.filter(row => !isEmptyNinpoRow(row)).forEach(row => addNinpoTextRow(row));
-              renumberNinpoTextRows();
-            } else {
-              clearNinpoGridRows();
-              data.ninpo.filter(row => !isEmptyNinpoRow(row)).forEach(row => addNinpoRow(row, { skipResize: true }));
-              resizeNinpoGridRows();
-            }
-          }
-          if (data.haikei) {
-            while (document.querySelectorAll('.haikei-textarea[name^="haikei_name_"]').length > 0) removeHaikeiRow();
-            data.haikei.filter(row => !isEmptyHaikeiRow(row)).forEach((hk, idx) => {
-              addHaikeiRow();
-              const i = idx + 1;
-              const q = (s) => document.querySelector(s);
-              q(`[name="haikei_name_${i}"]`).value = hk.name || '';
-              q(`[name="haikei_merit_${i}"]`).value = hk.merit || '長所';
-              q(`[name="haikei_cost_${i}"]`).value = hk.cost || '';
-              q(`[name="haikei_effect_${i}"]`).value = hk.effect || '';
-              q(`[name="haikei_ref_${i}"]`).value = hk.ref || '';
-              q(`[name="haikei_effect_${i}"]`).dispatchEvent(new Event('input'));
-            });
-          }
-          if (data.relations) {
-            while (document.querySelectorAll('.relation-textarea[name^="relation_name_"]').length > 0) removeRelationRow();
-            data.relations.filter(row => !isEmptyRelationRow(row)).forEach((rel, idx) => {
-              addRelationRow();
-              const j = idx + 1;
-              document.querySelector(`[name="relation_name_${j}"]`).value = rel.name || '';
-              if (document.getElementById(`relation_location_${j}`)) document.getElementById(`relation_location_${j}`).checked = rel.location || false;
-              if (document.getElementById(`relation_secret_${j}`)) document.getElementById(`relation_secret_${j}`).checked = rel.secret || false;
-              if (document.getElementById(`relation_ougi_${j}`)) document.getElementById(`relation_ougi_${j}`).checked = rel.ougi || false;
-              if (document.getElementById(`relation_emotion_sign_${j}`)) document.getElementById(`relation_emotion_sign_${j}`).checked = rel.emotion_sign || false;
-              document.querySelector(`[name="relation_emotion_${j}"]`).value = rel.emotion || '';
-              document.querySelector(`[name="relation_name_${j}"]`).dispatchEvent(new Event('input'));
-            });
-          }
-          if (data.image) {
-            savedImageBase64 = data.image;
-            imagePreview.src = data.image;
-            imagePreview.classList.add('is-visible');
-            imageEmpty.hidden = true;
-          }
-          if (ninpoInputMode === 'text') syncNinpoTextFromGrid();
+          applyLoadedData(data);
           alert('データの読み込みが完了しました！');
         } catch (error) {
           console.error(error);
@@ -940,6 +950,55 @@ document.addEventListener('DOMContentLoaded', () => {
       reader.readAsText(file);
     });
   }
+
+  // --- 共有リンク ---
+  // 画像はURLが非常に長くなるため現時点では対象外(テキストデータのみ共有)。
+  // 将来的に画像を含める場合は、ここで圧縮・解像度制限をかけた上でdata.imageを付与する。
+  const SHARE_HASH_KEY = 'share';
+
+  const buildShareURL = () => {
+    if (typeof LZString === 'undefined') return null;
+    const data = buildSaveData();
+    delete data.image; // 画像は共有対象外
+    const json = JSON.stringify(data);
+    const compressed = LZString.compressToEncodedURIComponent(json);
+    const url = new URL(window.location.href);
+    url.hash = `${SHARE_HASH_KEY}=${compressed}`;
+    return url.toString();
+  };
+
+  if (shareBtn) {
+    shareBtn.addEventListener('click', async () => {
+      const url = buildShareURL();
+      if (!url) { alert('共有リンクの作成に失敗しました。'); return; }
+      try {
+        await navigator.clipboard.writeText(url);
+        alert('共有リンクをクリップボードにコピーしました！\n（画像は含まれません）');
+      } catch (err) {
+        console.error('コピーに失敗しました', err);
+        prompt('以下のリンクをコピーしてください（画像は含まれません）:', url);
+      }
+    });
+  }
+
+  // ページ読み込み時、URLに共有データが含まれていれば自動反映
+  (() => {
+    if (typeof LZString === 'undefined') return;
+    const hash = window.location.hash || '';
+    const match = hash.match(new RegExp(`^#${SHARE_HASH_KEY}=(.+)$`));
+    if (!match) return;
+    try {
+      const json = LZString.decompressFromEncodedURIComponent(match[1]);
+      if (!json) throw new Error('decompress failed');
+      const data = JSON.parse(json);
+      applyLoadedData(data);
+      history.replaceState(null, '', window.location.pathname + window.location.search);
+      alert('共有リンクからキャラクターデータを読み込みました！');
+    } catch (err) {
+      console.error('共有データの読み込みに失敗しました', err);
+      alert('共有リンクの読み込みに失敗しました。');
+    }
+  })();
 
   // ──────────────────────────────
   // 4. ココフォリア用コピー

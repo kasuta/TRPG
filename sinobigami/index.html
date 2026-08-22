@@ -6,12 +6,13 @@
     <title>シノビガミ キャラシ作成サイト</title>
     <link rel="stylesheet" href="stylesheet.css">
     <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/lz-string@1.5.0/libs/lz-string.min.js"></script>
     <script src="index.js" defer></script>
 </head>
 
 <body>
   <button type="button" id="theme_toggle_btn" class="theme-toggle-btn">テーマ: 和紙</button>
-  <h1>シノビガミ　キャラシ作成サイト</h1>
+  <h1>シノビガミのCS作成用サイト</h1>
   <main class="top-content">
     <div class="input-left-stack">
       <section class="input-left-top">
@@ -320,6 +321,7 @@
         <button type="button" id="save_data_btn" class="btn btn-outline">データを保存 (.json)</button>
         <label for="load_data_file" class="btn btn-outline">データを読み込む</label>
         <input type="file" id="load_data_file" accept=".json" style="display: none;" />
+        <button type="button" id="share_link_btn" class="btn btn-outline">共有リンクをコピー(ベータ版)</button>
       </div>
       <div class="button-group">
         <button type="button" id="copy_name_btn" class="btn btn-outline">CCFOLIA形式でコピー</button>
