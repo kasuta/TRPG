@@ -1,20 +1,59 @@
-@import url("https://fonts.googleapis.com/css2?family=Zen+Kaku+Gothic+New:wght@400;600;700&family=DM+Serif+Display&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Zen+Kaku+Gothic+New:wght@400;600;700&family=Shippori+Mincho:wght@500;700&display=swap");
 
 html {
 	font-size: 15px;
 }
 
 :root {
-	--bg-top: #f0e8e0;
-	--bg-bottom: #e0e3ed;
-	--ink: #1a1a2e;
-	--muted: #5a5a6e;
-	--accent: #7b2d4e;
-	--accent-strong: #4a1a30;
-	--panel: #ffffff;
-	--panel-shadow: rgba(26, 26, 46, 0.12);
-	--border: #c0b8c8;
-	--highlight: #d4a853;
+	--ink: #211815;
+	--muted: #6b5d52;
+	--panel: #fffaf2;
+	--panel-shadow: rgba(33, 24, 21, 0.15);
+	--border: #d8c9ae;
+	--highlight: #c9a227;
+
+	/* テーマ: light（デフォルト / 和紙+落ち着いた朱） */
+	--bg-top: #f4ede0;
+	--bg-bottom: #e8ddc9;
+	--accent: #8c4433;
+	--accent-strong: #5c2c22;
+	--accent-rgb: 140, 68, 51;
+	--accent-hover: #7a4032;
+	--h1-color: var(--accent-strong);
+	--footer-color: var(--muted);
+	--texture-color: rgba(33, 24, 21, 0.02);
+	--corner-glow: rgba(33, 24, 21, 0.10);
+	--accent-glow: rgba(140, 68, 51, 0.12);
+}
+
+/* テーマ: dark（黒背景・朱そのまま） */
+[data-theme="dark"] {
+	--bg-top: #1c1512;
+	--bg-bottom: #120d0b;
+	--accent: #c73a2a;
+	--accent-strong: #7a1f16;
+	--accent-rgb: 199, 58, 42;
+	--accent-hover: #a8452f;
+	--h1-color: #e2543c;
+	--footer-color: #b8a98f;
+	--texture-color: rgba(255, 255, 255, 0.015);
+	--corner-glow: rgba(0, 0, 0, 0.35);
+	--accent-glow: rgba(199, 58, 42, 0.20);
+}
+
+/* テーマ: dark-muted（黒背景・朱の発色を抑える） */
+[data-theme="dark-muted"] {
+	--bg-top: #1c1512;
+	--bg-bottom: #120d0b;
+	--accent: #8c4433;
+	--accent-strong: #5c2c22;
+	--accent-rgb: 140, 68, 51;
+	--accent-hover: #7a4032;
+	--h1-color: #c1876c;
+	--footer-color: #b8a98f;
+	--texture-color: rgba(255, 255, 255, 0.015);
+	--corner-glow: rgba(0, 0, 0, 0.35);
+	--accent-glow: rgba(var(--accent-rgb), 0.10);
 }
 
 *,
@@ -28,21 +67,47 @@ body {
 	min-height: 100vh;
 	color: var(--ink);
 	font-family: "Zen Kaku Gothic New", "Noto Sans JP", "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
+	transition: background 0.3s ease;
 	background:
-		radial-gradient(1200px 600px at 10% 10%, rgba(139, 45, 82, 0.2), transparent 60%),
-		radial-gradient(900px 500px at 90% 15%, rgba(74, 26, 48, 0.15), transparent 65%),
+		repeating-linear-gradient(120deg, var(--texture-color) 0px, var(--texture-color) 1px, transparent 1px, transparent 3px),
+		radial-gradient(1200px 600px at 10% 10%, var(--accent-glow), transparent 60%),
+		radial-gradient(900px 500px at 90% 15%, var(--corner-glow), transparent 65%),
 		linear-gradient(160deg, var(--bg-top), var(--bg-bottom));
+}
+
+/* テーマ切り替えボタン */
+.theme-toggle-btn {
+	position: fixed;
+	top: 16px;
+	right: 16px;
+	z-index: 1000;
+	padding: 8px 16px;
+	border-radius: 20px;
+	border: 2px solid var(--accent);
+	background: var(--panel);
+	color: var(--accent-strong);
+	font-weight: 700;
+	font-size: 0.82rem;
+	cursor: pointer;
+	box-shadow: 0 4px 12px var(--panel-shadow);
+	transition: background 0.2s ease, color 0.2s ease;
+}
+
+.theme-toggle-btn:hover {
+	background: var(--accent-hover);
+	color: #ffffff;
 }
 
 h1 {
 	margin: 48px auto 24px;
 	max-width: 900px;
 	padding: 0 20px;
-	font-family: "DM Serif Display", "Times New Roman", serif;
-	letter-spacing: 0.04em;
+	font-family: "Shippori Mincho", "Hiragino Mincho ProN", "Yu Mincho", serif;
+	font-weight: 700;
+	letter-spacing: 0.08em;
 	font-size: clamp(1.8rem, 2.6vw, 2.6rem);
-	color: var(--accent-strong);
-	text-shadow: 0 2px 8px rgba(26, 26, 46, 0.15);
+	color: var(--h1-color);
+	text-shadow: 0 2px 8px rgba(0, 0, 0, 0.35);
 	animation: fade-up 0.7s ease-out both;
 }
 
@@ -67,7 +132,7 @@ h1 {
 	margin: 0 auto;
 	padding: 0 20px 40px;
 	text-align: center;
-	color: var(--muted);
+	color: var(--footer-color);
 }
 
 .copyright-note {
@@ -89,7 +154,7 @@ h1 {
 	border-radius: 18px;
 	padding: 28px 32px 32px;
 	box-shadow: 0 20px 50px var(--panel-shadow);
-	border: 1px solid rgba(192, 184, 200, 0.7);
+	border: 1px solid rgba(216, 201, 174, 0.7);
 	position: relative;
 	overflow: hidden;
 	animation: fade-up 0.8s ease-out 0.1s both;
@@ -110,7 +175,7 @@ h1 {
 	position: absolute;
 	inset: -40% 60% auto -40%;
 	height: 180px;
-	background: linear-gradient(120deg, rgba(123, 45, 78, 0.18), transparent 70%);
+	background: linear-gradient(120deg, rgba(var(--accent-rgb), 0.16), transparent 70%);
 	pointer-events: none;
 }
 
@@ -120,8 +185,12 @@ h1 {
 .input-left-bottom h2,
 .input-right h2 {
 	margin: 0 0 20px;
+	font-family: "Shippori Mincho", "Hiragino Mincho ProN", "Yu Mincho", serif;
+	font-weight: 700;
 	font-size: clamp(1.1rem, 2vw, 1.4rem);
 	color: var(--accent-strong);
+	border-left: 4px solid var(--accent);
+	padding-left: 10px;
 }
 
 .input-form {
@@ -134,7 +203,7 @@ h1 {
 	padding: 16px 16px 18px;
 	border: 1px solid var(--border);
 	border-radius: 12px;
-	background: rgba(212, 168, 83, 0.12);
+	background: rgba(201, 162, 39, 0.10);
 	display: grid;
 	gap: 16px;
 }
@@ -224,8 +293,8 @@ h1 {
 }
 
 .damage-check[data-state="1"] {
-	background: #e53e3e;
-	border-color: #e53e3e;
+	background: var(--accent);
+	border-color: var(--accent);
 }
 
 .damage-check[data-state="1"]::after {
@@ -249,7 +318,7 @@ h1 {
 	display: none;
 }
 .gap-col {
-	background: #f6f8fb;
+	background: #f6f1e6;
 	cursor: pointer;
 	transition: background 0.2s ease;
 	margin: 0;
@@ -257,7 +326,7 @@ h1 {
 	z-index: 2;
 }
 .gap-col:hover {
-	background: #e2e8f0;
+	background: #e8ddc9;
 }
 .gap-check:checked + .gap-col {
 	background: var(--ink);
@@ -287,7 +356,7 @@ h1 {
 	height: 100%;
 	border: none;
 	border-radius: 0;
-	background: #f6f8fb;
+	background: #f6f1e6;
 	font-weight: 600;
 	color: var(--muted);
 	cursor: pointer;
@@ -305,7 +374,7 @@ h1 {
 	outline: none;
 	position: relative;
 	z-index: 1;
-	box-shadow: 0 0 0 3px rgba(123, 45, 78, 0.3);
+	box-shadow: 0 0 0 3px rgba(var(--accent-rgb), 0.3);
 }
 
 /* 特技のマス */
@@ -328,7 +397,7 @@ h1 {
 }
 
 .skill-label:hover {
-	background: #f0f0f8;
+	background: #f6f1e6;
 }
 
 .skill-check:checked + .skill-label {
@@ -341,18 +410,18 @@ h1 {
 	outline: none;
 	position: relative;
 	z-index: 1;
-	box-shadow: 0 0 0 3px rgba(123, 45, 78, 0.3);
+	box-shadow: 0 0 0 3px rgba(var(--accent-rgb), 0.3);
 }
 
 .skill-num {
 	display: flex;
 	align-items: center;
 	justify-content: center;
-	background: #f6f8fb;
+	background: #f6f1e6;
 	font-weight: 700;
 	color: var(--accent-strong);
 	font-size: 1.1rem;
-	font-family: "DM Serif Display", serif;
+	font-family: "Shippori Mincho", serif;
 	margin: 0;
 }
 
@@ -419,7 +488,7 @@ h1 {
 }
 
 .life-meter input[type="checkbox"]:focus-visible + label {
-	box-shadow: 0 0 0 3px rgba(123, 45, 78, 0.2);
+	box-shadow: 0 0 0 3px rgba(var(--accent-rgb), 0.2);
 }
 
 label {
@@ -435,7 +504,7 @@ textarea {
 	padding: 10px 12px;
 	border-radius: 10px;
 	border: 1px solid var(--border);
-	background: #fbfcfd;
+	background: #fffdf8;
 	font-size: 1rem;
 	transition: border-color 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
 }
@@ -454,7 +523,7 @@ select {
 
 input[type="file"] {
 	padding: 8px 10px;
-	background: #f6f8fb;
+	background: #f6f1e6;
 }
 
 input:focus,
@@ -462,7 +531,7 @@ select:focus,
 textarea:focus {
 	outline: none;
 	border-color: var(--accent);
-	box-shadow: 0 0 0 4px rgba(123, 45, 78, 0.18);
+	box-shadow: 0 0 0 4px rgba(var(--accent-rgb), 0.18);
 	background: #ffffff;
 }
 
@@ -471,7 +540,7 @@ select {
 	background-image:
 		linear-gradient(45deg, transparent 50%, var(--accent) 50%),
 		linear-gradient(135deg, var(--accent) 50%, transparent 50%),
-		linear-gradient(to right, #d0c0d8, #d0c0d8);
+		linear-gradient(to right, #ddd0ba, #ddd0ba);
 	background-position:
 		calc(100% - 18px) calc(50% - 2px),
 		calc(100% - 12px) calc(50% - 2px),
@@ -497,7 +566,7 @@ select {
 .form-row input[type="text"]:hover,
 .form-row select:hover,
 .form-row textarea:hover {
-	border-color: #9a8aaa;
+	border-color: #b39a6e;
 }
 
 textarea {
@@ -517,7 +586,7 @@ textarea {
 	padding: 12px;
 	border-radius: 12px;
 	border: 1px dashed var(--border);
-	background: #f7f5fb;
+	background: #f9f4e9;
 	text-align: center;
 }
 
@@ -535,7 +604,7 @@ textarea {
 	border-radius: 10px;
 	object-fit: contain;
 	background: #ffffff;
-	box-shadow: 0 8px 20px rgba(26, 26, 46, 0.08);
+	box-shadow: 0 8px 20px rgba(33, 24, 21, 0.08);
 }
 
 .image-preview.is-visible {
@@ -736,7 +805,7 @@ textarea {
 }
 
 .btn-move:hover {
-	background: var(--accent);
+	background: var(--accent-hover);
 	color: #fff;
 }
 
@@ -747,8 +816,8 @@ textarea {
 
 /* 忍法行の無効化スタイル */
 .ninpo-cell-disabled {
-	background: #e0e0e0 !important;
-	color: #999 !important;
+	background: #e6e0d4 !important;
+	color: #9c8f7e !important;
 }
 
 .spell-head-move {
@@ -859,7 +928,7 @@ textarea {
 
 .box-label:hover {
 	border-color: var(--ink);
-	background-color: #f0f0f8;
+	background-color: #f6f1e6;
 }
 
 .box-check:checked + .box-label {
@@ -878,7 +947,7 @@ textarea {
 
 .box-check:focus-visible + .box-label {
 	outline: none;
-	box-shadow: 0 0 0 3px rgba(123, 45, 78, 0.3);
+	box-shadow: 0 0 0 3px rgba(var(--accent-rgb), 0.3);
 }
 
 /* --- 関係セクション --- */
@@ -943,7 +1012,7 @@ textarea {
 	min-height: 36px;
 	border: none;
 	border-right: 1px solid var(--border);
-	background: #f6f8fb;
+	background: #f6f1e6;
 	cursor: pointer;
 	font-size: 1rem;
 	font-weight: 700;
@@ -956,12 +1025,12 @@ textarea {
 }
 
 .emotion-sign-toggle:hover {
-	background: #e2e8f0;
+	background: #e8ddc9;
 }
 
 .emotion-sign-toggle::after {
 	content: '＋';
-	color: #e53e3e;
+	color: var(--accent);
 }
 
 .emotion-sign-toggle:checked::after {
@@ -1075,8 +1144,8 @@ textarea {
 	width: 24px;
 	height: 24px;
 	border-radius: 50%;
-	background: var(--border, #cbd5e0);
-	color: var(--ink, #1a1a2e);
+	background: var(--border, #d8c9ae);
+	color: var(--ink, #211815);
 	font-size: 0.85rem;
 	font-weight: 700;
 	cursor: help;
@@ -1090,7 +1159,7 @@ textarea {
 	bottom: calc(100% + 8px);
 	left: 50%;
 	transform: translateX(-50%);
-	background: var(--ink, #1a1a2e);
+	background: var(--ink, #211815);
 	color: #ffffff;
 	padding: 8px 12px;
 	border-radius: 6px;
@@ -1109,7 +1178,7 @@ textarea {
 	left: 50%;
 	transform: translateX(-50%);
 	border: 6px solid transparent;
-	border-top-color: var(--ink, #1a1a2e);
+	border-top-color: var(--ink, #211815);
 }
 
 .help-tooltip:hover .help-tooltip-text {
@@ -1131,7 +1200,7 @@ textarea {
 	cursor: pointer;
 	white-space: nowrap;
 	transition: background 0.2s ease, transform 0.1s ease, box-shadow 0.2s ease;
-	box-shadow: 0 4px 12px rgba(123, 45, 78, 0.2);
+	box-shadow: 0 4px 12px rgba(var(--accent-rgb), 0.2);
 	text-decoration: none;
 	line-height: 1.4;
 }
@@ -1139,13 +1208,13 @@ textarea {
 .btn:hover {
 	background: var(--accent-strong);
 	border-color: var(--accent-strong);
-	box-shadow: 0 6px 16px rgba(123, 45, 78, 0.35);
+	box-shadow: 0 6px 16px rgba(var(--accent-rgb), 0.20);
 	transform: translateY(-1px);
 }
 
 .btn:active {
 	transform: translateY(1px);
-	box-shadow: 0 2px 8px rgba(123, 45, 78, 0.2);
+	box-shadow: 0 2px 8px rgba(var(--accent-rgb), 0.2);
 }
 
 .btn:disabled {
@@ -1161,7 +1230,7 @@ textarea {
 }
 
 .btn-outline:hover {
-	background: var(--accent);
+	background: var(--accent-hover);
 	color: #ffffff;
 }
 
@@ -1238,17 +1307,20 @@ textarea {
 	width: 960px;
 	padding: 36px 40px 48px;
 	font-family: "Zen Kaku Gothic New", "Noto Sans JP", "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
-	color: #1a1a2e;
-	background: #f0e8e0;
+	color: #211815;
+	background:
+		repeating-linear-gradient(120deg, rgba(33, 24, 21, 0.02) 0px, rgba(33, 24, 21, 0.02) 1px, transparent 1px, transparent 3px),
+		#f4ede0;
 	line-height: 1.6;
 }
 
 .pv-title {
 	margin: 0 0 24px;
 	font-size: 22px;
-	font-family: "DM Serif Display", serif;
-	color: #4a1a30;
-	border-bottom: 3px solid #7b2d4e;
+	font-family: "Shippori Mincho", "Hiragino Mincho ProN", "Yu Mincho", serif;
+	font-weight: 700;
+	color: #7a1f16;
+	border-bottom: 3px solid #c73a2a;
 	padding-bottom: 10px;
 }
 
@@ -1269,15 +1341,16 @@ textarea {
 	background: #ffffff;
 	border-radius: 12px;
 	padding: 18px 22px;
-	box-shadow: 0 2px 8px rgba(26, 26, 46, 0.08);
-	border: 1px solid #c0b8c8;
+	box-shadow: 0 2px 8px rgba(33, 24, 21, 0.08);
+	border: 1px solid #d8c9ae;
 }
 
 .pv-section h2 {
 	margin: 0 0 12px;
 	font-size: 15px;
-	color: #4a1a30;
-	border-left: 4px solid #7b2d4e;
+	font-family: "Shippori Mincho", serif;
+	color: #7a1f16;
+	border-left: 4px solid #c73a2a;
 	padding-left: 10px;
 }
 
@@ -1295,7 +1368,7 @@ textarea {
 
 .pv-dl dt {
 	font-weight: 700;
-	color: #5a5a6e;
+	color: #6b5d52;
 	white-space: nowrap;
 }
 
@@ -1326,7 +1399,7 @@ textarea {
 	max-height: 300px;
 	border-radius: 8px;
 	object-fit: contain;
-	box-shadow: 0 2px 8px rgba(26, 26, 46, 0.1);
+	box-shadow: 0 2px 8px rgba(33, 24, 21, 0.1);
 }
 
 .pv-soul {
@@ -1337,7 +1410,7 @@ textarea {
 .pv-empty {
 	margin: 4px 0 0;
 	font-size: 13px;
-	color: #5a5a6e;
+	color: #6b5d52;
 }
 
 /* 特技表 */
@@ -1363,7 +1436,7 @@ textarea {
 
 .pv-skill-table th,
 .pv-skill-table td {
-	border: 1px solid #c0b8c8;
+	border: 1px solid #d8c9ae;
 	padding: 4px 6px;
 	text-align: center;
 	overflow: hidden;
@@ -1372,20 +1445,20 @@ textarea {
 }
 
 .pv-skill-table th {
-	background: #1a1a2e;
+	background: #211815;
 	color: #fff;
 	font-weight: 700;
 }
 
 .pv-num {
-	background: #f6f8fb;
+	background: #f6f1e6;
 	font-weight: 700;
-	color: #4a1a30;
+	color: #7a1f16;
 	width: 28px;
 }
 
 .pv-skill-on {
-	background: #1a1a2e;
+	background: #211815;
 	color: #fff;
 	font-weight: 700;
 }
@@ -1402,7 +1475,7 @@ textarea {
 }
 
 .pv-gap-on {
-	background: #1a1a2e !important;
+	background: #211815 !important;
 }
 
 /* 忍法・関係テーブル */
@@ -1415,13 +1488,13 @@ textarea {
 
 .pv-table th,
 .pv-table td {
-	border: 1px solid #c0b8c8;
+	border: 1px solid #d8c9ae;
 	padding: 6px 8px;
 	text-align: left;
 }
 
 .pv-table th {
-	background: #1a1a2e;
+	background: #211815;
 	color: #fff;
 	font-weight: 700;
 	white-space: nowrap;
@@ -1457,7 +1530,7 @@ textarea {
 
 /* プレビュー用：隠すモード黒塗りブロック */
 .pv-hidden-block {
-	background: #1a1a2e;
+	background: #211815;
 	color: #ffffff;
 	text-align: center;
 	font-size: 1.2rem;

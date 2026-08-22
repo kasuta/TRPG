@@ -2,6 +2,41 @@
 // シノビガミ キャラシ作成サイト - メインスクリプト
 // ==========================================
 
+// ==========================================
+// テーマ切り替え（和紙 / 黒背景 / 黒背景+朱を抑える）
+// ==========================================
+(() => {
+  const THEMES = [
+    { key: 'light', label: 'デフォルトテーマ' },
+    { key: 'dark', label: 'ダークモード1' },
+    { key: 'dark-muted', label: 'ダークモード2' },
+  ];
+  const STORAGE_KEY = 'sinobigami_theme';
+  const btn = document.getElementById('theme_toggle_btn');
+  if (!btn) return;
+
+  const applyTheme = (key) => {
+    if (key === 'light') {
+      document.documentElement.removeAttribute('data-theme');
+    } else {
+      document.documentElement.setAttribute('data-theme', key);
+    }
+    const theme = THEMES.find(t => t.key === key) || THEMES[0];
+    btn.textContent = theme.label;
+  };
+
+  const saved = localStorage.getItem(STORAGE_KEY) || 'light';
+  applyTheme(saved);
+
+  btn.addEventListener('click', () => {
+    const current = localStorage.getItem(STORAGE_KEY) || 'light';
+    const idx = THEMES.findIndex(t => t.key === current);
+    const next = THEMES[(idx + 1) % THEMES.length].key;
+    localStorage.setItem(STORAGE_KEY, next);
+    applyTheme(next);
+  });
+})();
+
 // --- 共通ヘルパー ---
 
 /** ID または name で要素を探し、値を返す */
@@ -106,7 +141,7 @@ const parseNinpoBlock = (block = '') => {
     const trimmed = line.trim();
     if (!inEffect) {
       if (!trimmed) continue;
-      if (/^(タイプ|間合|コスト|指定特技|参照p)[：:]/.test(trimmed)) continue;
+      if (/^(タイプ|間合|コスト|指定特技|参照p)(?:[：:]|[\s\u3000]+)/.test(trimmed)) continue;
       inEffect = true;
       remainingLines.push(line);
       continue;
