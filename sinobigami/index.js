@@ -8,7 +8,7 @@
 (() => {
   const THEMES = [
     { key: 'light', label: 'デフォルトテーマ' },
-    { key: 'dark', label: 'ダークモード1' },
+    { key: 'dark', label: ' ダークモード1' },
     { key: 'dark-muted', label: 'ダークモード2' },
   ];
   const STORAGE_KEY = 'sinobigami_theme';
@@ -1038,6 +1038,23 @@ GWT　戦国変調表`;
     const container = document.createElement('div');
     container.id = 'preview-render-container';
     container.innerHTML = buildPreviewHTML();
+
+    // 現在のテーマのCSS変数値を明示的に取得してインライン指定する。
+    // html2canvasは [data-theme="..."] のような属性セレクタ経由のCSS変数を
+    // 正しく解決できずデフォルト(:root)値にフォールバックすることがあるため、
+    // 生成前に実際の計算値をコンテナへ直接焼き込んで確実に反映させる。
+    const THEME_VAR_NAMES = [
+      '--ink', '--muted', '--panel', '--panel-shadow', '--border', '--highlight',
+      '--bg-top', '--bg-bottom', '--accent', '--accent-strong', '--accent-rgb',
+      '--accent-hover', '--h1-color', '--footer-color', '--texture-color',
+      '--corner-glow', '--accent-glow',
+    ];
+    const rootStyle = getComputedStyle(document.documentElement);
+    THEME_VAR_NAMES.forEach(name => {
+      const value = rootStyle.getPropertyValue(name).trim();
+      if (value) container.style.setProperty(name, value);
+    });
+
     document.body.appendChild(container);
 
     const sheet = container.querySelector('.pv-sheet');
@@ -1060,8 +1077,10 @@ GWT　戦国変調表`;
 
     await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
 
+    const themeBgColor = getComputedStyle(document.documentElement).getPropertyValue('--bg-top').trim() || '#f4ede0';
+
     const canvas = await html2canvas(sheet, {
-      backgroundColor: '#f0e8e0',
+      backgroundColor: themeBgColor,
       scale: 2,
       useCORS: true,
       width,
