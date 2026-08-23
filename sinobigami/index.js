@@ -7,9 +7,10 @@
 // ==========================================
 (() => {
   const THEMES = [
-    { key: 'light', label: 'テーマ: 和紙' },
-    { key: 'dark', label: 'テーマ: 黒背景' },
-    { key: 'dark-muted', label: 'テーマ: 黒背景(朱を抑える)' },
+    { key: 'light', label: 'デフォルトテーマ' },
+    { key: 'dark', label: 'ダークモード1' },
+    { key: 'dark-muted', label: 'ダークモード2' },
+    { key: 'dark-full', label: 'ダークモード3' },
   ];
   const STORAGE_KEY = 'sinobigami_theme';
   const btn = document.getElementById('theme_toggle_btn');
@@ -1168,7 +1169,8 @@ GWT　戦国変調表`;
       '--ink', '--muted', '--panel', '--panel-shadow', '--border', '--highlight',
       '--bg-top', '--bg-bottom', '--accent', '--accent-strong', '--accent-rgb',
       '--accent-hover', '--h1-color', '--footer-color', '--texture-color',
-      '--corner-glow', '--accent-glow',
+      '--corner-glow', '--accent-glow', '--surface', '--surface-alt', '--text',
+      '--selected-bg', '--selected-color',
     ];
     const rootStyle = getComputedStyle(document.documentElement);
     THEME_VAR_NAMES.forEach(name => {
