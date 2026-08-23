@@ -956,12 +956,62 @@ document.addEventListener('DOMContentLoaded', () => {
   // 将来的に画像を含める場合は、ここで圧縮・解像度制限をかけた上でdata.imageを付与する。
   const SHARE_HASH_KEY = 'share';
 
-  const buildShareURL = () => {
-    if (typeof LZString === 'undefined') return null;
+  const toBase64Url = (bytes) => {
+    let binary = '';
+    bytes.forEach(b => { binary += String.fromCharCode(b); });
+    return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+  };
+  const fromBase64Url = (b64url) => {
+    let base64 = b64url.replace(/-/g, '+').replace(/_/g, '/');
+    while (base64.length % 4) base64 += '=';
+    const binary = atob(base64);
+    const bytes = new Uint8Array(binary.length);
+    for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+    return bytes;
+  };
+
+  /** 文字列を圧縮してURL埋め込み用文字列にする。CompressionStream対応ブラウザではdeflateを、非対応ブラウザではLZ-Stringを使用 */
+  const compressForURL = async (str) => {
+    if (typeof CompressionStream !== 'undefined') {
+      const stream = new Blob([str]).stream().pipeThrough(new CompressionStream('deflate-raw'));
+      const buffer = await new Response(stream).arrayBuffer();
+      return `d1${toBase64Url(new Uint8Array(buffer))}`;
+    }
+    if (typeof LZString !== 'undefined') {
+      return `l1${LZString.compressToEncodedURIComponent(str)}`;
+    }
+    return null;
+  };
+
+  /** compressForURLで生成した文字列を復元する */
+  const decompressFromURL = async (encoded) => {
+    const method = encoded.slice(0, 2);
+    const body = encoded.slice(2);
+    if (method === 'd1') {
+      if (typeof DecompressionStream === 'undefined') throw new Error('DecompressionStream unsupported');
+      const stream = new Blob([fromBase64Url(body)]).stream().pipeThrough(new DecompressionStream('deflate-raw'));
+      const buffer = await new Response(stream).arrayBuffer();
+      return new TextDecoder().decode(buffer);
+    }
+    if (method === 'l1') {
+      if (typeof LZString === 'undefined') throw new Error('LZString unsupported');
+      return LZString.decompressFromEncodedURIComponent(body);
+    }
+    throw new Error('unknown compression method');
+  };
+
+  const buildShareURL = async () => {
     const data = buildSaveData();
     delete data.image; // 画像は共有対象外
+    // チェックボックスは true のものだけ記録(大半のスキルマスは未選択のため大幅に軽くなる)
+    if (data.checkboxes) {
+      data.checkboxes = Object.fromEntries(
+        Object.entries(data.checkboxes).filter(([, checked]) => checked)
+      );
+    }
     const json = JSON.stringify(data);
-    const compressed = LZString.compressToEncodedURIComponent(json);
+    const compressed = await compressForURL(json);
+    if (!compressed) return null;
     const url = new URL(window.location.href);
     url.hash = `${SHARE_HASH_KEY}=${compressed}`;
     return url.toString();
@@ -969,26 +1019,38 @@ document.addEventListener('DOMContentLoaded', () => {
 
   if (shareBtn) {
     shareBtn.addEventListener('click', async () => {
-      const url = buildShareURL();
-      if (!url) { alert('共有リンクの作成に失敗しました。'); return; }
+      let url;
       try {
-        await navigator.clipboard.writeText(url);
-        alert('共有リンクをクリップボードにコピーしました！\n（画像は含まれません）');
+        url = await buildShareURL();
       } catch (err) {
-        console.error('コピーに失敗しました', err);
-        prompt('以下のリンクをコピーしてください（画像は含まれません）:', url);
+        console.error('共有リンクの生成に失敗しました', err);
+        alert(`共有リンクの作成中にエラーが発生しました。\n${err && err.message ? err.message : err}`);
+        return;
+      }
+      if (!url) {
+        alert('共有リンクの作成に失敗しました。（お使いのブラウザが圧縮機能に対応していない可能性があります）');
+        return;
+      }
+      try {
+        if (!navigator.clipboard || !navigator.clipboard.writeText) {
+          throw new Error('Clipboard API is not available');
+        }
+        await navigator.clipboard.writeText(url);
+        alert(`共有リンクをクリップボードにコピーしました！（${url.length}文字・画像は含まれません）`);
+      } catch (err) {
+        console.error('クリップボードへのコピーに失敗しました', err);
+        prompt('クリップボードへのコピーに失敗しました。以下のリンクを手動でコピーしてください（画像は含まれません）:', url);
       }
     });
   }
 
   // ページ読み込み時、URLに共有データが含まれていれば自動反映
-  (() => {
-    if (typeof LZString === 'undefined') return;
+  (async () => {
     const hash = window.location.hash || '';
     const match = hash.match(new RegExp(`^#${SHARE_HASH_KEY}=(.+)$`));
     if (!match) return;
     try {
-      const json = LZString.decompressFromEncodedURIComponent(match[1]);
+      const json = await decompressFromURL(match[1]);
       if (!json) throw new Error('decompress failed');
       const data = JSON.parse(json);
       applyLoadedData(data);
