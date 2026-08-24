@@ -16,6 +16,8 @@
   const btn = document.getElementById('theme_toggle_btn');
   if (!btn) return;
 
+  const ICON_THEME = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79Z"/></svg>';
+
   const applyTheme = (key) => {
     if (key === 'light') {
       document.documentElement.removeAttribute('data-theme');
@@ -23,7 +25,7 @@
       document.documentElement.setAttribute('data-theme', key);
     }
     const theme = THEMES.find(t => t.key === key) || THEMES[0];
-    btn.textContent = theme.label;
+    btn.innerHTML = `${ICON_THEME}${theme.label}`;
   };
 
   const saved = localStorage.getItem(STORAGE_KEY) || 'light';
@@ -1133,20 +1135,24 @@ GWT　戦国変調表`;
   const ougiSection = document.getElementById('ougi_section');
   const ninguSection = document.getElementById('ningu_section');
 
+  const ICON_ATTRS = 'viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"';
+  const ICON_EYE = `<svg ${ICON_ATTRS}><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7Z"/><circle cx="12" cy="12" r="3"/></svg>`;
+  const ICON_EYE_SLASH = `<svg ${ICON_ATTRS}><path d="M3 3l18 18"/><path d="M10.6 5.2C11.05 5.07 11.52 5 12 5c7 0 11 7 11 7a19.7 19.7 0 0 1-3.22 4.06M6.5 6.6C3.6 8.4 1 12 1 12s4 7 11 7c1.3 0 2.5-.22 3.6-.6"/><path d="M9.9 9.9a3 3 0 0 0 4.2 4.2"/></svg>`;
+
   let isHidden = true;
   if (hideToggleBtn) {
     // 初期状態で隠す
     document.body.classList.add('hidden-mode');
     if (ougiSection) { ougiSection.classList.add('hideable-section'); ougiSection.dataset.hideLabel = '奥義'; }
     if (ninguSection) { ninguSection.classList.add('hideable-section'); ninguSection.dataset.hideLabel = '忍具'; }
-    hideToggleBtn.textContent = '表示する';
+    hideToggleBtn.innerHTML = `${ICON_EYE}表示する`;
 
     hideToggleBtn.addEventListener('click', () => {
       isHidden = !isHidden;
       document.body.classList.toggle('hidden-mode', isHidden);
       if (ougiSection) { ougiSection.classList.toggle('hideable-section', isHidden); ougiSection.dataset.hideLabel = '奥義'; }
       if (ninguSection) { ninguSection.classList.toggle('hideable-section', isHidden); ninguSection.dataset.hideLabel = '忍具'; }
-      hideToggleBtn.textContent = isHidden ? '表示する' : '隠す';
+      hideToggleBtn.innerHTML = isHidden ? `${ICON_EYE}表示する` : `${ICON_EYE_SLASH}隠す`;
     });
   }
 
@@ -1404,9 +1410,11 @@ GWT　戦国変調表`;
     </div>`;
   };
 
+  const ICON_SPINNER = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true" class="btn-spinner"><path d="M12 3a9 9 0 1 0 9 9"/></svg>`;
+
   screenshotBtn.addEventListener('click', async () => {
-    const originalText = screenshotBtn.textContent;
-    screenshotBtn.textContent = '⏳ 生成中...';
+    const originalHTML = screenshotBtn.innerHTML;
+    screenshotBtn.innerHTML = `${ICON_SPINNER}生成中...`;
     screenshotBtn.disabled = true;
 
     try {
@@ -1434,7 +1442,7 @@ GWT　戦国変調表`;
       console.error('画像生成に失敗:', err);
       alert('画像の生成に失敗しました。');
     } finally {
-      screenshotBtn.textContent = originalText;
+      screenshotBtn.innerHTML = originalHTML;
       screenshotBtn.disabled = false;
     }
   });
