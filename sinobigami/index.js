@@ -1003,16 +1003,115 @@ document.addEventListener('DOMContentLoaded', () => {
     throw new Error('unknown compression method');
   };
 
+  // 初期状態で自動追加される忍法プリセット(addNinpoRow内で設定される既定値)。
+  // 未編集ならリンクに含める意味がないため共有時のみ除外する。
+  const DEFAULT_NINPO_PRESET = {
+    name: '接近戦攻撃', type: '攻撃', skill: '', range: '1', cost: '0',
+    effect: '接近戦ダメージを1点与える。', ref: '基78',
+  };
+  const isDefaultNinpoPreset = (row = {}) =>
+    Object.entries(DEFAULT_NINPO_PRESET).every(([k, v]) => (row[k] || '') === v);
+
+  // --- 共有リンク用のデータ圧縮(キー名を持たない位置配列化・短縮キー化) ---
+  const NINPO_ORDER = ['name', 'type', 'skill', 'range', 'cost', 'effect', 'ref'];
+  const OUGI_ORDER = ['name', 'skill', 'kaizou', 'effect'];
+  const HAIKEI_ORDER = ['name', 'merit', 'cost', 'effect', 'ref'];
+  const INPUT_KEY_MAP = {
+    name: 'n', age: 'a', gender: 'g', school: 'sc', sub_school: 'ss', rank: 'rk',
+    manner: 'mn', face: 'fc', belief: 'bl', points: 'pt', life_extra: 'le',
+    setting: 'st', ningu_hyorogan: 'nh', ningu_jintsumaru: 'nj',
+    ningu_tonkofu: 'nt', ningu_other: 'no', special_skill: 'sp',
+  };
+  const INPUT_KEY_MAP_REV = Object.fromEntries(Object.entries(INPUT_KEY_MAP).map(([k, v]) => [v, k]));
+  const SKILL_ID_RE = /^skill_r(\d+)_c(\d+)$/;
+  const packSkillIndex = (row, col) => (row - 2) * 6 + (col - 1);
+  const unpackSkillIndex = (idx) => ({ row: Math.floor(idx / 6) + 2, col: (idx % 6) + 1 });
+
+  const trimTrailingEmpty = (arr) => {
+    const a = arr.slice();
+    while (a.length && !a[a.length - 1]) a.pop();
+    return a;
+  };
+  const rowsToArrays = (rows, order) => rows.map(row => trimTrailingEmpty(order.map(k => row[k] || '')));
+  const arraysToRows = (arrs, order) => arrs.map(arr => {
+    const row = {};
+    order.forEach((k, i) => { row[k] = arr[i] || ''; });
+    return row;
+  });
+
+  /** 共有用にキー名を持たない最小構造へ変換 */
+  const compactifyForShare = (data) => {
+    const compact = {};
+    if (data.inputs) {
+      const inputs = {};
+      Object.entries(data.inputs).forEach(([k, v]) => {
+        if (!v) return;
+        inputs[INPUT_KEY_MAP[k] || k] = v;
+      });
+      if (Object.keys(inputs).length) compact.i = inputs;
+    }
+    if (data.checkboxes) {
+      const skills = [];
+      const others = [];
+      Object.entries(data.checkboxes).forEach(([id, checked]) => {
+        if (!checked) return;
+        const m = id.match(SKILL_ID_RE);
+        if (m) skills.push(packSkillIndex(Number(m[1]), Number(m[2])));
+        else others.push(id);
+      });
+      if (skills.length) compact.sk = skills;
+      if (others.length) compact.cb = others;
+    }
+    if (data.ougi && data.ougi.length) compact.og = rowsToArrays(data.ougi, OUGI_ORDER);
+    if (data.ninpo && data.ninpo.length) compact.np = rowsToArrays(data.ninpo, NINPO_ORDER);
+    if (data.haikei && data.haikei.length) compact.hk = rowsToArrays(data.haikei, HAIKEI_ORDER);
+    if (data.relations && data.relations.length) {
+      compact.rl = data.relations.map(r => {
+        const mask = (r.location ? 1 : 0) | (r.secret ? 2 : 0) | (r.ougi ? 4 : 0) | (r.emotion_sign ? 8 : 0);
+        return trimTrailingEmpty([r.name || '', mask, r.emotion || '']);
+      });
+    }
+    return compact;
+  };
+
+  /** compactifyForShareの逆変換(applyLoadedDataが読める形へ復元) */
+  const expandFromShare = (compact = {}) => {
+    const data = { inputs: {}, checkboxes: {}, ougi: [], ninpo: [], haikei: [], relations: [] };
+    if (compact.i) {
+      Object.entries(compact.i).forEach(([k, v]) => { data.inputs[INPUT_KEY_MAP_REV[k] || k] = v; });
+    }
+    if (compact.sk) {
+      compact.sk.forEach(idx => {
+        const { row, col } = unpackSkillIndex(idx);
+        data.checkboxes[`skill_r${row}_c${col}`] = true;
+      });
+    }
+    if (compact.cb) compact.cb.forEach(id => { data.checkboxes[id] = true; });
+    if (compact.og) data.ougi = arraysToRows(compact.og, OUGI_ORDER);
+    if (compact.np) data.ninpo = arraysToRows(compact.np, NINPO_ORDER);
+    if (compact.hk) data.haikei = arraysToRows(compact.hk, HAIKEI_ORDER);
+    if (compact.rl) {
+      data.relations = compact.rl.map(([name, mask, emotion]) => ({
+        name: name || '',
+        location: !!((mask || 0) & 1),
+        secret: !!((mask || 0) & 2),
+        ougi: !!((mask || 0) & 4),
+        emotion_sign: !!((mask || 0) & 8),
+        emotion: emotion || '',
+      }));
+    }
+    return data;
+  };
+
   const buildShareURL = async () => {
     const data = buildSaveData();
     delete data.image; // 画像は共有対象外
-    // チェックボックスは true のものだけ記録(大半のスキルマスは未選択のため大幅に軽くなる)
-    if (data.checkboxes) {
-      data.checkboxes = Object.fromEntries(
-        Object.entries(data.checkboxes).filter(([, checked]) => checked)
-      );
+    // 未編集のままの初期忍法プリセットは除外
+    if (data.ninpo) {
+      data.ninpo = data.ninpo.filter(row => !isDefaultNinpoPreset(row));
     }
-    const json = JSON.stringify(data);
+    const compact = compactifyForShare(data);
+    const json = JSON.stringify(compact);
     const compressed = await compressForURL(json);
     if (!compressed) return null;
     const url = new URL(window.location.href);
@@ -1055,7 +1154,8 @@ document.addEventListener('DOMContentLoaded', () => {
     try {
       const json = await decompressFromURL(match[1]);
       if (!json) throw new Error('decompress failed');
-      const data = JSON.parse(json);
+      const compact = JSON.parse(json);
+      const data = expandFromShare(compact);
       applyLoadedData(data);
       history.replaceState(null, '', window.location.pathname + window.location.search);
       alert('共有リンクからキャラクターデータを読み込みました！');
