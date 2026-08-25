@@ -1103,21 +1103,42 @@ document.addEventListener('DOMContentLoaded', () => {
     return data;
   };
 
-  const buildShareURL = async () => {
-    const data = buildSaveData();
-    delete data.image; // 画像は共有対象外
-    // 未編集のままの初期忍法プリセットは除外
-    if (data.ninpo) {
-      data.ninpo = data.ninpo.filter(row => !isDefaultNinpoPreset(row));
-    }
-    const compact = compactifyForShare(data);
-    const json = JSON.stringify(compact);
-    const compressed = await compressForURL(json);
-    if (!compressed) return null;
-    const url = new URL(window.location.href);
-    url.hash = `${SHARE_HASH_KEY}=${compressed}`;
-    return url.toString();
-  };
+const API_BASE = 'https://sinobigami-api.kasu-kasu.workers.dev';
+
+const buildShareURL = async () => {
+  const data = buildSaveData();
+  const imageBase64 = data.image; // 画像はここでは一旦取り出しておく
+  delete data.image;
+  if (data.ninpo) {
+    data.ninpo = data.ninpo.filter(row => !isDefaultNinpoPreset(row));
+  }
+  const compact = compactifyForShare(data);
+
+  // 1. まずテキストデータを保存してIDを取得
+  const res = await fetch(`${API_BASE}/api/save`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(compact),
+  });
+  if (!res.ok) throw new Error('保存に失敗しました');
+  const { id } = await res.json();
+
+  // 2. 画像があれば、そのIDに紐づけてアップロード
+  if (imageBase64) {
+    const imageBlob = await (await fetch(imageBase64)).blob();
+    const imgRes = await fetch(`${API_BASE}/api/upload-image/${id}`, {
+      method: 'POST',
+      headers: { 'Content-Type': imageBlob.type },
+      body: imageBlob,
+    });
+    if (!imgRes.ok) throw new Error('画像のアップロードに失敗しました');
+  }
+
+  const url = new URL(window.location.href);
+  url.hash = `id=${id}`;
+  return url.toString();
+};
+
 
   if (shareBtn) {
     shareBtn.addEventListener('click', async () => {
@@ -1146,24 +1167,31 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  // ページ読み込み時、URLに共有データが含まれていれば自動反映
-  (async () => {
-    const hash = window.location.hash || '';
-    const match = hash.match(new RegExp(`^#${SHARE_HASH_KEY}=(.+)$`));
-    if (!match) return;
-    try {
-      const json = await decompressFromURL(match[1]);
-      if (!json) throw new Error('decompress failed');
-      const compact = JSON.parse(json);
-      const data = expandFromShare(compact);
-      applyLoadedData(data);
-      history.replaceState(null, '', window.location.pathname + window.location.search);
-      alert('共有リンクからキャラクターデータを読み込みました！');
-    } catch (err) {
-      console.error('共有データの読み込みに失敗しました', err);
-      alert('共有リンクの読み込みに失敗しました。');
+  // ページ読み込み時、DBに共有データが含まれていれば自動反映
+(async () => {
+  const hash = window.location.hash || '';
+  const match = hash.match(/^#id=(.+)$/);
+  if (!match) return;
+
+  try {
+    const res = await fetch(`${API_BASE}/api/load/${match[1]}`);
+    if (!res.ok) throw new Error('データが見つかりません');
+    const compact = await res.json();
+    const data = expandFromShare(compact);
+
+    // 画像がある場合はURLを組み立てて反映
+    if (compact.img) {
+      data.image = `${API_BASE}/api/image/${match[1]}`;
     }
-  })();
+
+    applyLoadedData(data);
+    history.replaceState(null, '', window.location.pathname + window.location.search);
+    alert('共有リンクからキャラクターデータを読み込みました！');
+  } catch (err) {
+    console.error('共有データの読み込みに失敗しました', err);
+    alert('共有リンクの読み込みに失敗しました。');
+  }
+})();
 
   // ──────────────────────────────
   // 4. ココフォリア用コピー
