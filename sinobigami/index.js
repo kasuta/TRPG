@@ -1364,7 +1364,6 @@ if (historyListEl) {
     }
   });
 }
-
 /** キャラクターを保存する(currentCharacterIdの有無で新規/更新を自動判定) */
 const saveCharacter = async () => {
   const data = buildSaveData();
@@ -1375,12 +1374,14 @@ const saveCharacter = async () => {
   }
   const compact = compactifyForShare(data);
 
+  const authHeaders = getAuthToken() ? { Authorization: `Bearer ${getAuthToken()}` } : {};
+
   let id;
   if (currentCharacterId) {
     // 既にIDがある → 更新
     const res = await fetch(`${API_BASE}/api/update/${currentCharacterId}`, {
       method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', ...authHeaders },
       body: JSON.stringify(compact),
     });
     if (!res.ok) throw new Error('更新に失敗しました');
@@ -1389,7 +1390,7 @@ const saveCharacter = async () => {
     // IDがない → 新規作成
     const res = await fetch(`${API_BASE}/api/save`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', ...authHeaders },
       body: JSON.stringify(compact),
     });
     if (!res.ok) throw new Error('保存に失敗しました');
