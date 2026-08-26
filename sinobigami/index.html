@@ -11,6 +11,17 @@
 </head>
 
 <body>
+  <button type="button" id="history_toggle_btn" class="history-toggle-btn" aria-label="履歴を開く" aria-expanded="false">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 8v4l3 3"/><circle cx="12" cy="12" r="9"/></svg>
+    <span>履歴</span>
+  </button>
+  <aside id="history_panel" class="history-panel" aria-hidden="true">
+    <div class="history-panel-head">
+      <h2>保存履歴</h2>
+      <button type="button" id="history_close_btn" class="history-close-btn" aria-label="閉じる">✕</button>
+    </div>
+    <div class="history-list" id="history_list"></div>
+  </aside>
   <h1>シノビガミ キャラシ作成サイト</h1>
   <main class="top-content">
     <div class="input-left-stack">
@@ -336,5 +347,7 @@
     <small>本作は、「河嶋陶一朗」「冒険支援株式会社」及び「株式会社新紀元社」が権利を有する『忍術バトルRPG シノビガミ』の二次創作物です。<br>（C）河嶋陶一朗／冒険企画局</small>
   </footer>
 </body>
+
+
 
 </html>

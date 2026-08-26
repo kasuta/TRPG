@@ -1120,6 +1120,90 @@ const addToHistory = (id, name) => {
   localStorage.setItem('sinobigami_history', JSON.stringify(history));
 };
 
+/** 履歴一覧を取得する */
+const getHistory = () => {
+  try {
+    return JSON.parse(localStorage.getItem('sinobigami_history') || '[]');
+  } catch {
+    return [];
+  }
+};
+
+/** 履歴を1件削除する */
+const removeFromHistory = (id) => {
+  const history = getHistory().filter(h => h.id !== id);
+  localStorage.setItem('sinobigami_history', JSON.stringify(history));
+};
+
+/** 履歴パネルを描画する */
+const renderHistoryList = () => {
+  const listEl = document.getElementById('history_list');
+  if (!listEl) return;
+  const history = getHistory().sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt));
+
+  if (history.length === 0) {
+    listEl.innerHTML = '<p class="history-empty">保存履歴がありません</p>';
+    return;
+  }
+
+  listEl.innerHTML = history.map(h => {
+    const date = new Date(h.updatedAt);
+    const dateStr = isNaN(date) ? '' : date.toLocaleString('ja-JP', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+    return `
+      <div class="history-item" data-id="${h.id}">
+        <div class="history-item-info">
+          <div class="history-item-name">${escapeHTML(h.name || '(名前未設定)')}</div>
+          <div class="history-item-date">${dateStr}</div>
+        </div>
+        <button type="button" class="history-item-delete" data-delete-id="${h.id}" title="削除">✕</button>
+      </div>`;
+  }).join('');
+};
+
+const historyToggleBtn = document.getElementById('history_toggle_btn');
+const historyPanel = document.getElementById('history_panel');
+const historyCloseBtn = document.getElementById('history_close_btn');
+const historyListEl = document.getElementById('history_list');
+
+const openHistoryPanel = () => {
+  if (!historyPanel) return;
+  renderHistoryList();
+  historyPanel.classList.add('is-open');
+  historyPanel.setAttribute('aria-hidden', 'false');
+  if (historyToggleBtn) historyToggleBtn.setAttribute('aria-expanded', 'true');
+};
+
+const closeHistoryPanel = () => {
+  if (!historyPanel) return;
+  historyPanel.classList.remove('is-open');
+  historyPanel.setAttribute('aria-hidden', 'true');
+  if (historyToggleBtn) historyToggleBtn.setAttribute('aria-expanded', 'false');
+};
+
+if (historyToggleBtn) {
+  historyToggleBtn.addEventListener('click', () => {
+    historyPanel.classList.contains('is-open') ? closeHistoryPanel() : openHistoryPanel();
+  });
+}
+if (historyCloseBtn) historyCloseBtn.addEventListener('click', closeHistoryPanel);
+
+if (historyListEl) {
+  historyListEl.addEventListener('click', (e) => {
+    const delBtn = e.target.closest('.history-item-delete');
+    if (delBtn) {
+      removeFromHistory(delBtn.dataset.deleteId);
+      renderHistoryList();
+      return;
+    }
+    const item = e.target.closest('.history-item');
+    if (item) {
+      window.location.hash = `id=${item.dataset.id}`;
+      window.location.reload();
+    }
+  });
+}
+
+
 /** キャラクターを保存する(currentCharacterIdの有無で新規/更新を自動判定) */
 const saveCharacter = async () => {
   const data = buildSaveData();
