@@ -1422,24 +1422,25 @@ const copyShareLink = () => {
   return url.toString();
 };
 
-  const saveCharacterBtn = document.getElementById('save_character_btn');
-  if (saveCharacterBtn) {
-    saveCharacterBtn.addEventListener('click', async () => {
-      saveCharacterBtn.disabled = true;
-      const originalHTML = saveCharacterBtn.innerHTML;
-      saveCharacterBtn.innerHTML = '保存中...';
-      try {
-        await saveCharacter();
-        alert('保存しました！');
-      } catch (err) {
-        console.error('保存に失敗しました', err);
-        alert(`保存中にエラーが発生しました。\n${err && err.message ? err.message : err}`);
-      } finally {
-        saveCharacterBtn.disabled = false;
-        saveCharacterBtn.innerHTML = originalHTML;
-      }
-    });
-  }
+const saveCharacterBtn = document.getElementById('save_character_btn');
+if (saveCharacterBtn) {
+  saveCharacterBtn.addEventListener('click', async () => {
+    saveCharacterBtn.disabled = true;
+    const originalHTML = saveCharacterBtn.innerHTML;
+    saveCharacterBtn.innerHTML = '保存中...';
+    try {
+      await saveCharacter();
+      if (getAuthToken()) renderMyCharacters(); // 追加：ログイン中なら一覧を再取得
+      alert('保存しました！');
+    } catch (err) {
+      console.error('保存に失敗しました', err);
+      alert(`保存中にエラーが発生しました。\n${err && err.message ? err.message : err}`);
+    } finally {
+      saveCharacterBtn.disabled = false;
+      saveCharacterBtn.innerHTML = originalHTML;
+    }
+  });
+}
 
   if (shareBtn) {
     shareBtn.addEventListener('click', async () => {
