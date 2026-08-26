@@ -1102,28 +1102,58 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     return data;
   };
-
+  
 const API_BASE = 'https://sinobigami-api.kasu-kasu.workers.dev';
+let currentCharacterId = null;
 
-const buildShareURL = async () => {
+/** 保存履歴(localStorage)に記録する */
+const addToHistory = (id, name) => {
+  const historyJson = localStorage.getItem('sinobigami_history') || '[]';
+  const history = JSON.parse(historyJson);
+  const existing = history.find(h => h.id === id);
+  if (existing) {
+    existing.name = name || '(名前未設定)';
+    existing.updatedAt = new Date().toISOString();
+  } else {
+    history.unshift({ id, name: name || '(名前未設定)', updatedAt: new Date().toISOString() });
+  }
+  localStorage.setItem('sinobigami_history', JSON.stringify(history));
+};
+
+/** キャラクターを保存する(currentCharacterIdの有無で新規/更新を自動判定) */
+const saveCharacter = async () => {
   const data = buildSaveData();
-  const imageBase64 = data.image; // 画像はここでは一旦取り出しておく
+  const imageBase64 = data.image;
   delete data.image;
   if (data.ninpo) {
     data.ninpo = data.ninpo.filter(row => !isDefaultNinpoPreset(row));
   }
   const compact = compactifyForShare(data);
 
-  // 1. まずテキストデータを保存してIDを取得
-  const res = await fetch(`${API_BASE}/api/save`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(compact),
-  });
-  if (!res.ok) throw new Error('保存に失敗しました');
-  const { id } = await res.json();
+  let id;
+  if (currentCharacterId) {
+    // 既にIDがある → 更新
+    const res = await fetch(`${API_BASE}/api/update/${currentCharacterId}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(compact),
+    });
+    if (!res.ok) throw new Error('更新に失敗しました');
+    id = currentCharacterId;
+  } else {
+    // IDがない → 新規作成
+    const res = await fetch(`${API_BASE}/api/save`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(compact),
+    });
+    if (!res.ok) throw new Error('保存に失敗しました');
+    const json = await res.json();
+    id = json.id;
+    currentCharacterId = id;
+  }
 
-  // 2. 画像があれば、そのIDに紐づけてアップロード
+  // 画像があれば、そのIDに紐づけてアップロード(新規・更新どちらも同じ処理でOK)
   if (imageBase64) {
     const imageBlob = await (await fetch(imageBase64)).blob();
     const imgRes = await fetch(`${API_BASE}/api/upload-image/${id}`, {
@@ -1134,24 +1164,42 @@ const buildShareURL = async () => {
     if (!imgRes.ok) throw new Error('画像のアップロードに失敗しました');
   }
 
+  addToHistory(id, getFieldValue('name'));
+  return id;
+};
+
+/** 現在のcurrentCharacterIdから共有URLを組み立てる(保存はしない) */
+const copyShareLink = () => {
+  if (!currentCharacterId) return null;
   const url = new URL(window.location.href);
-  url.hash = `id=${id}`;
+  url.hash = `id=${currentCharacterId}`;
   return url.toString();
 };
 
+  const saveCharacterBtn = document.getElementById('save_character_btn');
+  if (saveCharacterBtn) {
+    saveCharacterBtn.addEventListener('click', async () => {
+      saveCharacterBtn.disabled = true;
+      const originalHTML = saveCharacterBtn.innerHTML;
+      saveCharacterBtn.innerHTML = '保存中...';
+      try {
+        await saveCharacter();
+        alert('保存しました！');
+      } catch (err) {
+        console.error('保存に失敗しました', err);
+        alert(`保存中にエラーが発生しました。\n${err && err.message ? err.message : err}`);
+      } finally {
+        saveCharacterBtn.disabled = false;
+        saveCharacterBtn.innerHTML = originalHTML;
+      }
+    });
+  }
 
   if (shareBtn) {
     shareBtn.addEventListener('click', async () => {
-      let url;
-      try {
-        url = await buildShareURL();
-      } catch (err) {
-        console.error('共有リンクの生成に失敗しました', err);
-        alert(`共有リンクの作成中にエラーが発生しました。\n${err && err.message ? err.message : err}`);
-        return;
-      }
+      const url = copyShareLink();
       if (!url) {
-        alert('共有リンクの作成に失敗しました。（お使いのブラウザが圧縮機能に対応していない可能性があります）');
+        alert('まだ保存されていません。先に「保存」ボタンを押してください。');
         return;
       }
       try {
@@ -1159,10 +1207,10 @@ const buildShareURL = async () => {
           throw new Error('Clipboard API is not available');
         }
         await navigator.clipboard.writeText(url);
-        alert(`共有リンクをクリップボードにコピーしました！（${url.length}文字・画像は含まれません）`);
+        alert(`共有リンクをクリップボードにコピーしました！（${url.length}文字）`);
       } catch (err) {
         console.error('クリップボードへのコピーに失敗しました', err);
-        prompt('クリップボードへのコピーに失敗しました。以下のリンクを手動でコピーしてください（画像は含まれません）:', url);
+        prompt('クリップボードへのコピーに失敗しました。以下のリンクを手動でコピーしてください:', url);
       }
     });
   }
@@ -1185,6 +1233,7 @@ const buildShareURL = async () => {
     }
 
     applyLoadedData(data);
+    currentCharacterId = match[1];
     history.replaceState(null, '', window.location.pathname + window.location.search);
     alert('共有リンクからキャラクターデータを読み込みました！');
   } catch (err) {
