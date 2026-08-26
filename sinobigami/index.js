@@ -1120,7 +1120,22 @@ const addToHistory = (id, name) => {
   localStorage.setItem('sinobigami_history', JSON.stringify(history));
 };
 
-/** 履歴一覧を取得する */
+const AUTH_API_BASE = API_BASE;
+const AUTH_TOKEN_KEY = 'sinobigami_auth_token';
+const AUTH_USER_KEY = 'sinobigami_auth_username';
+
+const getAuthToken = () => localStorage.getItem(AUTH_TOKEN_KEY);
+const getAuthUsername = () => localStorage.getItem(AUTH_USER_KEY);
+const setAuth = (token, username) => {
+  localStorage.setItem(AUTH_TOKEN_KEY, token);
+  localStorage.setItem(AUTH_USER_KEY, username);
+};
+const clearAuth = () => {
+  localStorage.removeItem(AUTH_TOKEN_KEY);
+  localStorage.removeItem(AUTH_USER_KEY);
+};
+
+/** 履歴一覧(ゲスト用ローカル保存)を取得する */
 const getHistory = () => {
   try {
     return JSON.parse(localStorage.getItem('sinobigami_history') || '[]');
@@ -1129,24 +1144,21 @@ const getHistory = () => {
   }
 };
 
-/** 履歴を1件削除する */
+/** 履歴を1件削除する(ゲスト用) */
 const removeFromHistory = (id) => {
   const history = getHistory().filter(h => h.id !== id);
   localStorage.setItem('sinobigami_history', JSON.stringify(history));
 };
 
-/** 履歴パネルを描画する */
-const renderHistoryList = () => {
+/** 一覧を描画する共通処理 */
+const renderListItems = (items) => {
   const listEl = document.getElementById('history_list');
   if (!listEl) return;
-  const history = getHistory().sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt));
-
-  if (history.length === 0) {
-    listEl.innerHTML = '<p class="history-empty">保存履歴がありません</p>';
+  if (items.length === 0) {
+    listEl.innerHTML = '<p class="history-empty">データがありません</p>';
     return;
   }
-
-  listEl.innerHTML = history.map(h => {
+  listEl.innerHTML = items.map(h => {
     const date = new Date(h.updatedAt);
     const dateStr = isNaN(date) ? '' : date.toLocaleString('ja-JP', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' });
     return `
@@ -1155,10 +1167,160 @@ const renderHistoryList = () => {
           <div class="history-item-name">${escapeHTML(h.name || '(名前未設定)')}</div>
           <div class="history-item-date">${dateStr}</div>
         </div>
-        <button type="button" class="history-item-delete" data-delete-id="${h.id}" title="削除">✕</button>
+        ${h.deletable ? `<button type="button" class="history-item-delete" data-delete-id="${h.id}" title="削除">✕</button>` : ''}
       </div>`;
   }).join('');
 };
+
+/** ゲスト履歴を描画する */
+const renderGuestHistory = () => {
+  const title = document.getElementById('history_list_title');
+  if (title) title.textContent = 'ゲスト履歴';
+  const items = getHistory()
+    .sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt))
+    .map(h => ({ ...h, deletable: true }));
+  renderListItems(items);
+};
+
+/** ログイン中ユーザーのキャラ一覧をサーバーから取得して描画する */
+const renderMyCharacters = async () => {
+  const title = document.getElementById('history_list_title');
+  if (title) title.textContent = 'あなたのキャラクター';
+  const listEl = document.getElementById('history_list');
+  if (listEl) listEl.innerHTML = '<p class="history-empty">読み込み中...</p>';
+
+  try {
+    const res = await fetch(`${AUTH_API_BASE}/api/my-characters`, {
+      headers: { Authorization: `Bearer ${getAuthToken()}` },
+    });
+    if (!res.ok) throw new Error('取得に失敗しました');
+    const list = await res.json();
+    renderListItems(list.map(c => ({ ...c, deletable: false })));
+  } catch (err) {
+    console.error(err);
+    if (listEl) listEl.innerHTML = '<p class="history-empty">読み込みに失敗しました</p>';
+  }
+};
+
+/** ログイン/未ログインに応じて表示を切り替える */
+const updateAuthUI = () => {
+  const token = getAuthToken();
+  const guestSection = document.getElementById('auth_section_guest');
+  const userSection = document.getElementById('auth_section_user');
+  const usernameDisplay = document.getElementById('auth_username_display');
+
+  if (token) {
+    if (guestSection) guestSection.style.display = 'none';
+    if (userSection) userSection.style.display = '';
+    if (usernameDisplay) usernameDisplay.textContent = getAuthUsername() || '';
+    renderMyCharacters();
+  } else {
+    if (guestSection) guestSection.style.display = '';
+    if (userSection) userSection.style.display = 'none';
+    renderGuestHistory();
+  }
+};
+
+// タブ切替
+const authTabLogin = document.getElementById('auth_tab_login');
+const authTabRegister = document.getElementById('auth_tab_register');
+const loginForm = document.getElementById('login_form');
+const registerForm = document.getElementById('register_form');
+
+if (authTabLogin && authTabRegister) {
+  authTabLogin.addEventListener('click', () => {
+    authTabLogin.classList.add('is-active');
+    authTabRegister.classList.remove('is-active');
+    loginForm.style.display = '';
+    registerForm.style.display = 'none';
+  });
+  authTabRegister.addEventListener('click', () => {
+    authTabRegister.classList.add('is-active');
+    authTabLogin.classList.remove('is-active');
+    registerForm.style.display = '';
+    loginForm.style.display = 'none';
+  });
+}
+
+// ログイン処理
+if (loginForm) {
+  loginForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const errorEl = document.getElementById('login_error');
+    errorEl.textContent = '';
+    const username = document.getElementById('login_username').value;
+    const password = document.getElementById('login_password').value;
+
+    try {
+      const res = await fetch(`${AUTH_API_BASE}/api/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username, password }),
+      });
+      const json = await res.json();
+      if (!res.ok) { errorEl.textContent = json.error || 'ログインに失敗しました'; return; }
+      setAuth(json.token, json.username);
+      loginForm.reset();
+      updateAuthUI();
+    } catch (err) {
+      console.error(err);
+      errorEl.textContent = '通信エラーが発生しました';
+    }
+  });
+}
+
+// 新規登録処理
+if (registerForm) {
+  registerForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const errorEl = document.getElementById('register_error');
+    errorEl.textContent = '';
+    const username = document.getElementById('register_username').value;
+    const password = document.getElementById('register_password').value;
+
+    try {
+      const res = await fetch(`${AUTH_API_BASE}/api/register`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username, password }),
+      });
+      const json = await res.json();
+      if (!res.ok) { errorEl.textContent = json.error || '登録に失敗しました'; return; }
+      // 登録後、自動的にログイン
+      const loginRes = await fetch(`${AUTH_API_BASE}/api/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username, password }),
+      });
+      const loginJson = await loginRes.json();
+      if (loginRes.ok) {
+        setAuth(loginJson.token, loginJson.username);
+        registerForm.reset();
+        updateAuthUI();
+      }
+    } catch (err) {
+      console.error(err);
+      errorEl.textContent = '通信エラーが発生しました';
+    }
+  });
+}
+
+// ログアウト処理
+const logoutBtn = document.getElementById('logout_btn');
+if (logoutBtn) {
+  logoutBtn.addEventListener('click', async () => {
+    try {
+      await fetch(`${AUTH_API_BASE}/api/logout`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${getAuthToken()}` },
+      });
+    } catch (err) {
+      console.error(err);
+    }
+    clearAuth();
+    updateAuthUI();
+  });
+}
 
 const historyToggleBtn = document.getElementById('history_toggle_btn');
 const historyPanel = document.getElementById('history_panel');
@@ -1167,7 +1329,7 @@ const historyListEl = document.getElementById('history_list');
 
 const openHistoryPanel = () => {
   if (!historyPanel) return;
-  renderHistoryList();
+  updateAuthUI();
   historyPanel.classList.add('is-open');
   historyPanel.setAttribute('aria-hidden', 'false');
   if (historyToggleBtn) historyToggleBtn.setAttribute('aria-expanded', 'true');
@@ -1192,7 +1354,7 @@ if (historyListEl) {
     const delBtn = e.target.closest('.history-item-delete');
     if (delBtn) {
       removeFromHistory(delBtn.dataset.deleteId);
-      renderHistoryList();
+      renderGuestHistory();
       return;
     }
     const item = e.target.closest('.history-item');
@@ -1202,7 +1364,6 @@ if (historyListEl) {
     }
   });
 }
-
 
 /** キャラクターを保存する(currentCharacterIdの有無で新規/更新を自動判定) */
 const saveCharacter = async () => {

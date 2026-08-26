@@ -17,8 +17,40 @@
   </button>
   <aside id="history_panel" class="history-panel" aria-hidden="true">
     <div class="history-panel-head">
-      <h2>保存履歴</h2>
+      <h2>アカウント</h2>
       <button type="button" id="history_close_btn" class="history-close-btn" aria-label="閉じる">✕</button>
+    </div>
+
+    <!-- 未ログイン時: ログイン/新規登録タブ -->
+    <div id="auth_section_guest" class="auth-section">
+      <div class="auth-tabs">
+        <button type="button" id="auth_tab_login" class="auth-tab is-active">ログイン</button>
+        <button type="button" id="auth_tab_register" class="auth-tab">新規登録</button>
+      </div>
+      <form id="login_form" class="auth-form">
+        <input type="text" id="login_username" placeholder="ユーザー名" autocomplete="username" required />
+        <input type="password" id="login_password" placeholder="パスワード" autocomplete="current-password" required />
+        <button type="submit" class="btn">ログイン</button>
+        <p class="auth-error" id="login_error"></p>
+      </form>
+      <form id="register_form" class="auth-form" style="display:none;">
+        <input type="text" id="register_username" placeholder="ユーザー名" autocomplete="username" required />
+        <input type="password" id="register_password" placeholder="パスワード(8文字以上)" autocomplete="new-password" required />
+        <button type="submit" class="btn">登録する</button>
+        <p class="auth-error" id="register_error"></p>
+      </form>
+    </div>
+
+    <!-- ログイン時: ユーザー情報 -->
+    <div id="auth_section_user" class="auth-section" style="display:none;">
+      <div class="auth-user-info">
+        <span id="auth_username_display"></span>
+        <button type="button" id="logout_btn" class="btn btn-outline">ログアウト</button>
+      </div>
+    </div>
+
+    <div class="history-panel-sub-head">
+      <h3 id="history_list_title">ゲスト履歴</h3>
     </div>
     <div class="history-list" id="history_list"></div>
   </aside>
