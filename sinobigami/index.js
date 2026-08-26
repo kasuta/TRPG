@@ -1364,6 +1364,55 @@ if (historyListEl) {
     }
   });
 }
+
+/** キャラクターシートを新規作成用に初期状態へリセットする */
+const resetCharacterForm = () => {
+  document.querySelectorAll('input[type="text"], input[type="number"], select, textarea').forEach(el => {
+    if (el.closest('#history_panel')) return;
+    if (/^(ougi_|ninpo_|haikei_|relation_)/.test(el.name || '')) return;
+    if (el.tagName === 'SELECT') el.selectedIndex = 0;
+    else el.value = '';
+  });
+
+  document.querySelectorAll('.skill-check').forEach(cb => { cb.checked = false; });
+  document.querySelectorAll('.gap-check').forEach(cb => { cb.checked = false; });
+  document.querySelectorAll('.damage-check').forEach(el => { el.dataset.state = '0'; });
+
+  savedImageBase64 = null;
+  clearPreview();
+  if (imageInput) imageInput.value = '';
+
+  while (document.querySelectorAll('.ougi-textarea[name^="ougi_name_"]').length > 0) removeOugiRow();
+  addOugiRow();
+
+  clearNinpoGridRows();
+  clearNinpoTextRows();
+  addNinpoRow({ name: '接近戦攻撃', type: '攻撃', range: '1', cost: '0', effect: '接近戦ダメージを1点与える。', ref: '基78' }, { skipResize: true });
+  addNinpoRow({}, { skipResize: true });
+  resizeNinpoGridRows();
+  ninpoInputMode = 'grid';
+  updateNinpoModeUI();
+
+  while (document.querySelectorAll('.haikei-textarea[name^="haikei_name_"]').length > 0) removeHaikeiRow();
+  addHaikeiRow();
+
+  while (document.querySelectorAll('.relation-textarea[name^="relation_name_"]').length > 0) removeRelationRow();
+  addRelationRow();
+
+  currentCharacterId = null;
+  history.replaceState(null, '', window.location.pathname + window.location.search);
+};
+
+const newCharacterBtn = document.getElementById('new_character_btn');
+if (newCharacterBtn) {
+  newCharacterBtn.addEventListener('click', () => {
+    if (!confirm('現在の入力内容を破棄して新規作成しますか？')) return;
+    resetCharacterForm();
+    closeHistoryPanel();
+  });
+}
+
+
 /** キャラクターを保存する(currentCharacterIdの有無で新規/更新を自動判定) */
 const saveCharacter = async () => {
   const data = buildSaveData();
