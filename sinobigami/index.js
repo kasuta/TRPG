@@ -852,6 +852,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (el) el.value = value;
       }
     }
+    document.querySelectorAll('.skill-check, .gap-check').forEach(cb => { cb.checked = false; });
     if (data.checkboxes) {
       for (const [key, checked] of Object.entries(data.checkboxes)) {
         const el = document.getElementById(key);
