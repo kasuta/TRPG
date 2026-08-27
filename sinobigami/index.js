@@ -1343,14 +1343,22 @@ const openHistoryPanel = () => {
   updateAuthUI();
   historyPanel.classList.add('is-open');
   historyPanel.setAttribute('aria-hidden', 'false');
-  if (historyToggleBtn) historyToggleBtn.setAttribute('aria-expanded', 'true');
+  if (historyToggleBtn) {
+    historyToggleBtn.setAttribute('aria-expanded', 'true');
+    historyToggleBtn.classList.add('is-open');
+    historyToggleBtn.style.right = `${historyPanel.getBoundingClientRect().width}px`;
+  }
 };
 
 const closeHistoryPanel = () => {
   if (!historyPanel) return;
   historyPanel.classList.remove('is-open');
   historyPanel.setAttribute('aria-hidden', 'true');
-  if (historyToggleBtn) historyToggleBtn.setAttribute('aria-expanded', 'false');
+  if (historyToggleBtn) {
+    historyToggleBtn.setAttribute('aria-expanded', 'false');
+    historyToggleBtn.classList.remove('is-open');
+    historyToggleBtn.style.right = '0';
+  }
 };
 
 if (historyToggleBtn) {

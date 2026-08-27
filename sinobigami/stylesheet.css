@@ -1619,10 +1619,9 @@ textarea {
 	transform: translateY(-50%);
 	z-index: 950;
 	display: flex;
-	flex-direction: column;
 	align-items: center;
-	gap: 4px;
-	padding: 12px 8px;
+	justify-content: center;
+	padding: 14px 8px;
 	border: 1px solid var(--border);
 	border-right: none;
 	border-radius: 10px 0 0 10px;
@@ -1630,11 +1629,19 @@ textarea {
 	color: var(--accent-strong);
 	box-shadow: -4px 4px 12px var(--panel-shadow);
 	cursor: pointer;
-	font-size: 0.75rem;
-	font-weight: 700;
+	transition: right 0.25s ease;
 }
 
-.history-toggle-btn svg { width: 18px; height: 18px; }
+.history-toggle-btn svg {
+	width: 18px;
+	height: 18px;
+	transition: transform 0.25s ease;
+	transform: rotate(180deg);
+}
+
+.history-toggle-btn.is-open svg {
+	transform: rotate(0deg);
+}
 
 .history-panel {
 	position: fixed;
