@@ -1115,6 +1115,8 @@ document.addEventListener('DOMContentLoaded', () => {
   };
   
 const API_BASE = 'https://sinobigami-api.kasu-kasu.workers.dev';
+const CURRENT_GAME = 'sinobigami';
+const GAME_LABEL = { sinobigami: 'シノビガミ', magirogi: 'マギロギ' };
 let currentCharacterId = null;
 
 /** 保存履歴(localStorage)に記録する */
@@ -1172,10 +1174,11 @@ const renderListItems = (items) => {
   listEl.innerHTML = items.map(h => {
     const date = new Date(h.updatedAt);
     const dateStr = isNaN(date) ? '' : date.toLocaleString('ja-JP', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+    const badge = h.game ? `<span class="history-item-game-badge badge-${h.game}">${GAME_LABEL[h.game] || h.game}</span>` : '';
     return `
-      <div class="history-item" data-id="${h.id}">
+      <div class="history-item" data-id="${h.id}" data-game="${h.game || ''}">
         <div class="history-item-info">
-          <div class="history-item-name">${escapeHTML(h.name || '(名前未設定)')}</div>
+          <div class="history-item-name">${badge}${escapeHTML(h.name || '(名前未設定)')}</div>
           <div class="history-item-date">${dateStr}</div>
         </div>
         ${h.deletable ? `<button type="button" class="history-item-delete" data-delete-id="${h.id}" title="削除">✕</button>` : ''}
@@ -1187,6 +1190,8 @@ const renderListItems = (items) => {
 const renderGuestHistory = () => {
   const title = document.getElementById('history_list_title');
   if (title) title.textContent = 'ゲスト履歴';
+  const tabs = document.getElementById('game_filter_tabs');
+  if (tabs) tabs.style.display = 'none';
   const items = getHistory()
     .sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt))
     .map(h => ({ ...h, deletable: true }));
@@ -1194,9 +1199,19 @@ const renderGuestHistory = () => {
 };
 
 /** ログイン中ユーザーのキャラ一覧をサーバーから取得して描画する */
+let myCharactersCache = [];
+let gameFilter = localStorage.getItem('characterListFilter') || 'all';
+
+const applyGameFilter = () => {
+  const filtered = gameFilter === 'all' ? myCharactersCache : myCharactersCache.filter(c => c.game === gameFilter);
+  renderListItems(filtered.map(c => ({ ...c, deletable: false })));
+};
+
 const renderMyCharacters = async () => {
   const title = document.getElementById('history_list_title');
   if (title) title.textContent = 'あなたのキャラクター';
+  const tabs = document.getElementById('game_filter_tabs');
+  if (tabs) tabs.style.display = '';
   const listEl = document.getElementById('history_list');
   if (listEl) listEl.innerHTML = '<p class="history-empty">読み込み中...</p>';
 
@@ -1205,8 +1220,8 @@ const renderMyCharacters = async () => {
       headers: { Authorization: `Bearer ${getAuthToken()}` },
     });
     if (!res.ok) throw new Error('取得に失敗しました');
-    const list = await res.json();
-    renderListItems(list.map(c => ({ ...c, deletable: false })));
+    myCharactersCache = await res.json();
+    applyGameFilter();
   } catch (err) {
     console.error(err);
     if (listEl) listEl.innerHTML = '<p class="history-empty">読み込みに失敗しました</p>';
@@ -1338,6 +1353,19 @@ const historyPanel = document.getElementById('history_panel');
 const historyCloseBtn = document.getElementById('history_close_btn');
 const historyListEl = document.getElementById('history_list');
 
+const gameFilterTabs = document.getElementById('game_filter_tabs');
+if (gameFilterTabs) {
+  gameFilterTabs.querySelectorAll('.game-filter-tab').forEach(b => b.classList.toggle('is-active', b.dataset.filter === gameFilter));
+  gameFilterTabs.addEventListener('click', (e) => {
+    const btn = e.target.closest('.game-filter-tab');
+    if (!btn) return;
+    gameFilter = btn.dataset.filter;
+    localStorage.setItem('characterListFilter', gameFilter);
+    gameFilterTabs.querySelectorAll('.game-filter-tab').forEach(b => b.classList.toggle('is-active', b === btn));
+    applyGameFilter();
+  });
+}
+
 const openHistoryPanel = () => {
   if (!historyPanel) return;
   updateAuthUI();
@@ -1378,6 +1406,12 @@ if (historyListEl) {
     }
     const item = e.target.closest('.history-item');
     if (item) {
+      const game = item.dataset.game;
+      if (game && game !== CURRENT_GAME) {
+        const targetPath = game === 'magirogi' ? '../magirogi/index.html' : '../sinobigami/index.html';
+        window.location.href = `${targetPath}#id=${item.dataset.id}`;
+        return;
+      }
       window.location.hash = `id=${item.dataset.id}`;
       window.location.reload();
     }
@@ -1456,7 +1490,7 @@ const saveCharacter = async () => {
     id = currentCharacterId;
   } else {
     // IDがない → 新規作成
-    const res = await fetch(`${API_BASE}/api/save`, {
+      const res = await fetch(`${API_BASE}/api/save?game=${CURRENT_GAME}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', ...authHeaders },
       body: JSON.stringify(compact),

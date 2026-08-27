@@ -1823,3 +1823,37 @@ textarea {
 	font-size: 0.85rem;
 	color: var(--muted);
 }
+
+.game-filter-tabs {
+	display: flex;
+	gap: 4px;
+	margin-top: 8px;
+}
+.game-filter-tab {
+	flex: 1;
+	padding: 4px 0;
+	border: 1px solid var(--border);
+	border-radius: 6px;
+	background: transparent;
+	color: var(--muted);
+	font-size: 0.72rem;
+	font-weight: 700;
+	cursor: pointer;
+}
+.game-filter-tab.is-active {
+	background: var(--accent);
+	color: #fff;
+	border-color: var(--accent);
+}
+.history-item-game-badge {
+	display: inline-block;
+	font-size: 0.68rem;
+	font-weight: 700;
+	padding: 1px 6px;
+	border-radius: 8px;
+	margin-right: 6px;
+	color: #fff;
+	vertical-align: middle;
+}
+.history-item-game-badge.badge-sinobigami { background: #8c4433; }
+.history-item-game-badge.badge-magirogi { background: #2f5d62; }
