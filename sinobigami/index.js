@@ -846,13 +846,23 @@ document.addEventListener('DOMContentLoaded', () => {
 
   /** セーブデータ(JSON)を現在のフォームへ反映 */
   const applyLoadedData = (data) => {
+    document.querySelectorAll('input[type="text"], input[type="number"], select, textarea').forEach(el => {
+      if (el.closest('#history_panel')) return;
+      if (/^(ougi_|ninpo_|haikei_|relation_)/.test(el.name || '')) return;
+      if (el.tagName === 'SELECT') el.selectedIndex = 0;
+      else el.value = '';
+    });
+    document.querySelectorAll('.skill-check, .gap-check').forEach(cb => { cb.checked = false; });
+    document.querySelectorAll('.damage-check').forEach(el => { el.dataset.state = '0'; });
+    savedImageBase64 = null;
+    clearPreview();
+
     if (data.inputs) {
       for (const [key, value] of Object.entries(data.inputs)) {
         const el = document.getElementById(key) || document.querySelector(`[name="${key}"]`);
         if (el) el.value = value;
       }
     }
-    document.querySelectorAll('.skill-check, .gap-check').forEach(cb => { cb.checked = false; });
     if (data.checkboxes) {
       for (const [key, checked] of Object.entries(data.checkboxes)) {
         const el = document.getElementById(key);
