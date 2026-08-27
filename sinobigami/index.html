@@ -17,14 +17,9 @@
   </button>
   <aside id="history_panel" class="history-panel" aria-hidden="true">
     <div class="history-panel-head">
+    <div class="history-panel-head">
       <h2>アカウント</h2>
       <button type="button" id="history_close_btn" class="history-close-btn" aria-label="閉じる">✕</button>
-    </div>
-    <div class="history-panel-actions">
-      <button type="button" id="new_character_btn" class="btn">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
-        新規作成
-      </button>
     </div>
 
     <!-- 未ログイン時: ログイン/新規登録タブ -->
@@ -54,7 +49,12 @@
         <button type="button" id="logout_btn" class="btn btn-outline">ログアウト</button>
       </div>
     </div>
-
+    <div class="history-panel-actions">
+      <button type="button" id="new_character_btn" class="btn">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+        新規作成
+      </button>
+    </div>
     <div class="history-panel-sub-head">
       <h3 id="history_list_title">ゲスト履歴</h3>
     </div>

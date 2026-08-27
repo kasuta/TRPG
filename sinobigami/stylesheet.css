@@ -1745,29 +1745,29 @@ textarea {
 .history-panel-actions .btn {
 	width: 100%;
 }
-
 .auth-tabs {
 	display: flex;
 	gap: 4px;
 	margin-bottom: 10px;
+	border-bottom: 1px solid var(--border);
 }
 
 .auth-tab {
 	flex: 1;
-	padding: 6px 0;
-	border: 1px solid var(--border);
-	background: var(--surface-alt);
+	padding: 8px 0;
+	border: none;
+	border-bottom: 2px solid transparent;
+	background: transparent;
 	color: var(--muted);
 	font-size: 0.85rem;
 	font-weight: 700;
 	cursor: pointer;
-	border-radius: 6px;
+	border-radius: 0;
 }
 
 .auth-tab.is-active {
-	background: var(--accent);
-	color: #ffffff;
-	border-color: var(--accent);
+	color: var(--accent-strong);
+	border-bottom-color: var(--accent);
 }
 
 .auth-form {
