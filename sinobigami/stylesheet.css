@@ -1857,3 +1857,52 @@ textarea {
 }
 .history-item-game-badge.badge-sinobigami { background: #8c4433; }
 .history-item-game-badge.badge-magirogi { background: #2f5d62; }
+
+.modal-overlay {
+	position: fixed;
+	inset: 0;
+	background: rgba(0, 0, 0, 0.45);
+	z-index: 980;
+	display: none;
+	align-items: center;
+	justify-content: center;
+	padding: 20px;
+}
+.modal-overlay.is-open { display: flex; }
+.modal-box {
+	background: var(--panel);
+	border-radius: 14px;
+	padding: 24px;
+	max-width: 360px;
+	width: 100%;
+	box-shadow: 0 20px 50px var(--panel-shadow);
+	text-align: center;
+}
+.modal-box h3 {
+	margin: 0 0 16px;
+	font-size: 1rem;
+	color: var(--accent-strong);
+}
+.modal-actions {
+	display: flex;
+	gap: 10px;
+	margin-bottom: 10px;
+}
+.modal-actions { display: flex; gap: 10px; margin-bottom: 10px; }
+.modal-actions .btn { flex: 1; }
+.modal-actions .btn-sinobigami {
+	background: #8c4433;
+	border-color: #8c4433;
+}
+.modal-actions .btn-sinobigami:hover {
+	background: #6f3527;
+	border-color: #6f3527;
+}
+.modal-actions .btn-magirogi {
+	background: #2f5d62;
+	border-color: #2f5d62;
+}
+.modal-actions .btn-magirogi:hover {
+	background: #24484c;
+	border-color: #24484c;
+}

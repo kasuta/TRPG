@@ -879,15 +879,39 @@ document.addEventListener('DOMContentLoaded', () => {
     history.replaceState(null, '', window.location.pathname + window.location.search);
   };
 
-  const newCharacterBtn = document.getElementById('new_character_btn');
-  if (newCharacterBtn) {
-    newCharacterBtn.addEventListener('click', () => {
-      if (!confirm('現在の入力内容を破棄して新規作成しますか？')) return;
-      resetCharacterForm();
-      closeHistoryPanel();
-    });
-  }
+const newCharacterModal = document.getElementById('new_character_modal');
+const newCharChoiceSinobigami = document.getElementById('new_char_choice_sinobigami');
+const newCharChoiceMagirogi = document.getElementById('new_char_choice_magirogi');
+const newCharacterModalCancel = document.getElementById('new_character_modal_cancel');
 
+const openNewCharacterModal = () => {
+  if (!newCharacterModal) return;
+  newCharacterModal.classList.add('is-open');
+  newCharacterModal.setAttribute('aria-hidden', 'false');
+};
+const closeNewCharacterModal = () => {
+  if (!newCharacterModal) return;
+  newCharacterModal.classList.remove('is-open');
+  newCharacterModal.setAttribute('aria-hidden', 'true');
+};
+
+const startNewCharacter = (game) => {
+  if (!confirm('現在の入力内容を破棄して新規作成しますか？')) return;
+  closeNewCharacterModal();
+  if (game === CURRENT_GAME) {
+    resetCharacterForm();
+    closeHistoryPanel();
+  } else {
+    window.location.href = game === 'sinobigami' ? '../sinobigami/index.html' : '../magirogi/index.html';
+  }
+};
+
+const newCharacterBtn = document.getElementById('new_character_btn');
+if (newCharacterBtn) newCharacterBtn.addEventListener('click', openNewCharacterModal);
+if (newCharChoiceSinobigami) newCharChoiceSinobigami.addEventListener('click', () => startNewCharacter('sinobigami'));
+if (newCharChoiceMagirogi) newCharChoiceMagirogi.addEventListener('click', () => startNewCharacter('magirogi'));
+if (newCharacterModalCancel) newCharacterModalCancel.addEventListener('click', closeNewCharacterModal);
+if (newCharacterModal) newCharacterModal.addEventListener('click', (e) => { if (e.target === newCharacterModal) closeNewCharacterModal(); });
   /** キャラクターを保存する(currentCharacterIdの有無で新規/更新を自動判定) */
   const saveCharacter = async () => {
     const data = buildSaveData();
