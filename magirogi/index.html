@@ -10,6 +10,60 @@
 </head>
 
 <body>
+  <button type="button" id="history_toggle_btn" class="history-toggle-btn" aria-label="パネルを開閉" aria-expanded="false">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="9 6 15 12 9 18"/></svg>
+  </button>
+  <aside id="history_panel" class="history-panel" aria-hidden="true">
+    <div class="history-panel-head">
+      <h2>アカウント</h2>
+      <button type="button" id="history_close_btn" class="history-close-btn" aria-label="閉じる">✕</button>
+    </div>
+
+    <!-- 未ログイン時: ログイン/新規登録タブ -->
+    <div id="auth_section_guest" class="auth-section">
+      <div class="auth-tabs">
+        <button type="button" id="auth_tab_login" class="auth-tab is-active">ログイン</button>
+        <button type="button" id="auth_tab_register" class="auth-tab">新規登録</button>
+      </div>
+      <form id="login_form" class="auth-form">
+        <input type="text" id="login_username" placeholder="ユーザー名" autocomplete="username" required />
+        <input type="password" id="login_password" placeholder="パスワード" autocomplete="current-password" required />
+        <button type="submit" class="btn">ログイン</button>
+        <p class="auth-error" id="login_error"></p>
+      </form>
+      <form id="register_form" class="auth-form" style="display:none;">
+        <input type="text" id="register_username" placeholder="ユーザー名" autocomplete="username" required />
+        <input type="password" id="register_password" placeholder="パスワード(8文字以上)" autocomplete="new-password" required />
+        <button type="submit" class="btn">登録する</button>
+        <p class="auth-error" id="register_error"></p>
+      </form>
+    </div>
+
+    <!-- ログイン時: ユーザー情報 -->
+    <div id="auth_section_user" class="auth-section" style="display:none;">
+      <div class="auth-user-info">
+        <span id="auth_username_display"></span>
+        <button type="button" id="logout_btn" class="btn btn-outline">ログアウト</button>
+      </div>
+    </div>
+
+    <div class="history-panel-actions">
+      <button type="button" id="new_character_btn" class="btn">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+        新規作成
+      </button>
+    </div>
+
+    <div class="history-panel-sub-head">
+      <h3 id="history_list_title">ゲスト履歴</h3>
+      <div class="game-filter-tabs" id="game_filter_tabs" style="display:none;">
+        <button type="button" class="game-filter-tab is-active" data-filter="all">すべて</button>
+        <button type="button" class="game-filter-tab" data-filter="sinobigami">シノビガミ</button>
+        <button type="button" class="game-filter-tab" data-filter="magirogi">マギロギ</button>
+      </div>
+    </div>
+    <div class="history-list" id="history_list"></div>
+  </aside>
   <h1>マギロギのCS作成用サイト</h1>
   <main class="top-content">
     <div class="input-left-stack">
@@ -332,13 +386,15 @@
     </section>
     <div class="button-bar">
       <div class="button-group">
-        <button type="button" id="save_data_btn" class="btn btn-outline">データを保存 (.json)</button>
-        <label for="load_data_file" class="btn btn-outline">データを読み込む</label>
+        <button type="button" id="save_data_btn" class="btn btn-outline"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12"/><path d="M7 10l5 5 5-5"/><path d="M4 19h16"/></svg>データを保存 (.json)</button>
+        <label for="load_data_file" class="btn btn-outline"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 21V9"/><path d="M7 14l5-5 5 5"/><path d="M4 5h16"/></svg>データを読み込む</label>
         <input type="file" id="load_data_file" accept=".json" style="display: none;" />
+        <button type="button" id="save_character_btn" class="btn btn-outline"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2Z"/><path d="M17 21v-8H7v8"/><path d="M7 3v5h8"/></svg>保存</button>
+        <button type="button" id="share_link_btn" class="btn btn-outline"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 7h3a5 5 0 0 1 0 10h-3"/><path d="M9 17H6a5 5 0 0 1 0-10h3"/><line x1="8" y1="12" x2="16" y2="12"/></svg>共有リンクをコピー</button>
       </div>
       <div class="button-group">
-        <button type="button" id="copy_name_btn" class="btn btn-outline">CCFOLIA形式でコピー</button>
-        <button type="button" id="screenshot_btn" class="btn btn-outline">キャラシ画像をコピー</button>
+        <button type="button" id="copy_name_btn" class="btn btn-outline"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="6" y="4" width="12" height="17" rx="2"/><path d="M9 4V3a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v1"/><path d="M9 11h6M9 15h6"/></svg>CCFOLIA形式でコピー</button>
+        <button type="button" id="screenshot_btn" class="btn btn-outline"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="8.5" cy="9.5" r="1.5"/><path d="M21 16l-5.5-5.5a1.5 1.5 0 0 0-2.1 0L3 21"/></svg>キャラシ画像をコピー</button>
       </div>
     </div>
   </section>
