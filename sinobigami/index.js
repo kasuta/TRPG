@@ -1014,15 +1014,6 @@ document.addEventListener('DOMContentLoaded', () => {
     throw new Error('unknown compression method');
   };
 
-  // 初期状態で自動追加される忍法プリセット(addNinpoRow内で設定される既定値)。
-  // 未編集ならリンクに含める意味がないため共有時のみ除外する。
-  const DEFAULT_NINPO_PRESET = {
-    name: '接近戦攻撃', type: '攻撃', skill: '', range: '1', cost: '0',
-    effect: '接近戦ダメージを1点与える。', ref: '基78',
-  };
-  const isDefaultNinpoPreset = (row = {}) =>
-    Object.entries(DEFAULT_NINPO_PRESET).every(([k, v]) => (row[k] || '') === v);
-
   // --- 共有リンク用のデータ圧縮(キー名を持たない位置配列化・短縮キー化) ---
   const NINPO_ORDER = ['name', 'type', 'skill', 'range', 'cost', 'effect', 'ref'];
   const OUGI_ORDER = ['name', 'skill', 'kaizou', 'effect'];
@@ -1495,9 +1486,6 @@ const saveCharacter = async () => {
   const data = buildSaveData();
   const imageBase64 = data.image;
   delete data.image;
-  if (data.ninpo) {
-    data.ninpo = data.ninpo.filter(row => !isDefaultNinpoPreset(row));
-  }
   const compact = compactifyForShare(data);
 
   const authHeaders = getAuthToken() ? { Authorization: `Bearer ${getAuthToken()}` } : {};
