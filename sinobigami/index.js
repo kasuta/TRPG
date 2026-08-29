@@ -1166,13 +1166,16 @@ const renderListItems = (items) => {
     const date = new Date(h.updatedAt);
     const dateStr = isNaN(date) ? '' : date.toLocaleString('ja-JP', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' });
     const badge = h.game ? `<span class="history-item-game-badge badge-${h.game}">${GAME_LABEL[h.game] || h.game}</span>` : '';
+    const deleteBtn = h.deletable
+      ? `<button type="button" class="history-item-delete" data-delete-id="${h.id}" data-delete-type="${h.deleteType || 'local'}" title="削除">✕</button>`
+      : '';
     return `
       <div class="history-item" data-id="${h.id}" data-game="${h.game || ''}">
         <div class="history-item-info">
           <div class="history-item-name">${badge}${escapeHTML(h.name || '(名前未設定)')}</div>
           <div class="history-item-date">${dateStr}</div>
         </div>
-        ${h.deletable ? `<button type="button" class="history-item-delete" data-delete-id="${h.id}" title="削除">✕</button>` : ''}
+        ${deleteBtn}
       </div>`;
   }).join('');
 };
@@ -1195,7 +1198,27 @@ let gameFilter = localStorage.getItem('characterListFilter') || 'all';
 
 const applyGameFilter = () => {
   const filtered = gameFilter === 'all' ? myCharactersCache : myCharactersCache.filter(c => c.game === gameFilter);
-  renderListItems(filtered.map(c => ({ ...c, deletable: false })));
+  renderListItems(filtered.map(c => ({ ...c, deletable: true, deleteType: 'server' })));
+};
+
+/** サーバー上のキャラクターを削除する */
+const deleteCharacterFromServer = async (id) => {
+  try {
+    const res = await fetch(`${API_BASE}/api/character/${id}`, {
+      method: 'DELETE',
+      headers: { Authorization: `Bearer ${getAuthToken()}` },
+    });
+    if (!res.ok) throw new Error('削除に失敗しました');
+    myCharactersCache = myCharactersCache.filter(c => c.id !== id);
+    applyGameFilter();
+    if (currentCharacterId === id) {
+      currentCharacterId = null;
+      history.replaceState(null, '', window.location.pathname + window.location.search);
+    }
+  } catch (err) {
+    console.error(err);
+    alert('削除に失敗しました。');
+  }
 };
 
 const renderMyCharacters = async () => {
@@ -1391,15 +1414,21 @@ if (historyListEl) {
   historyListEl.addEventListener('click', (e) => {
     const delBtn = e.target.closest('.history-item-delete');
     if (delBtn) {
-      removeFromHistory(delBtn.dataset.deleteId);
-      renderGuestHistory();
+      const type = delBtn.dataset.deleteType;
+      if (type === 'server') {
+        if (!confirm('このキャラクターを削除します。この操作は取り消せません。よろしいですか？')) return;
+        deleteCharacterFromServer(delBtn.dataset.deleteId);
+      } else {
+        removeFromHistory(delBtn.dataset.deleteId);
+        renderGuestHistory();
+      }
       return;
     }
     const item = e.target.closest('.history-item');
     if (item) {
       const game = item.dataset.game;
       if (game && game !== CURRENT_GAME) {
-        const targetPath = game === 'magirogi' ? '../magirogi/index.html' : '../sinobigami/index.html';
+        const targetPath = game === 'sinobigami' ? '../sinobigami/index.html' : '../magirogi/index.html';
         window.location.href = `${targetPath}#id=${item.dataset.id}`;
         return;
       }
