@@ -1732,6 +1732,12 @@ textarea {
 
 .history-item-delete:hover { color: var(--accent); }
 
+.history-item-delete svg {
+	width: 15px;
+	height: 15px;
+	display: block;
+}
+
 .history-empty {
 	color: var(--muted);
 	font-size: 0.85rem;
