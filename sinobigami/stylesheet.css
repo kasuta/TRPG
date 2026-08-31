@@ -1575,6 +1575,7 @@ textarea {
 .pv-effect {
 	max-width: 280px;
 	word-break: break-all;
+	white-space: pre-wrap;
 }
 
 .pv-charge {

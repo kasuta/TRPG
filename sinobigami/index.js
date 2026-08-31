@@ -1659,7 +1659,8 @@ if (saveCharacterBtn) {
 
       commands += '\nーーー忍法ーーー\n';
       collectNinpo({ includeDisabled: false }).forEach(np => {
-        if (np.name) commands += `【${np.name}】(${np.type}/指定特技:${np.skill}/間合:${np.range}/コスト:${np.cost})　効果:${np.effect}\n`;
+        const effectOneLine = np.effect.replace(/\r?\n/g, '');
+        if (np.name) commands += `【${np.name}】(${np.type}/指定特技:${np.skill}/間合:${np.range}/コスト:${np.cost})　効果:${effectOneLine}\n`;
       });
 
       commands += `\nーーー表ーーー

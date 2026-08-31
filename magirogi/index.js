@@ -1074,13 +1074,16 @@ if (newCharacterModal) newCharacterModal.addEventListener('click', (e) => { if (
       if (!nameValue) { alert('かりそめの名前が入力されていません。'); return; }
 
       let commands = 'ーーー特技ーーー\n';
-      document.querySelectorAll('.skill-check:checked').forEach(cb => { commands += `2d6>=5《${cb.value}》\n`; });
+      document.querySelectorAll('.skill-check:checked').forEach(cb => { commands += `2d6>=5 《${cb.value}》\n`; });
       const soulSkill = getFirstValue(['soul_skill', 'true_skill']);
-      if (soulSkill !== '0') commands += `2d6>=6《${soulSkill}》\n`;
+      if (soulSkill !== '0') commands += `2d6>=6 《${soulSkill}》\n`;
 
       commands += '\nーーー魔法ーーー\n';
       collectSpells().forEach(sp => {
-        if (sp.name) commands += `【${sp.name}】取得=/種別=${sp.type}/特技=${sp.skill}/目標=${sp.target}/コスト=${sp.cost}/${sp.ref}　効果：${sp.effect}\n`;
+        if (sp.name) {
+          const effectOneLine = sp.effect.replace(/\r?\n/g, '');
+          commands += `【${sp.name}】取得=/種別=${sp.type}/特技=${sp.skill}/目標=${sp.target}/コスト=${sp.cost}/${sp.ref}　効果：${effectOneLine}\n`;
+        }
       });
 
       const trueName = getFirstValue(['true_name']);
