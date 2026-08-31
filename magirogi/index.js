@@ -1082,7 +1082,7 @@ if (newCharacterModal) newCharacterModal.addEventListener('click', (e) => { if (
       collectSpells().forEach(sp => {
         if (sp.name) {
           const effectOneLine = sp.effect.replace(/\r?\n/g, '');
-          commands += `【${sp.name}】取得=/種別=${sp.type}/特技=${sp.skill}/目標=${sp.target}/コスト=${sp.cost}/${sp.ref}　効果：${effectOneLine}\n`;
+          commands += `【${sp.name}】(取得=/種別=${sp.type}/特技=${sp.skill}/目標=${sp.target}/コスト=${sp.cost}/${sp.ref})効果：${effectOneLine}\n`;
         }
       });
 
