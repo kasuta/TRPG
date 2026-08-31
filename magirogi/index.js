@@ -1095,9 +1095,9 @@ if (newCharacterModal) newCharacterModal.addEventListener('click', (e) => { if (
       const rootVal = getFirstValue(['kongen']);
 
       commands += `\nーーー戦闘ーーー
-s1d1　　攻撃プロット（攻撃力={攻撃力}）
+s1d1　攻撃プロット（攻撃力={攻撃力}）
 s{攻撃力}TZ6　攻撃ランダムプロット（攻撃力={攻撃力}）
-s1d1　　防御プロット（防御力={防御力}）
+s1d1　防御プロット（防御力={防御力}）
 s{防御力}TZ6　防御ランダムプロット（防御力={防御力}）\n\n`;
 
       commands += `ーーー表ーーー
