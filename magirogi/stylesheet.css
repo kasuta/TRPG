@@ -530,22 +530,144 @@ textarea {
 
 .spell-grid {
 	display: grid;
-	/* 魔法名 タイプ 指定特技 対象 コスト チャージ 効果 呪句 参照p */
 	grid-template-columns:
-		minmax(70px, 1fr)
-		64px
-		minmax(60px, 0.7fr)
-		minmax(50px, 0.7fr)
-		64px
-		80px
-		minmax(80px, 1.8fr)
-		50px
-		minmax(40px, 0.6fr);
+		minmax(90px, 1.3fr)
+		72px
+		minmax(70px, 0.9fr)
+		minmax(60px, 0.9fr)
+		72px
+		90px
+		minmax(140px, 2.2fr)
+		minmax(80px, 1fr)
+		58px;
 	gap: 1px;
 	background-color: var(--border);
 	border: 1px solid var(--border);
 	border-radius: 8px;
 	overflow: hidden;
+}
+
+.spell-row {
+	display: contents;
+}
+
+.spell-phrase-block {
+	display: flex;
+	align-items: center;
+	grid-column: 1 / -1;
+	background: #fff;
+	padding: 5px 10px 5px 8px;
+	gap: 8px;
+}
+
+.spell-phrase-block::before {
+	content: "";
+	display: block;
+	flex: 0 0 90px;
+	height: 32px;
+	background: #fff;
+}
+
+.spell-phrase-arrow {
+	flex: 0 0 auto;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	color: var(--accent);
+}
+
+.spell-phrase-arrow svg {
+	width: 16px;
+	height: 16px;
+}
+
+.spell-phrase-table {
+	flex: 1;
+	display: flex;
+	min-width: 0;
+}
+
+.spell-phrase-table .spell-phrase-label {
+	flex: 0 0 auto;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	background: linear-gradient(180deg, var(--accent) 0%, var(--accent-strong) 100%);
+	color: #ffffff;
+	font-weight: 700;
+	font-size: 0.85rem;
+	padding: 0 14px;
+	white-space: nowrap;
+	border-radius: 6px;
+	box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.12);
+}
+
+.spell-phrase-table .spell-phrase-input {
+	flex: 1;
+	min-width: 0;
+	height: 32px;
+	padding: 0 10px;
+	border: 1px solid var(--border);
+	border-left: none;
+	border-radius: 0 6px 6px 0;
+	background: #ffffff;
+	font-size: 0.9rem;
+	line-height: 1.2;
+	white-space: nowrap;
+	resize: none;
+	overflow: hidden;
+	box-sizing: border-box;
+}
+
+.spell-phrase-table .spell-phrase-input:focus {
+	outline: none;
+	background: #fbfcfd;
+	box-shadow: inset 0 0 0 2px rgba(47, 93, 98, 0.18);
+}
+
+.spell-grid .spell-head {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	background: var(--ink);
+	color: #ffffff;
+	text-align: center;
+	padding: 6px 4px;
+	font-weight: 700;
+	font-size: 0.9rem;
+	white-space: nowrap;
+	min-height: 32px;
+}
+
+.spell-move-cell {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	background: #ffffff;
+	padding: 6px 4px;
+}
+
+.spell-move-btns {
+	display: flex;
+	flex-direction: column;
+	gap: 4px;
+}
+
+.btn-move {
+	width: 24px;
+	height: 20px;
+	padding: 0;
+	border: 1px solid var(--border);
+	border-radius: 4px;
+	background: #f7f9fb;
+	color: var(--ink);
+	font-size: 0.8rem;
+	line-height: 1;
+	cursor: pointer;
+}
+
+.btn-move:hover {
+	background: #edf2f6;
 }
 
 .spell-actions {
@@ -555,13 +677,17 @@ textarea {
 }
 
 .spell-head {
+	display: flex;
+	align-items: center;
+	justify-content: center;
 	background: var(--ink);
 	color: #ffffff;
 	text-align: center;
-	padding: 10px 8px;
+	padding: 8px 6px;
 	font-weight: 700;
 	font-size: 0.95rem;
 	white-space: nowrap;
+	min-height: 42px;
 }
 
 /* 蔵書内の入力欄（特技表と同様に枠線を消してマス目に合わせる） */

@@ -36,7 +36,7 @@ const collectSpells = () => {
       target: document.querySelector(`[name="spell_target_${i}"]`).value || '',
       cost: document.querySelector(`[name="spell_cost_${i}"]`).value || '',
       effect: document.querySelector(`[name="spell_effect_${i}"]`).value || '',
-      phrase: document.getElementById(`phrase_${i}`) ? document.getElementById(`phrase_${i}`).checked : false,
+      phrase: document.querySelector(`[name="spell_phrase_${i}"]`) ? document.querySelector(`[name="spell_phrase_${i}"]`).value || '' : '',
       ref: document.querySelector(`[name="spell_reference_p_${i}"]`).value || '',
       charges
     });
@@ -62,8 +62,8 @@ const collectRelations = () => {
   return relations;
 };
 
-/** 蔵書の空行判定(魔法名・指定特技・対象・コスト・効果・参照pが全て空なら空行とみなす) */
-const isEmptySpellRow = (row = {}) => !row.name && !row.skill && !row.target && !row.cost && !row.effect && !row.ref;
+/** 蔵書の空行判定(魔法名・指定特技・対象・コスト・効果・呪句・参照pが全て空なら空行とみなす) */
+const isEmptySpellRow = (row = {}) => !row.name && !row.skill && !row.target && !row.cost && !row.effect && !row.phrase && !row.ref;
 
 /** 関係の空行判定 */
 const isEmptyRelationRow = (row = {}) => !row.anchor && !row.fate && !row.attr && !row.setting;
@@ -77,7 +77,7 @@ const getAcquiredSkills = () => {
 
 /** テキストエリア行の高さ同期（汎用） */
 const resizeTextareaRow = (container, selector, rowId) => {
-  const rowTextareas = container.querySelectorAll(`${selector}[data-row="${rowId}"]`);
+  const rowTextareas = container.querySelectorAll(`${selector}[data-row="${rowId}"]:not(.spell-phrase-textarea)`);
   if (!rowTextareas.length) return;
   rowTextareas.forEach(ta => { ta.style.height = 'auto'; });
   let maxHeight = 0;
@@ -148,40 +148,91 @@ document.addEventListener('DOMContentLoaded', () => {
   const removeSpellBtn = document.getElementById('remove_spell_btn');
   let spellCount = 0;
   const SPELL_HEADER_COUNT = 9;
-  const SPELL_ROW_SIZE = 9;
+  const SPELL_ROW_SIZE = 2;
 
   const bindSpellTextarea = (textarea) => {
     if (textarea.dataset.resizeBound) return;
     textarea.dataset.resizeBound = 'true';
+
+    if (textarea.classList.contains('spell-phrase-textarea')) {
+      textarea.addEventListener('input', () => {
+        textarea.style.height = 'auto';
+        textarea.style.height = `${textarea.scrollHeight + 2}px`;
+      });
+      textarea.style.height = 'auto';
+      textarea.style.height = `${textarea.scrollHeight + 2}px`;
+      return;
+    }
+
     textarea.addEventListener('input', () => resizeTextareaRow(spellList, '.spell-textarea', textarea.dataset.row));
     resizeTextareaRow(spellList, '.spell-textarea', textarea.dataset.row);
+  };
+
+  /** 魔法行を上下に入れ替える */
+  const swapSpellRows = (rowA, rowB) => {
+    if (rowA < 1 || rowB < 1 || rowA > spellCount || rowB > spellCount || rowA === rowB) return;
+
+    const fields = ['name', 'type', 'skill', 'target', 'cost', 'effect', 'phrase', 'reference_p'];
+    fields.forEach(field => {
+      const elA = document.querySelector(`[name="spell_${field}_${rowA}"]`);
+      const elB = document.querySelector(`[name="spell_${field}_${rowB}"]`);
+      if (elA && elB) {
+        const tmp = elA.value;
+        elA.value = elB.value;
+        elB.value = tmp;
+      }
+    });
+
+    for (let i = 1; i <= 5; i++) {
+      const ida = document.getElementById(`charge_${rowA}_${i}`);
+      const idb = document.getElementById(`charge_${rowB}_${i}`);
+      if (ida && idb) {
+        const tmp = ida.checked;
+        ida.checked = idb.checked;
+        idb.checked = tmp;
+      }
+    }
+
+    [rowA, rowB].forEach(r => resizeTextareaRow(spellList, '.spell-textarea', String(r)));
   };
 
   const addSpellRow = () => {
     spellCount++;
     const n = spellCount;
     const rowHTML = `
-      <textarea name="spell_name_${n}" class="spell-textarea" rows="1" data-row="${n}"></textarea>
-      <select name="spell_type_${n}">
-        <option value="召喚">召喚</option>
-        <option value="呪文">呪文</option>
-        <option value="装備">装備</option>
-      </select>
-      <textarea name="spell_skill_${n}" class="spell-textarea" rows="1" data-row="${n}"></textarea>
-      <textarea name="spell_target_${n}" class="spell-textarea" rows="1" data-row="${n}"></textarea>
-      <textarea name="spell_cost_${n}" class="spell-textarea" rows="1" data-row="${n}"></textarea>
-      <div class="box-container">
-        <input type="checkbox" id="charge_${n}_1" class="box-check" data-charge-row="${n}" data-charge-index="1"><label for="charge_${n}_1" class="box-label"></label>
-        <input type="checkbox" id="charge_${n}_2" class="box-check" data-charge-row="${n}" data-charge-index="2"><label for="charge_${n}_2" class="box-label"></label>
-        <input type="checkbox" id="charge_${n}_3" class="box-check" data-charge-row="${n}" data-charge-index="3"><label for="charge_${n}_3" class="box-label"></label>
-        <input type="checkbox" id="charge_${n}_4" class="box-check" data-charge-row="${n}" data-charge-index="4"><label for="charge_${n}_4" class="box-label"></label>
-        <input type="checkbox" id="charge_${n}_5" class="box-check" data-charge-row="${n}" data-charge-index="5"><label for="charge_${n}_5" class="box-label"></label>
+      <div class="spell-row" data-row="${n}">
+        <textarea name="spell_name_${n}" class="spell-textarea" rows="1" data-row="${n}"></textarea>
+        <select name="spell_type_${n}">
+          <option value="召喚">召喚</option>
+          <option value="呪文">呪文</option>
+          <option value="装備">装備</option>
+        </select>
+        <textarea name="spell_skill_${n}" class="spell-textarea" rows="1" data-row="${n}"></textarea>
+        <textarea name="spell_target_${n}" class="spell-textarea" rows="1" data-row="${n}"></textarea>
+        <textarea name="spell_cost_${n}" class="spell-textarea" rows="1" data-row="${n}"></textarea>
+        <div class="box-container">
+          <input type="checkbox" id="charge_${n}_1" class="box-check" data-charge-row="${n}" data-charge-index="1"><label for="charge_${n}_1" class="box-label"></label>
+          <input type="checkbox" id="charge_${n}_2" class="box-check" data-charge-row="${n}" data-charge-index="2"><label for="charge_${n}_2" class="box-label"></label>
+          <input type="checkbox" id="charge_${n}_3" class="box-check" data-charge-row="${n}" data-charge-index="3"><label for="charge_${n}_3" class="box-label"></label>
+          <input type="checkbox" id="charge_${n}_4" class="box-check" data-charge-row="${n}" data-charge-index="4"><label for="charge_${n}_4" class="box-label"></label>
+          <input type="checkbox" id="charge_${n}_5" class="box-check" data-charge-row="${n}" data-charge-index="5"><label for="charge_${n}_5" class="box-label"></label>
+        </div>
+        <textarea name="spell_effect_${n}" class="spell-textarea" rows="1" data-row="${n}"></textarea>
+        <input type="text" name="spell_reference_p_${n}" />
+        <div class="spell-move-cell">
+          <div class="spell-move-btns">
+            <button type="button" class="btn-move btn-move-up" data-spell-row="${n}" title="上へ移動">▲</button>
+            <button type="button" class="btn-move btn-move-down" data-spell-row="${n}" title="下へ移動">▼</button>
+          </div>
+        </div>
       </div>
-      <textarea name="spell_effect_${n}" class="spell-textarea" rows="1" data-row="${n}"></textarea>
-      <div class="box-container">
-        <input type="checkbox" id="phrase_${n}" class="box-check"><label for="phrase_${n}" class="box-label"></label>
-      </div>
-      <input type="text" name="spell_reference_p_${n}" />`;
+      <div class="spell-phrase-block" data-row="${n}">
+        <span class="spell-phrase-arrow" aria-hidden="true">↳</span>
+        <div class="spell-phrase-table">
+          <div class="spell-phrase-label">呪句</div>
+          <input type="text" name="spell_phrase_${n}" class="spell-phrase-input" data-row="${n}" placeholder="呪句を入力" />
+        </div>
+      </div>`;
     spellList.insertAdjacentHTML('beforeend', rowHTML);
     spellList.querySelectorAll(`.spell-textarea[data-row="${n}"]`).forEach(bindSpellTextarea);
     bindChargeChecks(spellList, n);
@@ -195,6 +246,19 @@ document.addEventListener('DOMContentLoaded', () => {
     spellCount = Math.max(0, spellCount - 1);
   };
 
+  if (spellList) {
+    spellList.addEventListener('click', (e) => {
+      const btn = e.target.closest('.btn-move');
+      if (!btn) return;
+      const row = parseInt(btn.dataset.spellRow, 10);
+      if (btn.classList.contains('btn-move-up')) {
+        swapSpellRows(row, row - 1);
+      } else if (btn.classList.contains('btn-move-down')) {
+        swapSpellRows(row, row + 1);
+      }
+    });
+  }
+
   const setDefaultSpellPreset = () => {
     const setVal = (sel, val) => {
       const el = spellList.querySelector(sel);
@@ -207,6 +271,7 @@ document.addEventListener('DOMContentLoaded', () => {
     setVal('textarea[name="spell_effect_1"]',
       '１Ｄ６を振って分野をランダムに決め、その後２Ｄ６を振ってランダムに特技一つを選ぶ。それが指定特技になる。その特技の判定に成功すると、その特技に対応した精霊一体を召喚できる'
     );
+    setVal('textarea[name="spell_phrase_1"]', '「死の輪を踏みしめ、我が名を呼べ」');
     resizeTextareaRow(spellList, '.spell-textarea', '1');
   };
 
@@ -376,10 +441,11 @@ document.addEventListener('DOMContentLoaded', () => {
         q(`[name="spell_target_${i}"]`).value = spell.target || '';
         q(`[name="spell_cost_${i}"]`).value = spell.cost || '';
         q(`[name="spell_effect_${i}"]`).value = spell.effect || '';
+        q(`[name="spell_phrase_${i}"]`).value = spell.phrase || '';
         q(`[name="spell_reference_p_${i}"]`).value = spell.ref || '';
-        if (document.getElementById(`phrase_${i}`)) document.getElementById(`phrase_${i}`).checked = spell.phrase || false;
         if (spell.charges) spell.charges.forEach((ck, ci) => { const cb = document.getElementById(`charge_${i}_${ci + 1}`); if (cb) cb.checked = ck; });
         q(`[name="spell_effect_${i}"]`).dispatchEvent(new Event('input'));
+        q(`[name="spell_phrase_${i}"]`).dispatchEvent(new Event('input'));
       });
     }
 
@@ -466,13 +532,13 @@ document.addEventListener('DOMContentLoaded', () => {
   const spellsToArrays = (spells) => spells.map(sp => trimTrailingEmpty([
     sp.name || '', sp.type || '', sp.skill || '', sp.target || '', sp.cost || '', sp.effect || '', sp.ref || '',
     (sp.charges || []).map(c => c ? '1' : '0').join(''),
-    sp.phrase ? '1' : '',
+    typeof sp.phrase === 'string' ? sp.phrase : (sp.phrase ? '1' : ''),
   ]));
   const arraysToSpells = (arrs) => arrs.map(arr => ({
     name: arr[0] || '', type: arr[1] || '召喚', skill: arr[2] || '', target: arr[3] || '', cost: arr[4] || '',
     effect: arr[5] || '', ref: arr[6] || '',
     charges: (arr[7] || '').split('').map(c => c === '1'),
-    phrase: arr[8] === '1',
+    phrase: arr[8] === '1' ? '' : (typeof arr[8] === 'string' ? arr[8] : ''),
   }));
 
   /** 関係行を短縮配列に変換([アンカー名,運命,属性,設定,チェック(1/'')]) */
@@ -1094,6 +1160,14 @@ if (newCharacterModal) newCharacterModal.addEventListener('click', (e) => { if (
       const defenseVal = getFirstValue(['defense']);
       const rootVal = getFirstValue(['kongen']);
 
+      commands += `\nーーー呪句ーーー\n`;
+      collectSpells().forEach(sp => {
+        if (sp.name && sp.phrase) {
+          const phraseOneLine = sp.phrase.replace(/\r?\n/g, '');
+          commands += `呪句【${sp.name}】${phraseOneLine}\n`;
+        }
+      });
+
       commands += `\nーーー戦闘ーーー
 s1d1　攻撃プロット（攻撃力={攻撃力}）
 s{攻撃力}TZ6　攻撃ランダムプロット（攻撃力={攻撃力}）
@@ -1267,7 +1341,7 @@ FLT　その後表`;
     if (spells.length) {
       spellHTML = '<table class="pv-table"><thead><tr><th>魔法名</th><th>タイプ</th><th>指定特技</th><th>対象</th><th>コスト</th><th>チャージ</th><th>効果</th><th>呪句</th><th>参照p</th></tr></thead><tbody>';
       spells.forEach(sp => {
-        spellHTML += `<tr><td>${escapeHTML(sp.name)}</td><td>${escapeHTML(sp.type)}</td><td>${escapeHTML(sp.skill)}</td><td>${escapeHTML(sp.target)}</td><td>${escapeHTML(sp.cost)}</td><td class="pv-charge">${chargeStr(sp.charges)}</td><td class="pv-effect">${escapeHTML(sp.effect)}</td><td>${sp.phrase ? '■' : '□'}</td><td>${escapeHTML(sp.ref)}</td></tr>`;
+        spellHTML += `<tr><td>${escapeHTML(sp.name)}</td><td>${escapeHTML(sp.type)}</td><td>${escapeHTML(sp.skill)}</td><td>${escapeHTML(sp.target)}</td><td>${escapeHTML(sp.cost)}</td><td class="pv-charge">${chargeStr(sp.charges)}</td><td class="pv-effect">${escapeHTML(sp.effect)}</td><td>${escapeHTML(sp.phrase || '□')}</td><td>${escapeHTML(sp.ref)}</td></tr>`;
       });
       spellHTML += '</tbody></table>';
     }
