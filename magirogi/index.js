@@ -19,6 +19,18 @@ const getFirstValue = (keys, fallback = '0') => {
   return fallback;
 };
 
+/** 魔法の各テキスト項目のオブジェクトキーとDOM上のname接尾辞の対応(collectSpells/swapSpellRowsで共有) */
+const SPELL_TEXT_FIELDS = [
+  { key: 'name', attr: 'name' },
+  { key: 'type', attr: 'type' },
+  { key: 'skill', attr: 'skill' },
+  { key: 'target', attr: 'target' },
+  { key: 'cost', attr: 'cost' },
+  { key: 'effect', attr: 'effect' },
+  { key: 'phrase', attr: 'phrase' },
+  { key: 'ref', attr: 'reference_p' },
+];
+
 /** 蔵書データを収集 */
 const collectSpells = () => {
   const spells = [];
@@ -29,17 +41,12 @@ const collectSpells = () => {
       const cb = document.getElementById(`charge_${i}_${c}`);
       charges.push(cb ? cb.checked : false);
     }
-    spells.push({
-      name: document.querySelector(`[name="spell_name_${i}"]`).value || '',
-      type: document.querySelector(`[name="spell_type_${i}"]`).value || '',
-      skill: document.querySelector(`[name="spell_skill_${i}"]`).value || '',
-      target: document.querySelector(`[name="spell_target_${i}"]`).value || '',
-      cost: document.querySelector(`[name="spell_cost_${i}"]`).value || '',
-      effect: document.querySelector(`[name="spell_effect_${i}"]`).value || '',
-      phrase: document.querySelector(`[name="spell_phrase_${i}"]`) ? document.querySelector(`[name="spell_phrase_${i}"]`).value || '' : '',
-      ref: document.querySelector(`[name="spell_reference_p_${i}"]`).value || '',
-      charges
+    const spell = { charges };
+    SPELL_TEXT_FIELDS.forEach(({ key, attr }) => {
+      const el = document.querySelector(`[name="spell_${attr}_${i}"]`);
+      spell[key] = el ? el.value || '' : '';
     });
+    spells.push(spell);
     i++;
   }
   return spells;
@@ -62,8 +69,8 @@ const collectRelations = () => {
   return relations;
 };
 
-/** 蔵書の空行判定(魔法名・指定特技・対象・コスト・効果・呪句・参照pが全て空なら空行とみなす) */
-const isEmptySpellRow = (row = {}) => !row.name && !row.skill && !row.target && !row.cost && !row.effect && !row.phrase && !row.ref;
+/** 蔵書の空行判定(魔法名・指定特技・対象・コスト・効果・呪句・参照p・チャージが全て空なら空行とみなす) */
+const isEmptySpellRow = (row = {}) => !row.name && !row.skill && !row.target && !row.cost && !row.effect && !row.phrase && !row.ref && !(row.charges || []).some(Boolean);
 
 /** 関係の空行判定 */
 const isEmptyRelationRow = (row = {}) => !row.anchor && !row.fate && !row.attr && !row.setting;
@@ -77,7 +84,7 @@ const getAcquiredSkills = () => {
 
 /** テキストエリア行の高さ同期（汎用） */
 const resizeTextareaRow = (container, selector, rowId) => {
-  const rowTextareas = container.querySelectorAll(`${selector}[data-row="${rowId}"]:not(.spell-phrase-textarea)`);
+  const rowTextareas = container.querySelectorAll(`${selector}[data-row="${rowId}"]`);
   if (!rowTextareas.length) return;
   rowTextareas.forEach(ta => { ta.style.height = 'auto'; });
   let maxHeight = 0;
@@ -154,16 +161,6 @@ document.addEventListener('DOMContentLoaded', () => {
     if (textarea.dataset.resizeBound) return;
     textarea.dataset.resizeBound = 'true';
 
-    if (textarea.classList.contains('spell-phrase-textarea')) {
-      textarea.addEventListener('input', () => {
-        textarea.style.height = 'auto';
-        textarea.style.height = `${textarea.scrollHeight + 2}px`;
-      });
-      textarea.style.height = 'auto';
-      textarea.style.height = `${textarea.scrollHeight + 2}px`;
-      return;
-    }
-
     textarea.addEventListener('input', () => resizeTextareaRow(spellList, '.spell-textarea', textarea.dataset.row));
     resizeTextareaRow(spellList, '.spell-textarea', textarea.dataset.row);
   };
@@ -172,10 +169,9 @@ document.addEventListener('DOMContentLoaded', () => {
   const swapSpellRows = (rowA, rowB) => {
     if (rowA < 1 || rowB < 1 || rowA > spellCount || rowB > spellCount || rowA === rowB) return;
 
-    const fields = ['name', 'type', 'skill', 'target', 'cost', 'effect', 'phrase', 'reference_p'];
-    fields.forEach(field => {
-      const elA = document.querySelector(`[name="spell_${field}_${rowA}"]`);
-      const elB = document.querySelector(`[name="spell_${field}_${rowB}"]`);
+    SPELL_TEXT_FIELDS.forEach(({ attr }) => {
+      const elA = document.querySelector(`[name="spell_${attr}_${rowA}"]`);
+      const elB = document.querySelector(`[name="spell_${attr}_${rowB}"]`);
       if (elA && elB) {
         const tmp = elA.value;
         elA.value = elB.value;
@@ -271,7 +267,7 @@ document.addEventListener('DOMContentLoaded', () => {
     setVal('textarea[name="spell_effect_1"]',
       '１Ｄ６を振って分野をランダムに決め、その後２Ｄ６を振ってランダムに特技一つを選ぶ。それが指定特技になる。その特技の判定に成功すると、その特技に対応した精霊一体を召喚できる'
     );
-    setVal('textarea[name="spell_phrase_1"]', '「死の輪を踏みしめ、我が名を呼べ」');
+    setVal('input[name="spell_phrase_1"]', '「死の輪を踏みしめ、我が名を呼べ」');
     resizeTextareaRow(spellList, '.spell-textarea', '1');
   };
 
@@ -394,7 +390,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
     document.querySelectorAll('input[type="checkbox"]').forEach(el => {
       if (el.closest('#history_panel')) return;
-      if (el.id.startsWith('charge_') || el.id.startsWith('phrase_') || el.id.startsWith('relation_check_')) return;
+      if (el.id.startsWith('charge_') || el.id.startsWith('relation_check_')) return;
       data.checkboxes[el.id] = el.checked;
     });
     data.spells = collectSpells().filter(row => !isEmptySpellRow(row));
@@ -441,7 +437,7 @@ document.addEventListener('DOMContentLoaded', () => {
         q(`[name="spell_target_${i}"]`).value = spell.target || '';
         q(`[name="spell_cost_${i}"]`).value = spell.cost || '';
         q(`[name="spell_effect_${i}"]`).value = spell.effect || '';
-        q(`[name="spell_phrase_${i}"]`).value = spell.phrase || '';
+        q(`[name="spell_phrase_${i}"]`).value = typeof spell.phrase === 'string' ? spell.phrase : '';
         q(`[name="spell_reference_p_${i}"]`).value = spell.ref || '';
         if (spell.charges) spell.charges.forEach((ck, ci) => { const cb = document.getElementById(`charge_${i}_${ci + 1}`); if (cb) cb.checked = ck; });
         q(`[name="spell_effect_${i}"]`).dispatchEvent(new Event('input'));
@@ -528,17 +524,17 @@ document.addEventListener('DOMContentLoaded', () => {
     return a;
   };
 
-  /** 蔵書行を短縮配列に変換([名前,タイプ,指定特技,対象,コスト,効果,参照p,チャージ(5桁の01文字列),呪句(1/'')]) */
+  /** 蔵書行を短縮配列に変換([名前,タイプ,指定特技,対象,コスト,効果,参照p,チャージ(5桁の01文字列),呪句]) */
   const spellsToArrays = (spells) => spells.map(sp => trimTrailingEmpty([
     sp.name || '', sp.type || '', sp.skill || '', sp.target || '', sp.cost || '', sp.effect || '', sp.ref || '',
     (sp.charges || []).map(c => c ? '1' : '0').join(''),
-    typeof sp.phrase === 'string' ? sp.phrase : (sp.phrase ? '1' : ''),
+    typeof sp.phrase === 'string' ? sp.phrase : '',
   ]));
   const arraysToSpells = (arrs) => arrs.map(arr => ({
     name: arr[0] || '', type: arr[1] || '召喚', skill: arr[2] || '', target: arr[3] || '', cost: arr[4] || '',
     effect: arr[5] || '', ref: arr[6] || '',
     charges: (arr[7] || '').split('').map(c => c === '1'),
-    phrase: arr[8] === '1' ? '' : (typeof arr[8] === 'string' ? arr[8] : ''),
+    phrase: typeof arr[8] === 'string' ? arr[8] : '',
   }));
 
   /** 関係行を短縮配列に変換([アンカー名,運命,属性,設定,チェック(1/'')]) */
@@ -1144,8 +1140,10 @@ if (newCharacterModal) newCharacterModal.addEventListener('click', (e) => { if (
       const soulSkill = getFirstValue(['soul_skill', 'true_skill']);
       if (soulSkill !== '0') commands += `2d6>=6 《${soulSkill}》\n`;
 
+      const ccfoliaSpells = collectSpells();
+
       commands += '\nーーー魔法ーーー\n';
-      collectSpells().forEach(sp => {
+      ccfoliaSpells.forEach(sp => {
         if (sp.name) {
           const effectOneLine = sp.effect.replace(/\r?\n/g, '');
           commands += `【${sp.name}】(取得=/種別=${sp.type}/特技=${sp.skill}/目標=${sp.target}/コスト=${sp.cost}/${sp.ref})効果：${effectOneLine}\n`;
@@ -1161,7 +1159,7 @@ if (newCharacterModal) newCharacterModal.addEventListener('click', (e) => { if (
       const rootVal = getFirstValue(['kongen']);
 
       commands += `\nーーー呪句ーーー\n`;
-      collectSpells().forEach(sp => {
+      ccfoliaSpells.forEach(sp => {
         if (sp.name && sp.phrase) {
           const phraseOneLine = sp.phrase.replace(/\r?\n/g, '');
           commands += `呪句【${sp.name}】${phraseOneLine}\n`;
@@ -1236,7 +1234,7 @@ FLT　その後表`;
         { label: '魔力', value: Number(magicMax), max: Number(magicMax) },
         { label: '一時的魔力', value: Number(tempMagic), max: Number(tempMagic) }
       ];
-      collectSpells().forEach(sp => {
+      ccfoliaSpells.forEach(sp => {
         if (sp.name) statusArr.push({ label: `${sp.name}:${sp.cost}`, value: 0, max: Number(rootVal) });
       });
 
