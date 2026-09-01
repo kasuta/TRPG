@@ -1125,48 +1125,39 @@ if (newCharacterModal) newCharacterModal.addEventListener('click', (e) => { if (
   })();
 
   // ──────────────────────────────
-  // 8. ココフォリア用コピー
+  // 8. チャットパレット・ココフォリア用コピー
   // ──────────────────────────────
-  const copyNameBtn = document.getElementById('copy_name_btn');
-  const nameInput = document.getElementById('name');
 
-  if (copyNameBtn && nameInput) {
-    copyNameBtn.addEventListener('click', () => {
-      const nameValue = nameInput.value;
-      if (!nameValue) { alert('かりそめの名前が入力されていません。'); return; }
+  /** チャットパレット形式のコマンド文字列を組み立てる(CCFOLIA形式出力とチャパレ形式出力で共通) */
+  const buildChatPaletteCommands = () => {
+    let commands = 'ーーー特技ーーー\n';
+    document.querySelectorAll('.skill-check:checked').forEach(cb => { commands += `2d6>=5 《${cb.value}》\n`; });
+    const soulSkill = getFirstValue(['soul_skill', 'true_skill']);
+    if (soulSkill !== '0') commands += `2d6>=6 《${soulSkill}》\n`;
 
-      let commands = 'ーーー特技ーーー\n';
-      document.querySelectorAll('.skill-check:checked').forEach(cb => { commands += `2d6>=5 《${cb.value}》\n`; });
-      const soulSkill = getFirstValue(['soul_skill', 'true_skill']);
-      if (soulSkill !== '0') commands += `2d6>=6 《${soulSkill}》\n`;
+    const spells = collectSpells();
 
-      const ccfoliaSpells = collectSpells();
+    commands += '\nーーー魔法ーーー\n';
+    spells.forEach(sp => {
+      if (sp.name) {
+        const effectOneLine = sp.effect.replace(/\r?\n/g, '');
+        commands += `【${sp.name}】(取得=/種別=${sp.type}/特技=${sp.skill}/目標=${sp.target}/コスト=${sp.cost}/${sp.ref})効果：${effectOneLine}\n`;
+      }
+    });
 
-      commands += '\nーーー魔法ーーー\n';
-      ccfoliaSpells.forEach(sp => {
-        if (sp.name) {
-          const effectOneLine = sp.effect.replace(/\r?\n/g, '');
-          commands += `【${sp.name}】(取得=/種別=${sp.type}/特技=${sp.skill}/目標=${sp.target}/コスト=${sp.cost}/${sp.ref})効果：${effectOneLine}\n`;
-        }
-      });
+    const trueName = getFirstValue(['true_name']);
+    const trueEffect = getFirstValue(['true_effect']);
+    commands += `\nーーー真の姿ーーー\n「${trueName === '0' ? '' : trueName}」【${trueEffect === '0' ? '' : trueEffect}】\n`;
 
-      const trueName = getFirstValue(['true_name']);
-      const trueEffect = getFirstValue(['true_effect']);
-      commands += `\nーーー真の姿ーーー\n「${trueName === '0' ? '' : trueName}」【${trueEffect === '0' ? '' : trueEffect}】\n`;
+    commands += `\nーーー呪句ーーー\n`;
+    spells.forEach(sp => {
+      if (sp.name && sp.phrase) {
+        const phraseOneLine = sp.phrase.replace(/\r?\n/g, '');
+        commands += `呪句【${sp.name}】${phraseOneLine}\n`;
+      }
+    });
 
-      const attackVal = getFirstValue(['attack']);
-      const defenseVal = getFirstValue(['defense']);
-      const rootVal = getFirstValue(['kongen']);
-
-      commands += `\nーーー呪句ーーー\n`;
-      ccfoliaSpells.forEach(sp => {
-        if (sp.name && sp.phrase) {
-          const phraseOneLine = sp.phrase.replace(/\r?\n/g, '');
-          commands += `呪句【${sp.name}】${phraseOneLine}\n`;
-        }
-      });
-
-      commands += `\nーーー戦闘ーーー
+    commands += `\nーーー戦闘ーーー
 s1d1　攻撃プロット（攻撃力={攻撃力}）
 s{攻撃力}TZ6　攻撃ランダムプロット（攻撃力={攻撃力}）
 s1d1　防御プロット（防御力={防御力}）
@@ -1228,8 +1219,26 @@ MLT　同盟票
 FFT　落花表
 FLT　その後表`;
 
+    return commands;
+  };
+
+  const copyNameBtn = document.getElementById('copy_name_btn');
+  const nameInput = document.getElementById('name');
+
+  if (copyNameBtn && nameInput) {
+    copyNameBtn.addEventListener('click', () => {
+      const nameValue = nameInput.value;
+      if (!nameValue) { alert('かりそめの名前が入力されていません。'); return; }
+
+      const commands = buildChatPaletteCommands();
+      const ccfoliaSpells = collectSpells();
+
       const magicMax = getFirstValue(['magic_max']);
       const tempMagic = getFirstValue(['magic_temp']);
+      const attackVal = getFirstValue(['attack']);
+      const defenseVal = getFirstValue(['defense']);
+      const rootVal = getFirstValue(['kongen']);
+
       const statusArr = [
         { label: '魔力', value: Number(magicMax), max: Number(magicMax) },
         { label: '一時的魔力', value: Number(tempMagic), max: Number(tempMagic) }
@@ -1251,6 +1260,16 @@ FLT　その後表`;
 
       navigator.clipboard.writeText(JSON.stringify(ccfoliaData))
         .then(() => alert('ココフォリア用のキャラクターデータをクリップボードにコピーしました！\nそのままココフォリアの盤面で Ctrl+V（ペースト）してください。'))
+        .catch(err => { console.error('コピーに失敗しました', err); alert('コピーに失敗しました。'); });
+    });
+  }
+
+  const copyChatPaletteBtn = document.getElementById('copy_chatpalette_btn');
+  if (copyChatPaletteBtn) {
+    copyChatPaletteBtn.addEventListener('click', () => {
+      const commands = buildChatPaletteCommands();
+      navigator.clipboard.writeText(commands)
+        .then(() => alert('チャットパレット形式のコマンドをクリップボードにコピーしました！'))
         .catch(err => { console.error('コピーに失敗しました', err); alert('コピーに失敗しました。'); });
     });
   }
