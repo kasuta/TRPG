@@ -1217,10 +1217,10 @@ textarea {
 	display: flex;
 	align-items: center;
 	justify-content: center;
-	padding: 35px 20px;
+	padding: 18px 10px;
 	border: 1px solid var(--border);
 	border-right: none;
-	border-radius: 26px 0 0 26px;
+	border-radius: 13px 0 0 13px;
 	background: var(--panel);
 	color: var(--accent-strong);
 	box-shadow: -4px 4px 12px var(--panel-shadow);
@@ -1229,8 +1229,8 @@ textarea {
 }
 
 .history-toggle-btn svg {
-	width: 45px;
-	height: 45px;
+	width: 23px;
+	height: 23px;
 	transition: transform 0.25s ease;
 	transform: rotate(180deg);
 }
