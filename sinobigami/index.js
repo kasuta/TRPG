@@ -1549,7 +1549,7 @@ const saveCharacter = async () => {
     const imageBlob = await (await fetch(imageBase64)).blob();
     const imgRes = await fetch(`${API_BASE}/api/upload-image/${id}`, {
       method: 'POST',
-      headers: { 'Content-Type': imageBlob.type },
+      headers: { 'Content-Type': imageBlob.type, ...authHeaders },
       body: imageBlob,
     });
     if (!imgRes.ok) throw new Error('画像のアップロードに失敗しました');
