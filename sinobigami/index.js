@@ -40,7 +40,41 @@
   });
 })();
 
+// ==========================================
+// タブタイトルをキャラ名に同期
+// ==========================================
+const syncTabTitle = (() => {
+  const DEFAULT_TITLE = document.title;
+  return () => {
+    const val = document.getElementById('name')?.value.trim();
+    document.title = val || DEFAULT_TITLE;
+  };
+})();
+document.getElementById('name')?.addEventListener('input', syncTabTitle);
+syncTabTitle();
+
 // --- 共通ヘルパー ---
+
+/** 非ブロッキングのトースト通知を表示する */
+const showToast = (message, duration = 2600) => {
+  let container = document.getElementById('toast_container');
+  if (!container) {
+    container = document.createElement('div');
+    container.id = 'toast_container';
+    container.className = 'toast-container';
+    container.setAttribute('aria-live', 'polite');
+    document.body.appendChild(container);
+  }
+  const toast = document.createElement('div');
+  toast.className = 'toast';
+  toast.textContent = message;
+  container.appendChild(toast);
+  requestAnimationFrame(() => toast.classList.add('is-visible'));
+  setTimeout(() => {
+    toast.classList.remove('is-visible');
+    setTimeout(() => toast.remove(), 400);
+  }, duration);
+};
 
 /** ID または name で要素を探し、値を返す */
 const getFieldValue = (key, fallback = '') => {
@@ -928,6 +962,7 @@ document.addEventListener('DOMContentLoaded', () => {
       imageEmpty.hidden = true;
     }
     if (ninpoInputMode === 'text') syncNinpoTextFromGrid();
+    syncTabTitle();
   };
 
   if (saveBtn) {
@@ -954,10 +989,10 @@ document.addEventListener('DOMContentLoaded', () => {
         try {
           const data = JSON.parse(event.target.result);
           applyLoadedData(data);
-          alert('データの読み込みが完了しました！');
+          showToast('データの読み込みが完了しました！');
         } catch (error) {
           console.error(error);
-          alert('データの読み込みに失敗しました。');
+          showToast('データの読み込みに失敗しました。');
         }
         e.target.value = '';
       };
@@ -1476,6 +1511,7 @@ const resetCharacterForm = () => {
 
   currentCharacterId = null;
   history.replaceState(null, '', window.location.pathname + window.location.search);
+  syncTabTitle();
 };
 
 const newCharacterModal = document.getElementById('new_character_modal');
@@ -1576,7 +1612,7 @@ if (saveCharacterBtn) {
     try {
       await saveCharacter();
       if (getAuthToken()) renderMyCharacters(); // 追加：ログイン中なら一覧を再取得
-      alert('保存しました！');
+      showToast('保存しました！');
     } catch (err) {
       console.error('保存に失敗しました', err);
       alert(`保存中にエラーが発生しました。\n${err && err.message ? err.message : err}`);
@@ -1591,7 +1627,7 @@ if (saveCharacterBtn) {
     shareBtn.addEventListener('click', async () => {
       const url = copyShareLink();
       if (!url) {
-        alert('まだ保存されていません。先に「保存」ボタンを押してください。');
+        showToast('まだ保存されていません。先に「保存」ボタンを押してください。');
         return;
       }
       try {
@@ -1599,7 +1635,7 @@ if (saveCharacterBtn) {
           throw new Error('Clipboard API is not available');
         }
         await navigator.clipboard.writeText(url);
-        alert(`共有リンクをクリップボードにコピーしました！（${url.length}文字）`);
+        showToast('共有リンクをクリップボードにコピーしました！');
       } catch (err) {
         console.error('クリップボードへのコピーに失敗しました', err);
         prompt('クリップボードへのコピーに失敗しました。以下のリンクを手動でコピーしてください:', url);
@@ -1627,10 +1663,10 @@ if (saveCharacterBtn) {
     applyLoadedData(data);
     currentCharacterId = match[1];
     history.replaceState(null, '', window.location.pathname + window.location.search);
-    alert('共有リンクからキャラクターデータを読み込みました！');
+    showToast('共有リンクからキャラクターデータを読み込みました！');
   } catch (err) {
     console.error('共有データの読み込みに失敗しました', err);
-    alert('共有リンクの読み込みに失敗しました。');
+    showToast('共有リンクの読み込みに失敗しました。');
   }
 })();
 
@@ -1643,7 +1679,7 @@ if (saveCharacterBtn) {
   if (copyNameBtn && nameInput) {
     copyNameBtn.addEventListener('click', () => {
       const nameValue = nameInput.value;
-      if (!nameValue) { alert('名前が入力されていません。'); return; }
+      if (!nameValue) { showToast('名前が入力されていません。'); return; }
 
       let commands = 'ーーー特技ーーー\n';
       document.querySelectorAll('.skill-check:checked').forEach(cb => {
@@ -1693,8 +1729,8 @@ GWT　戦国変調表`;
       };
 
       navigator.clipboard.writeText(JSON.stringify(ccfoliaData))
-        .then(() => alert('ココフォリア用のキャラクターデータをクリップボードにコピーしました！\nそのままココフォリアの盤面で Ctrl+V してください。'))
-        .catch(err => { console.error('コピーに失敗しました', err); alert('コピーに失敗しました。'); });
+        .then(() => showToast('ココフォリア用のキャラクターデータをクリップボードにコピーしました！\nそのままココフォリアの盤面で Ctrl+V してください。'))
+        .catch(err => { console.error('コピーに失敗しました', err); showToast('コピーに失敗しました。'); });
     });
   }
 
@@ -1991,10 +2027,10 @@ GWT　戦国変調表`;
       const canvas = await renderPreviewToCanvas();
 
       canvas.toBlob(async (blob) => {
-        if (!blob) { alert('画像の生成に失敗しました。'); return; }
+        if (!blob) { showToast('画像の生成に失敗しました。'); return; }
         try {
           await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]);
-          alert('キャラクターシートの画像をクリップボードにコピーしました！\nCtrl+V で貼り付けできます。');
+          showToast('キャラクターシートの画像をクリップボードにコピーしました！\nCtrl+V で貼り付けできます。');
         } catch (err) {
           console.error('クリップボードへのコピーに失敗:', err);
           const url = URL.createObjectURL(blob);
@@ -2005,12 +2041,12 @@ GWT　戦国変調表`;
           a.click();
           document.body.removeChild(a);
           URL.revokeObjectURL(url);
-          alert('クリップボードへのコピーに失敗したため、画像をダウンロードしました。');
+          showToast('クリップボードへのコピーに失敗したため、画像をダウンロードしました。');
         }
       }, 'image/png');
     } catch (err) {
       console.error('画像生成に失敗:', err);
-      alert('画像の生成に失敗しました。');
+      showToast('画像の生成に失敗しました。');
     } finally {
       screenshotBtn.innerHTML = originalHTML;
       screenshotBtn.disabled = false;
