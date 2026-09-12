@@ -77,7 +77,7 @@
   <div id="reveal_password_modal" class="modal-overlay" aria-hidden="true">
     <div class="modal-box">
       <h3>表示用パスワードを入力</h3>
-      <input type="password" id="reveal_password_prompt_input" class="modal-password-input" placeholder="パスワード" />
+      <input type="password" id="reveal_password_prompt_input" class="modal-password-input" placeholder="パスワード" autocomplete="off" data-lpignore="true" data-1p-ignore />
       <div class="modal-actions">
         <button type="button" id="reveal_password_submit_btn" class="btn">表示する</button>
         <button type="button" id="reveal_password_cancel_btn" class="btn btn-outline">キャンセル</button>
@@ -141,7 +141,7 @@
           <div class="form-row reveal-password-row" id="reveal_password_owner_row">
             <label for="reveal_password" class="reveal-password-label" title="「奥義」「忍具」の表示ロックに使います。空欄なら誰でも表示可能。設定すると、あなた以外は入力しないと表示できません。あくまでワンクッションのためのパスワードなので、簡単なもので大丈夫です。">表示パス</label>
             <div class="password-field">
-              <input type="password" id="reveal_password" placeholder="未設定なら誰でも表示可" autocomplete="off" />
+              <input type="password" id="reveal_password" placeholder="未設定なら誰でも表示可" autocomplete="new-password" data-lpignore="true" data-1p-ignore />
               <button type="button" id="copy_reveal_password_btn" class="password-field-copy-btn" title="パスワードをコピー" aria-label="パスワードをコピー"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="6" y="4" width="12" height="17" rx="2"/><path d="M9 4V3a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v1"/><path d="M9 11h6M9 15h6"/></svg></button>
             </div>
           </div>
