@@ -875,6 +875,8 @@ document.addEventListener('DOMContentLoaded', () => {
     data.ninpo = collectNinpo().filter(row => !isEmptyNinpoRow(row));
     data.haikei = collectHaikei().filter(row => !isEmptyHaikeiRow(row));
     data.relations = collectRelations().filter(row => !isEmptyRelationRow(row));
+    const revealPasswordInput = document.getElementById('reveal_password');
+    data.revealPassword = revealPasswordInput ? revealPasswordInput.value : '';
     return data;
   };
 
@@ -890,6 +892,8 @@ document.addEventListener('DOMContentLoaded', () => {
     document.querySelectorAll('.damage-check').forEach(el => { el.dataset.state = '0'; });
     savedImageBase64 = null;
     clearPreview();
+    const revealPasswordInput = document.getElementById('reveal_password');
+    if (revealPasswordInput) revealPasswordInput.value = '';
 
     if (data.inputs) {
       for (const [key, value] of Object.entries(data.inputs)) {
@@ -961,8 +965,10 @@ document.addEventListener('DOMContentLoaded', () => {
       imagePreview.classList.add('is-visible');
       imageEmpty.hidden = true;
     }
+    if (revealPasswordInput) revealPasswordInput.value = data.revealPassword || '';
     if (ninpoInputMode === 'text') syncNinpoTextFromGrid();
     syncTabTitle();
+    refreshOwnerPasswordUI();
   };
 
   if (saveBtn) {
@@ -1108,6 +1114,7 @@ document.addEventListener('DOMContentLoaded', () => {
         return trimTrailingEmpty([r.name || '', mask, r.emotion || '']);
       });
     }
+    if (data.revealPassword) compact.pw = data.revealPassword;
     return compact;
   };
 
@@ -1137,6 +1144,7 @@ document.addEventListener('DOMContentLoaded', () => {
         emotion: emotion || '',
       }));
     }
+    if (compact.pw) data.revealPassword = compact.pw;
     return data;
   };
   
@@ -1491,6 +1499,8 @@ const resetCharacterForm = () => {
   savedImageBase64 = null;
   clearPreview();
   if (imageInput) imageInput.value = '';
+  const revealPasswordInput = document.getElementById('reveal_password');
+  if (revealPasswordInput) revealPasswordInput.value = '';
 
   while (document.querySelectorAll('.ougi-textarea[name^="ougi_name_"]').length > 0) removeOugiRow();
   addOugiRow();
@@ -1512,6 +1522,7 @@ const resetCharacterForm = () => {
   currentCharacterId = null;
   history.replaceState(null, '', window.location.pathname + window.location.search);
   syncTabTitle();
+  refreshOwnerPasswordUI();
 };
 
 const newCharacterModal = document.getElementById('new_character_modal');
@@ -1740,27 +1751,113 @@ GWT　戦国変調表`;
   const hideToggleBtn = document.getElementById('hide_toggle_btn');
   const ougiSection = document.getElementById('ougi_section');
   const ninguSection = document.getElementById('ningu_section');
+  const revealPasswordOwnerRow = document.getElementById('reveal_password_owner_row');
+  const copyRevealPasswordBtn = document.getElementById('copy_reveal_password_btn');
+  const revealPasswordModal = document.getElementById('reveal_password_modal');
+  const revealPasswordPromptInput = document.getElementById('reveal_password_prompt_input');
+  const revealPasswordSubmitBtn = document.getElementById('reveal_password_submit_btn');
+  const revealPasswordCancelBtn = document.getElementById('reveal_password_cancel_btn');
 
   const ICON_ATTRS = 'viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"';
   const ICON_EYE = `<svg ${ICON_ATTRS}><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7Z"/><circle cx="12" cy="12" r="3"/></svg>`;
   const ICON_EYE_SLASH = `<svg ${ICON_ATTRS}><path d="M3 3l18 18"/><path d="M10.6 5.2C11.05 5.07 11.52 5 12 5c7 0 11 7 11 7a19.7 19.7 0 0 1-3.22 4.06M6.5 6.6C3.6 8.4 1 12 1 12s4 7 11 7c1.3 0 2.5-.22 3.6-.6"/><path d="M9.9 9.9a3 3 0 0 0 4.2 4.2"/></svg>`;
 
-  let isHidden = true;
-  if (hideToggleBtn) {
-    // 初期状態で隠す
-    document.body.classList.add('hidden-mode');
-    if (ougiSection) { ougiSection.classList.add('hideable-section'); ougiSection.dataset.hideLabel = '奥義'; }
-    if (ninguSection) { ninguSection.classList.add('hideable-section'); ninguSection.dataset.hideLabel = '忍具'; }
-    hideToggleBtn.innerHTML = `${ICON_EYE}表示する`;
+  /** ログイン中ユーザーが現在のキャラの所有者かどうか(マイキャラ一覧に含まれるかで判定) */
+  const isOwnerOfCurrentCharacter = () =>
+    !!getAuthToken() && myCharactersCache.some(c => c.id === currentCharacterId);
 
-    hideToggleBtn.addEventListener('click', () => {
-      isHidden = !isHidden;
-      document.body.classList.toggle('hidden-mode', isHidden);
-      if (ougiSection) { ougiSection.classList.toggle('hideable-section', isHidden); ougiSection.dataset.hideLabel = '奥義'; }
-      if (ninguSection) { ninguSection.classList.toggle('hideable-section', isHidden); ninguSection.dataset.hideLabel = '忍具'; }
-      hideToggleBtn.innerHTML = isHidden ? `${ICON_EYE}表示する` : `${ICON_EYE_SLASH}隠す`;
+  /** 所有者向けのパスワード設定/コピー欄の表示・非表示を更新する */
+  const refreshOwnerPasswordUI = () => {
+    if (!revealPasswordOwnerRow) return;
+    const canEdit = !currentCharacterId || isOwnerOfCurrentCharacter();
+    revealPasswordOwnerRow.style.display = canEdit ? '' : 'none';
+  };
+
+  let isHidden = true;
+  const setRevealState = (hidden) => {
+    isHidden = hidden;
+    document.body.classList.toggle('hidden-mode', isHidden);
+    if (ougiSection) { ougiSection.classList.toggle('hideable-section', isHidden); ougiSection.dataset.hideLabel = '奥義'; }
+    if (ninguSection) { ninguSection.classList.toggle('hideable-section', isHidden); ninguSection.dataset.hideLabel = '忍具'; }
+    if (hideToggleBtn) hideToggleBtn.innerHTML = isHidden ? `${ICON_EYE}表示する` : `${ICON_EYE_SLASH}隠す`;
+  };
+
+  const openRevealPasswordModal = () => {
+    if (!revealPasswordModal) return;
+    if (revealPasswordPromptInput) revealPasswordPromptInput.value = '';
+    revealPasswordModal.classList.add('is-open');
+    revealPasswordModal.setAttribute('aria-hidden', 'false');
+    if (revealPasswordPromptInput) revealPasswordPromptInput.focus();
+  };
+  const closeRevealPasswordModal = () => {
+    if (!revealPasswordModal) return;
+    revealPasswordModal.classList.remove('is-open');
+    revealPasswordModal.setAttribute('aria-hidden', 'true');
+  };
+
+  const trySubmitRevealPassword = () => {
+    const revealPasswordInput = document.getElementById('reveal_password');
+    const correctPassword = revealPasswordInput ? revealPasswordInput.value : '';
+    const entered = revealPasswordPromptInput ? revealPasswordPromptInput.value : '';
+    if (entered !== correctPassword) {
+      showToast('パスワードが違います。');
+      return;
+    }
+    if (currentCharacterId) localStorage.setItem(`sinobigami_unlocked_${currentCharacterId}`, '1');
+    closeRevealPasswordModal();
+    setRevealState(false);
+  };
+
+  if (revealPasswordSubmitBtn) revealPasswordSubmitBtn.addEventListener('click', trySubmitRevealPassword);
+  if (revealPasswordPromptInput) {
+    revealPasswordPromptInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') { e.preventDefault(); trySubmitRevealPassword(); }
     });
   }
+  if (revealPasswordCancelBtn) revealPasswordCancelBtn.addEventListener('click', closeRevealPasswordModal);
+  if (revealPasswordModal) {
+    revealPasswordModal.addEventListener('click', (e) => { if (e.target === revealPasswordModal) closeRevealPasswordModal(); });
+  }
+
+  if (copyRevealPasswordBtn) {
+    copyRevealPasswordBtn.addEventListener('click', async () => {
+      const revealPasswordInput = document.getElementById('reveal_password');
+      const password = revealPasswordInput ? revealPasswordInput.value : '';
+      if (!password) { showToast('パスワードが設定されていません。'); return; }
+      try {
+        if (!navigator.clipboard || !navigator.clipboard.writeText) {
+          throw new Error('Clipboard API is not available');
+        }
+        await navigator.clipboard.writeText(password);
+        showToast('パスワードをクリップボードにコピーしました！');
+      } catch (err) {
+        console.error('クリップボードへのコピーに失敗しました', err);
+        prompt('クリップボードへのコピーに失敗しました。以下のパスワードを手動でコピーしてください:', password);
+      }
+    });
+  }
+
+  if (hideToggleBtn) {
+    // 初期状態で隠す(所有者・記憶済みでも自動表示はしない)
+    setRevealState(true);
+
+    hideToggleBtn.addEventListener('click', () => {
+      if (!isHidden) {
+        setRevealState(true);
+        return;
+      }
+      const revealPasswordInput = document.getElementById('reveal_password');
+      const password = revealPasswordInput ? revealPasswordInput.value : '';
+      const unlocked = currentCharacterId && localStorage.getItem(`sinobigami_unlocked_${currentCharacterId}`) === '1';
+      if (!password || isOwnerOfCurrentCharacter() || unlocked) {
+        setRevealState(false);
+        return;
+      }
+      openRevealPasswordModal();
+    });
+  }
+
+  refreshOwnerPasswordUI();
 
   // ──────────────────────────────
   // 5. キャラシ画像生成 & コピー
