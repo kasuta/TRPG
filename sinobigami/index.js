@@ -862,6 +862,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const data = { inputs: {}, checkboxes: {}, ougi: [], ninpo: [], relations: [], image: savedImageBase64 };
 
     document.querySelectorAll('input[type="text"], input[type="number"], select, textarea').forEach(el => {
+      if (el.id === 'reveal_password' || el.id === 'reveal_password_prompt_input') return;
       if (!el.name.startsWith('ougi_') && !el.name.startsWith('ninpo_') && !el.name.startsWith('relation_')) {
         data.inputs[el.id || el.name] = el.value;
       }
@@ -884,6 +885,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const applyLoadedData = (data) => {
     document.querySelectorAll('input[type="text"], input[type="number"], select, textarea').forEach(el => {
       if (el.closest('#history_panel')) return;
+      if (el.id === 'reveal_password' || el.id === 'reveal_password_prompt_input') return;
       if (/^(ougi_|ninpo_|haikei_|relation_)/.test(el.name || '')) return;
       if (el.tagName === 'SELECT') el.selectedIndex = 0;
       else el.value = '';
