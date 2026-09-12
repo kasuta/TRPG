@@ -1515,7 +1515,7 @@ textarea {
 .toast-container {
 	position: fixed;
 	left: 50%;
-	bottom: 24px;
+	bottom: 100px;
 	transform: translateX(-50%);
 	z-index: 9999;
 	display: flex;

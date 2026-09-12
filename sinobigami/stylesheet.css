@@ -1918,7 +1918,7 @@ textarea {
 .toast-container {
 	position: fixed;
 	left: 50%;
-	bottom: 24px;
+	bottom: 100px;
 	transform: translateX(-50%);
 	z-index: 9999;
 	display: flex;
@@ -1929,7 +1929,7 @@ textarea {
 }
 .toast {
 	background: var(--panel);
-	color: var(--ink);
+	color: var(--text);
 	border: 1px solid var(--border);
 	box-shadow: 0 8px 24px var(--panel-shadow);
 	border-radius: 8px;
