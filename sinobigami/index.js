@@ -1283,6 +1283,7 @@ const renderMyCharacters = async () => {
     if (!res.ok) throw new Error('取得に失敗しました');
     myCharactersCache = await res.json();
     applyGameFilter();
+    refreshOwnerPasswordUI();
   } catch (err) {
     console.error(err);
     if (listEl) listEl.innerHTML = '<p class="history-empty">読み込みに失敗しました</p>';
@@ -1673,8 +1674,8 @@ if (saveCharacterBtn) {
       data.image = `${API_BASE}/api/image/${match[1]}`;
     }
 
-    applyLoadedData(data);
     currentCharacterId = match[1];
+    applyLoadedData(data);
     history.replaceState(null, '', window.location.pathname + window.location.search);
     showToast('共有リンクからキャラクターデータを読み込みました！');
   } catch (err) {
@@ -1860,6 +1861,7 @@ GWT　戦国変調表`;
   }
 
   refreshOwnerPasswordUI();
+  if (getAuthToken()) renderMyCharacters();
 
   // ──────────────────────────────
   // 5. キャラシ画像生成 & コピー
