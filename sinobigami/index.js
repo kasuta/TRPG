@@ -1592,6 +1592,7 @@ const saveCharacter = async () => {
     const json = await res.json();
     id = json.id;
     currentCharacterId = id;
+    history.replaceState(null, '', `${window.location.pathname}${window.location.search}#id=${id}`);
   }
 
   // 画像があれば、そのIDに紐づけてアップロード(新規・更新どちらも同じ処理でOK)
@@ -1676,7 +1677,6 @@ if (saveCharacterBtn) {
 
     currentCharacterId = match[1];
     applyLoadedData(data);
-    history.replaceState(null, '', window.location.pathname + window.location.search);
     showToast('共有リンクからキャラクターデータを読み込みました！');
   } catch (err) {
     console.error('共有データの読み込みに失敗しました', err);

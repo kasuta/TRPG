@@ -1069,6 +1069,7 @@ if (newCharacterModal) newCharacterModal.addEventListener('click', (e) => { if (
       const json = await res.json();
       id = json.id;
       currentCharacterId = id;
+      history.replaceState(null, '', `${window.location.pathname}${window.location.search}#id=${id}`);
     }
 
     if (imageBase64) {
@@ -1150,9 +1151,8 @@ if (newCharacterModal) newCharacterModal.addEventListener('click', (e) => { if (
         data.image = `${API_BASE}/api/image/${match[1]}`;
       }
 
-      applyLoadedData(data);
       currentCharacterId = match[1];
-      history.replaceState(null, '', window.location.pathname + window.location.search);
+      applyLoadedData(data);
       showToast('共有リンクからキャラクターデータを読み込みました！');
     } catch (err) {
       console.error('共有データの読み込みに失敗しました', err);
