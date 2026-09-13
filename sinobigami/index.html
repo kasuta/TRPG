@@ -94,21 +94,13 @@
     <div class="input-left-stack">
       <section class="input-left-top">
         <h2>基本情報</h2>
-        <form class="input-form">
-          <div class="form-row">
-            <label for="name">名前</label>
+        <form class="input-form info-grid">
+          <div class="info-row info-row-full">
+            <label for="name" class="info-label">名前</label>
             <input id="name" name="name" type="text"/>
           </div>
-          <div class="form-row">
-            <label for="age">年齢</label>
-            <input id="age" name="age" type="text"/>
-          </div>
-          <div class="form-row">
-            <label for="gender">性別</label>
-            <input id="gender" name="gender" type="text"/>
-          </div>
-          <div class="form-row">
-            <label for="school">上位流派</label>
+          <div class="info-row">
+            <label for="school" class="info-label">上位流派</label>
             <select id="school" name="school">
               <option value="">選択してください</option>
               <option value="斜歯忍軍">斜歯忍軍</option>
@@ -118,33 +110,33 @@
               <option value="私立御斎学園">私立御斎学園</option>
               <option value="隠忍の血統">隠忍の血統</option>
             </select>
-          </div>
-          <div class="form-row">
-            <label for="sub_school">流派</label>
+            <label for="sub_school" class="info-label">流派</label>
             <input id="sub_school" name="sub_school" type="text"/>
-          </div>          
-          <div class="form-row">
-            <label for="rank">階級</label>
-            <input id="rank" name="rank" type="text"/>
           </div>
-          <div class="form-row">
-            <label for="manner">流儀</label>
+          <div class="info-row info-row-full">
+            <label for="manner" class="info-label">流儀</label>
             <input id="manner" name="manner" type="text"/>
           </div>
-          <div class="form-row">
-            <label for="face">表の顔</label>
-            <input id="face" name="face" type="text"/>
-          </div>
-          <div class="form-row">
-            <label for="belief">信念</label>
-            <input id="belief" name="belief" type="text"/>
-          </div>
-          <div class="form-row">
-            <label for="points">功績</label>
+          <div class="info-row">
+            <label for="rank" class="info-label">階級</label>
+            <input id="rank" name="rank" type="text"/>
+            <label for="points" class="info-label">功績</label>
             <input id="points" name="points" type="text"/>
           </div>
-          <div class="form-row reveal-password-row" id="reveal_password_owner_row">
-            <label for="reveal_password" class="reveal-password-label" title="「奥義」「忍具」の表示ロックに使います。空欄なら誰でも表示可能。設定すると、あなた以外は入力しないと表示できません。あくまでワンクッションのためのパスワードなので、簡単なもので大丈夫です。">表示パス</label>
+          <div class="info-row">
+            <label for="age" class="info-label">年齢</label>
+            <input id="age" name="age" type="text"/>
+            <label for="gender" class="info-label">性別</label>
+            <input id="gender" name="gender" type="text"/>
+          </div>
+          <div class="info-row">
+            <label for="face" class="info-label">表の顔</label>
+            <input id="face" name="face" type="text"/>
+            <label for="belief" class="info-label">信念</label>
+            <input id="belief" name="belief" type="text"/>
+          </div>
+          <div class="info-row info-row-full reveal-password-row" id="reveal_password_owner_row">
+            <label for="reveal_password" class="info-label reveal-password-label" title="「奥義」「忍具」の表示ロックに使います。空欄なら誰でも表示可能。設定すると、あなた以外は入力しないと表示できません。あくまでワンクッションのためのパスワードなので、簡単なもので大丈夫です。">表示パス</label>
             <div class="password-field">
               <input type="text" id="reveal_password" placeholder="未設定なら誰でも表示可" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" />
               <button type="button" id="copy_reveal_password_btn" class="password-field-copy-btn" title="パスワードをコピー" aria-label="パスワードをコピー"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="6" y="4" width="12" height="17" rx="2"/><path d="M9 4V3a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v1"/><path d="M9 11h6M9 15h6"/></svg></button>
@@ -153,11 +145,10 @@
         </form>
       </section>
       <section class="input-left-bottom">
-        <h2>生命力</h2>
+        <h2>設定</h2>
         <form class="input-form">
-          <div class="form-row">
-            <label for="life_extra">追加生命力</label>
-            <input id="life_extra" name="life_extra" type="text"/>
+          <div class="form-row single-field">
+            <textarea id="setting" name="setting" aria-label="設定"></textarea>
           </div>
         </form>
       </section>
@@ -171,9 +162,10 @@
         <p id="setting_image_empty" class="image-preview-empty">画像がまだ選択されていません</p>
         <img id="setting_image_preview" class="image-preview" alt="背景画像のプレビュー" />
       </div>
+      <h2>生命力</h2>
       <div class="form-row">
-        <label for="setting">設定</label>
-        <textarea id="setting" name="setting"></textarea>
+        <label for="life_extra">追加生命力</label>
+        <input id="life_extra" name="life_extra" type="text"/>
       </div>
     </div>
   </main>

@@ -470,6 +470,67 @@ h1 {
 	grid-template-columns: 1fr;
 }
 
+/* 基本情報：表形式のコンパクトレイアウト */
+.input-form.info-grid {
+	display: grid;
+	grid-template-columns: minmax(76px, 0.8fr) 1.3fr minmax(76px, 0.8fr) 1.3fr;
+	gap: 1px;
+	background-color: var(--border);
+	border: 1px solid var(--border);
+	border-radius: 8px;
+	overflow: hidden;
+}
+
+.info-row {
+	display: contents;
+}
+
+.info-grid .info-label {
+	display: flex;
+	align-items: center;
+	margin: 0;
+	padding: 7px 10px;
+	background: var(--surface-alt);
+	color: var(--accent-strong);
+	font-weight: 700;
+	font-size: 0.85rem;
+	white-space: nowrap;
+}
+
+.info-grid input[type="text"] {
+	width: 100%;
+	min-width: 0;
+	margin: 0;
+	padding: 6px 10px;
+	border: none;
+	border-radius: 0;
+	background: var(--surface);
+	font-size: 0.95rem;
+}
+
+.info-grid select {
+	width: 100%;
+	min-width: 0;
+	margin: 0;
+	padding: 6px 40px 6px 10px;
+	border: none;
+	border-radius: 0;
+	background-color: var(--surface);
+	font-size: 0.9rem;
+}
+
+.info-grid .password-field {
+	grid-column: 2 / 5;
+	align-items: center;
+	padding: 5px 8px;
+	background: var(--surface);
+}
+
+.info-row-full > input[type="text"],
+.info-row-full > select {
+	grid-column: 2 / 5;
+}
+
 .life-input {
 	display: grid;
 	gap: 8px;
@@ -1412,6 +1473,19 @@ textarea {
 		text-align: left;
 	}
 
+	.input-form.info-grid {
+		grid-template-columns: minmax(90px, 0.9fr) 1fr;
+	}
+
+	.info-row-full > input[type="text"],
+	.info-row-full > select {
+		grid-column: 2 / 3;
+	}
+
+	.info-grid .password-field {
+		grid-column: 2 / 3;
+	}
+
 	/* スマホでの視認性向上（PC表示には影響させない） */
 	html {
 		font-size: 16px;
@@ -1464,8 +1538,14 @@ textarea {
 	.relation-textarea,
 	.ningu-label,
 	.ningu-input,
+	.info-grid input[type="text"],
+	.info-grid select,
 	.btn {
 		font-size: 1rem;
+	}
+
+	.info-grid .info-label {
+		font-size: 0.9rem;
 	}
 
 	.button-bar .btn,
