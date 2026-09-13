@@ -147,7 +147,7 @@
             <input id="belief" name="belief" type="text"/>
           </div>
           <div class="info-row info-row-full reveal-password-row" id="reveal_password_owner_row">
-            <label for="reveal_password" class="info-label reveal-password-label" title="「奥義」「忍具」の表示ロックに使います。空欄なら誰でも表示可能。設定すると、あなた以外は入力しないと表示できません。あくまでワンクッションのためのパスワードなので、簡単なもので大丈夫です。">表示パス</label>
+            <label for="reveal_password" class="info-label reveal-password-label" title="「奥義」「忍具」の表示ロック用のパスワードです。未設定の場合、誰でも表示可能です。">表示パス</label>
             <div class="password-field">
               <input type="text" id="reveal_password" placeholder="未設定なら誰でも表示可" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" />
               <button type="button" id="copy_reveal_password_btn" class="password-field-copy-btn" title="パスワードをコピー" aria-label="パスワードをコピー"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="6" y="4" width="12" height="17" rx="2"/><path d="M9 4V3a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v1"/><path d="M9 11h6M9 15h6"/></svg></button>
@@ -170,12 +170,14 @@
         <p id="setting_image_empty" class="image-preview-empty">画像がまだ選択されていません</p>
         <img id="setting_image_preview" class="image-preview" alt="背景画像のプレビュー" />
       </div>
-      <h2>設定</h2>
-      <form class="input-form">
-        <div class="form-row single-field">
-          <textarea id="setting" name="setting" aria-label="設定"></textarea>
-        </div>
-      </form>
+      <div class="input-right-group">
+        <h2>設定</h2>
+        <form class="input-form">
+          <div class="form-row single-field">
+            <textarea id="setting" name="setting" aria-label="設定"></textarea>
+          </div>
+        </form>
+      </div>
     </div>
   </main>
   <section class="bottom-content">
