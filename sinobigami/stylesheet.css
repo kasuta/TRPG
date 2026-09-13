@@ -1411,6 +1411,78 @@ textarea {
 	.form-row > label {
 		text-align: left;
 	}
+
+	/* スマホでの視認性向上（PC表示には影響させない） */
+	html {
+		font-size: 16px;
+	}
+
+	:root {
+		--texture-color: rgba(33, 24, 21, 0.015);
+		--corner-glow: rgba(33, 24, 21, 0.06);
+		--accent-glow: rgba(140, 68, 51, 0.07);
+	}
+
+	[data-theme="dark"] {
+		--texture-color: rgba(255, 255, 255, 0.012);
+		--accent-glow: rgba(199, 58, 42, 0.14);
+	}
+
+	[data-theme="dark-muted"] {
+		--texture-color: rgba(255, 255, 255, 0.012);
+		--accent-glow: rgba(var(--accent-rgb), 0.07);
+	}
+
+	[data-theme="dark-full"] {
+		--texture-color: rgba(255, 255, 255, 0.012);
+		--accent-glow: rgba(199, 58, 42, 0.14);
+	}
+
+	.input-panel::before,
+	.input-left::before,
+	.input-left-top::before,
+	.input-left-bottom::before,
+	.input-right::before {
+		height: 140px;
+		background: linear-gradient(120deg, rgba(var(--accent-rgb), 0.08), transparent 70%);
+	}
+
+	.skill-grid input[type="text"],
+	.skill-label,
+	.image-preview-empty,
+	.ougi-grid input[type="text"],
+	.ougi-grid textarea,
+	.ougi-grid select,
+	.spell-head,
+	.ninpo-grid input[type="text"],
+	.ninpo-grid textarea,
+	.ninpo-grid select,
+	.haikei-grid input[type="text"],
+	.haikei-grid textarea,
+	.haikei-grid select,
+	.relation-head,
+	.relation-textarea,
+	.ningu-label,
+	.ningu-input,
+	.btn {
+		font-size: 1rem;
+	}
+
+	.button-bar .btn,
+	.button-bar .theme-toggle-btn {
+		width: 92px;
+		height: 62px;
+		font-size: 0.75rem;
+	}
+
+	.history-item-date,
+	.game-filter-tab {
+		font-size: 0.78rem;
+	}
+
+	.history-item-game-badge {
+		font-size: 0.74rem;
+	}
 }
 
 /* ============================
