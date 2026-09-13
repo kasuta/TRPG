@@ -172,7 +172,6 @@ h1 {
 .input-panel,
 .input-left,
 .input-left-top,
-.input-left-bottom,
 .input-right {
 	background: var(--panel);
 	border-radius: 18px;
@@ -193,7 +192,6 @@ h1 {
 .input-panel::before,
 .input-left::before,
 .input-left-top::before,
-.input-left-bottom::before,
 .input-right::before {
 	content: "";
 	position: absolute;
@@ -206,7 +204,6 @@ h1 {
 .input-panel h2,
 .input-left h2,
 .input-left-top h2,
-.input-left-bottom h2,
 .input-right h2 {
 	margin: 0 0 20px;
 	font-family: "Shippori Mincho", "Hiragino Mincho ProN", "Yu Mincho", serif;
@@ -220,6 +217,11 @@ h1 {
 .input-form {
 	display: grid;
 	gap: 16px;
+}
+
+/* 基本情報と生命力など、同じカード内で表と次の見出しが連続する箇所に間隔を空ける */
+.input-left-top form + h2 {
+	margin-top: 24px;
 }
 
 .form-group {
@@ -479,6 +481,11 @@ h1 {
 	border: 1px solid var(--border);
 	border-radius: 8px;
 	overflow: hidden;
+}
+
+/* 生命力：基本情報と同じ見た目の単独の1行2列表 */
+.input-form.info-grid.life-grid {
+	grid-template-columns: minmax(76px, 0.8fr) 1.3fr;
 }
 
 .info-row {

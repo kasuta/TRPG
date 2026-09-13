@@ -154,18 +154,15 @@
             </div>
           </div>
         </form>
-      </section>
-      <section class="input-left-bottom">
-        <h2>設定</h2>
-        <form class="input-form">
-          <div class="form-row single-field">
-            <textarea id="setting" name="setting" aria-label="設定"></textarea>
-          </div>
+        <h2>生命力</h2>
+        <form class="input-form info-grid life-grid">
+          <label for="life_extra" class="info-label">追加生命力</label>
+          <input id="life_extra" name="life_extra" type="text"/>
         </form>
       </section>
     </div>
     <div class="input-right">
-      <h2>背景</h2>
+      <h2>立ち絵</h2>
       <div class="form-row single-field">
         <input id="setting_image" name="setting_image" type="file" accept="image/*" aria-label="背景の画像" />
       </div>
@@ -173,11 +170,12 @@
         <p id="setting_image_empty" class="image-preview-empty">画像がまだ選択されていません</p>
         <img id="setting_image_preview" class="image-preview" alt="背景画像のプレビュー" />
       </div>
-      <h2>生命力</h2>
-      <div class="form-row">
-        <label for="life_extra">追加生命力</label>
-        <input id="life_extra" name="life_extra" type="text"/>
-      </div>
+      <h2>設定</h2>
+      <form class="input-form">
+        <div class="form-row single-field">
+          <textarea id="setting" name="setting" aria-label="設定"></textarea>
+        </div>
+      </form>
     </div>
   </main>
   <section class="bottom-content">
