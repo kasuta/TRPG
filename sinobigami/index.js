@@ -1062,8 +1062,8 @@ document.addEventListener('DOMContentLoaded', () => {
   const OUGI_ORDER = ['name', 'skill', 'kaizou', 'effect'];
   const HAIKEI_ORDER = ['name', 'merit', 'cost', 'effect', 'ref'];
   const INPUT_KEY_MAP = {
-    name: 'n', age: 'a', gender: 'g', school: 'sc', sub_school: 'ss', rank: 'rk',
-    manner: 'mn', face: 'fc', belief: 'bl', points: 'pt', life_extra: 'le',
+    name: 'n', furigana: 'fu', age: 'a', gender: 'g', school: 'sc', sub_school: 'ss', rank: 'rk',
+    join_condition: 'jc', manner: 'mn', nemesis: 'nm', face: 'fc', belief: 'bl', points: 'pt', life_extra: 'le',
     setting: 'st', ningu_hyorogan: 'nh', ningu_jintsumaru: 'nj',
     ningu_tonkofu: 'nt', ningu_other: 'no', special_skill: 'sp',
   };
@@ -1694,6 +1694,8 @@ if (saveCharacterBtn) {
     copyNameBtn.addEventListener('click', () => {
       const nameValue = nameInput.value;
       if (!nameValue) { showToast('名前が入力されていません。'); return; }
+      const furiganaValue = getFieldValue('furigana');
+      const ccfoliaName = furiganaValue ? `${nameValue}(${furiganaValue})` : nameValue;
 
       let commands = 'ーーー特技ーーー\n';
       document.querySelectorAll('.skill-check:checked').forEach(cb => {
@@ -1739,7 +1741,7 @@ GWT　戦国変調表`;
 
       const ccfoliaData = {
         kind: 'character',
-        data: { name: nameValue, initiative: 0, commands, status: statusArr, params: paramsArr }
+        data: { name: ccfoliaName, initiative: 0, commands, status: statusArr, params: paramsArr }
       };
 
       navigator.clipboard.writeText(JSON.stringify(ccfoliaData))
@@ -2063,6 +2065,7 @@ GWT　戦国変調表`;
             <h2>基本情報</h2>
             <dl class="pv-dl">
               <dt>名前</dt><dd>${v('name')}</dd>
+              <dt>ふりがな</dt><dd>${v('furigana')}</dd>
               <dt>上位流派</dt><dd>${v('school')}</dd>
               <dt>流派</dt><dd>${v('sub_school')}</dd>
               <dt>階級</dt><dd>${v('rank')}</dd>
@@ -2070,7 +2073,9 @@ GWT　戦国変調表`;
               <dt>性別</dt><dd>${v('gender')}</dd>
               <dt>年齢</dt><dd>${v('age')}</dd>
               <dt>表の顔</dt><dd>${v('face')}</dd>
+              <dt>加入条件</dt><dd>${v('join_condition')}</dd>
               <dt>流儀</dt><dd>${v('manner')}</dd>
+              <dt>仇敵</dt><dd>${v('nemesis')}</dd>
               <dt>功績点</dt><dd>${v('points')}</dd>
             </dl>
           </div>
