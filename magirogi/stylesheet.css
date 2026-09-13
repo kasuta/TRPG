@@ -1107,19 +1107,8 @@ textarea {
 		align-items: start;
 	}
 
-	.magic-row-grid {
-		grid-template-columns: 33px repeat(10, 22px);
-		grid-auto-rows: 22px;
-	}
-
-	input[type="text"].magic-max-input {
-		width: 33px;
-		height: 22px;
-	}
-
-	.magic-row-grid label {
-		width: 22px;
-		height: 22px;
+	.magic-meter {
+		justify-content: flex-start;
 	}
 
 	label {
@@ -1138,103 +1127,6 @@ textarea {
 	
 	.form-row > label {
 		text-align: left;
-	}
-
-	.input-form.info-grid {
-		grid-template-columns: minmax(128px, 0.9fr) 1fr;
-	}
-
-	.input-form.info-grid.info-grid-narrow {
-		grid-template-columns: minmax(92px, 0.6fr) 1fr;
-	}
-
-	.info-row-full > input[type="text"],
-	.info-row-full > select,
-	.info-row-full > textarea {
-		grid-column: 2 / 3;
-	}
-
-	.info-grid .inline-fields {
-		grid-column: 2 / 3;
-		grid-template-columns: auto auto auto 1fr;
-	}
-
-	.info-grid .inline-fields .inline-text:nth-of-type(2) {
-		grid-column: auto;
-	}
-
-	.info-row-triple > .info-triple {
-		grid-column: 1 / 3;
-	}
-
-	.info-triple .info-label {
-		padding: 6px 4px;
-		font-size: 0.75rem !important;
-	}
-
-	.info-triple input[type="text"] {
-		padding: 6px 2px;
-		font-size: 0.85rem !important;
-	}
-
-	/* スマホでの視認性向上(PC表示には影響させない) */
-	html {
-		font-size: 16px;
-	}
-
-	body {
-		background:
-			radial-gradient(1200px 600px at 10% 10%, rgba(244, 192, 149, 0.20), transparent 60%),
-			radial-gradient(900px 500px at 90% 15%, rgba(47, 93, 98, 0.12), transparent 65%),
-			linear-gradient(160deg, var(--bg-top), var(--bg-bottom));
-	}
-
-	.input-panel::before,
-	.input-left::before,
-	.input-left-top::before,
-	.input-left-bottom::before,
-	.input-right::before {
-		height: 140px;
-		background: linear-gradient(120deg, rgba(47, 93, 98, 0.09), transparent 70%);
-	}
-
-	.skill-grid input[type="text"],
-	.skill-label,
-	.image-preview-empty,
-	.spell-grid input[type="text"],
-	.spell-grid textarea,
-	.spell-grid select,
-	.spell-head,
-	.relation-head,
-	.relation-textarea,
-	.info-grid input[type="text"],
-	.info-grid select,
-	.info-grid textarea,
-	.btn {
-		font-size: 1rem;
-	}
-
-	.info-grid .info-label {
-		font-size: 0.9rem;
-	}
-
-	.inline-text {
-		font-size: 0.9rem;
-	}
-
-	.button-bar .btn {
-		width: 92px;
-		height: 62px;
-		font-size: 0.75rem;
-	}
-
-	.history-item-date,
-	.game-filter-tab {
-		font-size: 0.78rem;
-	}
-
-	.history-item-game-badge {
-		font-size: 0.74rem;
 	}
 }
 
@@ -1798,4 +1690,3 @@ textarea {
 .toast.is-visible {
 	opacity: 1;
 	transform: translateY(0);
-}
