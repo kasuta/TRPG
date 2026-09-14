@@ -83,7 +83,6 @@ h1 {
 .input-panel,
 .input-left,
 .input-left-top,
-.input-left-bottom,
 .input-right {
 	background: var(--panel);
 	border-radius: 18px;
@@ -104,7 +103,6 @@ h1 {
 .input-panel::before,
 .input-left::before,
 .input-left-top::before,
-.input-left-bottom::before,
 .input-right::before {
 	content: "";
 	position: absolute;
@@ -117,7 +115,6 @@ h1 {
 .input-panel h2,
 .input-left h2,
 .input-left-top h2,
-.input-left-bottom h2,
 .input-right h2 {
 	margin: 0 0 20px;
 	font-family: "DM Serif Display", "Times New Roman", serif;
@@ -132,6 +129,11 @@ h1 {
 	grid-template-columns: minmax(0, 1fr);
 	width: 100%;
 	gap: 16px;
+}
+
+/* 基本情報と真の姿など、同じカード内で表と次の見出しが連続する箇所に間隔を空ける */
+.input-left-top .true-form {
+	margin-top: 24px;
 }
 
 .form-group {
@@ -460,84 +462,6 @@ h1 {
 	grid-column: 2 / 5;
 }
 
-.magic-heading {
-	margin-bottom: 8px;
-}
-
-.magic-row-label {
-	align-self: center;
-}
-
-.magic-row-grid-wrap {
-	width: 100%;
-	overflow-x: auto;
-	display: flex;
-	justify-content: center;
-}
-
-.magic-row-grid {
-	display: grid;
-	grid-template-columns: 42px repeat(10, 28px);
-	grid-auto-rows: 28px;
-	gap: 1px;
-	background-color: var(--border);
-	border: 1px solid var(--border);
-	border-radius: 6px;
-	overflow: hidden;
-	width: max-content;
-}
-
-input[type="text"].magic-max-input {
-	width: 42px;
-	height: 28px;
-	min-width: 0;
-	margin: 0;
-	padding: 0;
-	border: none;
-	border-radius: 0;
-	background: #ffffff;
-	text-align: center;
-	font-size: 0.8rem;
-	font-weight: 700;
-	color: var(--accent-strong);
-}
-
-.magic-row-grid input[type="checkbox"] {
-	position: absolute;
-	top: auto;
-	left: -9999px;
-}
-
-.magic-row-grid label {
-	width: 28px;
-	height: 28px;
-	border-radius: 0;
-	margin: 0;
-	background: #ffffff;
-	display: flex;
-	align-items: center;
-	justify-content: center;
-	font-size: 0.7rem;
-	font-weight: 600;
-	color: var(--muted);
-	cursor: pointer;
-	transition: background 0.2s ease, color 0.2s ease;
-}
-
-.magic-row-grid input[type="checkbox"]:checked + label {
-	background: #4a6fa5;
-	color: #ffffff;
-}
-
-.magic-row-grid input[type="checkbox"]:focus-visible + label {
-	box-shadow: inset 0 0 0 2px rgba(47, 93, 98, 0.4);
-}
-
-.magic-max-input:focus {
-	outline: none;
-	box-shadow: inset 0 0 0 2px rgba(47, 93, 98, 0.4);
-}
-
 label {
 	font-weight: 600;
 	color: var(--muted);
@@ -684,8 +608,7 @@ textarea {
 		minmax(70px, 0.9fr)
 		minmax(60px, 0.9fr)
 		72px
-		90px
-		minmax(140px, 2.2fr)
+		minmax(140px, 3.19fr)
 		minmax(80px, 1fr)
 		58px;
 	gap: 1px;
@@ -1107,10 +1030,6 @@ textarea {
 		align-items: start;
 	}
 
-	.magic-meter {
-		justify-content: flex-start;
-	}
-
 	label {
 		margin-bottom: 4px;
 	}
@@ -1209,11 +1128,6 @@ textarea {
 .pv-dl dd {
 	margin: 0;
 	word-break: break-all;
-}
-
-.pv-bar {
-	letter-spacing: 2px;
-	font-size: 14px;
 }
 
 .pv-text {
@@ -1334,11 +1248,6 @@ textarea {
 	max-width: 280px;
 	word-break: break-all;
 	white-space: pre-wrap;
-}
-
-.pv-charge {
-	letter-spacing: 2px;
-	white-space: nowrap;
 }
 
 @keyframes fade-up {

@@ -147,14 +147,21 @@
             <input id="belief" name="belief" type="text"/>
           </div>
         </form>
-      </section>
-      <section class="input-left-bottom">
-        <h2>設定</h2>
-        <form class="input-form">
-          <div class="form-row single-field">
-            <textarea id="setting" name="setting" aria-label="設定"></textarea>
-          </div>
-        </form>
+        <section class="true-form">
+          <h2>真の姿</h2>
+          <form class="input-form info-grid info-grid-narrow">
+            <div class="info-row">
+              <label for="true_name" class="info-label">名称</label>
+              <input id="true_name" name="true_name" type="text" />
+              <label for="true_effect" class="info-label">効果</label>
+              <input id="true_effect" name="true_effect" type="text" />
+            </div>
+            <div class="info-row info-row-full">
+              <label for="true_description" class="info-label">説明</label>
+              <textarea id="true_description" name="true_description"></textarea>
+            </div>
+          </form>
+        </section>
       </section>
     </div>
     <div class="input-right">
@@ -166,76 +173,14 @@
         <p id="setting_image_empty" class="image-preview-empty">画像がまだ選択されていません</p>
         <img id="setting_image_preview" class="image-preview" alt="設定画像のプレビュー" />
       </div>
-      <h2 class="magic-heading">魔力</h2>
-      <form class="input-form">
-        <div class="form-row">
-          <label class="magic-row-label">魔力</label>
-          <div class="magic-row-grid-wrap"><div class="magic-row-grid magic-meter" role="group" aria-label="魔力">
-            <input class="magic-max-input" id="magic_max" name="magic_max" type="text" inputmode="numeric" pattern="[0-9]*" aria-label="魔力 最大値" title="最大値" />
-            <input id="magic_max_1" name="magic_max_meter" type="checkbox" value="1" data-magic-group="magic_max" data-magic-index="1" />
-            <label for="magic_max_1" title="1">1</label>
-            <input id="magic_max_2" name="magic_max_meter" type="checkbox" value="2" data-magic-group="magic_max" data-magic-index="2" />
-            <label for="magic_max_2" title="2">2</label>
-            <input id="magic_max_3" name="magic_max_meter" type="checkbox" value="3" data-magic-group="magic_max" data-magic-index="3" />
-            <label for="magic_max_3" title="3">3</label>
-            <input id="magic_max_4" name="magic_max_meter" type="checkbox" value="4" data-magic-group="magic_max" data-magic-index="4" />
-            <label for="magic_max_4" title="4">4</label>
-            <input id="magic_max_5" name="magic_max_meter" type="checkbox" value="5" data-magic-group="magic_max" data-magic-index="5" />
-            <label for="magic_max_5" title="5">5</label>
-            <input id="magic_max_6" name="magic_max_meter" type="checkbox" value="6" data-magic-group="magic_max" data-magic-index="6" />
-            <label for="magic_max_6" title="6">6</label>
-            <input id="magic_max_7" name="magic_max_meter" type="checkbox" value="7" data-magic-group="magic_max" data-magic-index="7" />
-            <label for="magic_max_7" title="7">7</label>
-            <input id="magic_max_8" name="magic_max_meter" type="checkbox" value="8" data-magic-group="magic_max" data-magic-index="8" />
-            <label for="magic_max_8" title="8">8</label>
-            <input id="magic_max_9" name="magic_max_meter" type="checkbox" value="9" data-magic-group="magic_max" data-magic-index="9" />
-            <label for="magic_max_9" title="9">9</label>
-            <input id="magic_max_10" name="magic_max_meter" type="checkbox" value="10" data-magic-group="magic_max" data-magic-index="10" />
-            <label for="magic_max_10" title="10">10</label>
-          </div></div>
-        </div>
-        <div class="form-row">
-          <label class="magic-row-label">一時的魔力</label>
-          <div class="magic-row-grid-wrap"><div class="magic-row-grid magic-meter" role="group" aria-label="一時的魔力">
-            <input class="magic-max-input" id="magic_temp" name="magic_temp" type="text" inputmode="numeric" pattern="[0-9]*" aria-label="一時的魔力 最大値" title="最大値" />
-            <input id="magic_temp_1" name="magic_temp_meter" type="checkbox" value="1" data-magic-group="magic_temp" data-magic-index="1" />
-            <label for="magic_temp_1" title="1">1</label>
-            <input id="magic_temp_2" name="magic_temp_meter" type="checkbox" value="2" data-magic-group="magic_temp" data-magic-index="2" />
-            <label for="magic_temp_2" title="2">2</label>
-            <input id="magic_temp_3" name="magic_temp_meter" type="checkbox" value="3" data-magic-group="magic_temp" data-magic-index="3" />
-            <label for="magic_temp_3" title="3">3</label>
-            <input id="magic_temp_4" name="magic_temp_meter" type="checkbox" value="4" data-magic-group="magic_temp" data-magic-index="4" />
-            <label for="magic_temp_4" title="4">4</label>
-            <input id="magic_temp_5" name="magic_temp_meter" type="checkbox" value="5" data-magic-group="magic_temp" data-magic-index="5" />
-            <label for="magic_temp_5" title="5">5</label>
-            <input id="magic_temp_6" name="magic_temp_meter" type="checkbox" value="6" data-magic-group="magic_temp" data-magic-index="6" />
-            <label for="magic_temp_6" title="6">6</label>
-            <input id="magic_temp_7" name="magic_temp_meter" type="checkbox" value="7" data-magic-group="magic_temp" data-magic-index="7" />
-            <label for="magic_temp_7" title="7">7</label>
-            <input id="magic_temp_8" name="magic_temp_meter" type="checkbox" value="8" data-magic-group="magic_temp" data-magic-index="8" />
-            <label for="magic_temp_8" title="8">8</label>
-            <input id="magic_temp_9" name="magic_temp_meter" type="checkbox" value="9" data-magic-group="magic_temp" data-magic-index="9" />
-            <label for="magic_temp_9" title="9">9</label>
-            <input id="magic_temp_10" name="magic_temp_meter" type="checkbox" value="10" data-magic-group="magic_temp" data-magic-index="10" />
-            <label for="magic_temp_10" title="10">10</label>
-          </div></div>
-        </div>
-      </form>
-      <section class="true-form">
-        <h2>真の姿</h2>
-        <form class="input-form info-grid info-grid-narrow">
-          <div class="info-row">
-            <label for="true_name" class="info-label">名称</label>
-            <input id="true_name" name="true_name" type="text" />
-            <label for="true_effect" class="info-label">効果</label>
-            <input id="true_effect" name="true_effect" type="text" />
-          </div>
-          <div class="info-row info-row-full">
-            <label for="true_description" class="info-label">説明</label>
-            <textarea id="true_description" name="true_description"></textarea>
+      <div class="input-right-group">
+        <h2>設定</h2>
+        <form class="input-form">
+          <div class="form-row single-field">
+            <textarea id="setting" name="setting" aria-label="設定"></textarea>
           </div>
         </form>
-      </section>
+      </div>
     </div>
   </main>
   <section class="bottom-content">
@@ -364,7 +309,6 @@
           <div class="spell-head">指定特技</div>
           <div class="spell-head">対象</div>
           <div class="spell-head">コスト</div>
-          <div class="spell-head">チャージ</div>
           <div class="spell-head">効果</div>
           <div class="spell-head">参照p</div>
           <div class="spell-head"></div>

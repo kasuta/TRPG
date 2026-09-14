@@ -70,12 +70,7 @@ const collectSpells = () => {
   const spells = [];
   let i = 1;
   while (document.querySelector(`[name="spell_name_${i}"]`)) {
-    const charges = [];
-    for (let c = 1; c <= 5; c++) {
-      const cb = document.getElementById(`charge_${i}_${c}`);
-      charges.push(cb ? cb.checked : false);
-    }
-    const spell = { charges };
+    const spell = {};
     SPELL_TEXT_FIELDS.forEach(({ key, attr }) => {
       const el = document.querySelector(`[name="spell_${attr}_${i}"]`);
       spell[key] = el ? el.value || '' : '';
@@ -103,8 +98,8 @@ const collectRelations = () => {
   return relations;
 };
 
-/** 蔵書の空行判定(魔法名・指定特技・対象・コスト・効果・呪句・参照p・チャージが全て空なら空行とみなす) */
-const isEmptySpellRow = (row = {}) => !row.name && !row.skill && !row.target && !row.cost && !row.effect && !row.phrase && !row.ref && !(row.charges || []).some(Boolean);
+/** 蔵書の空行判定(魔法名・指定特技・対象・コスト・効果・呪句・参照pが全て空なら空行とみなす) */
+const isEmptySpellRow = (row = {}) => !row.name && !row.skill && !row.target && !row.cost && !row.effect && !row.phrase && !row.ref;
 
 /** 関係の空行判定 */
 const isEmptyRelationRow = (row = {}) => !row.anchor && !row.fate && !row.attr && !row.setting;
@@ -124,21 +119,6 @@ const resizeTextareaRow = (container, selector, rowId) => {
   let maxHeight = 0;
   rowTextareas.forEach(ta => { maxHeight = Math.max(maxHeight, ta.scrollHeight); });
   rowTextareas.forEach(ta => { ta.style.height = `${maxHeight}px`; });
-};
-
-/** チャージ系チェックボックスの連動処理をバインド */
-const bindChargeChecks = (container, rowNum) => {
-  const checks = container.querySelectorAll(`input[type="checkbox"][data-charge-row="${rowNum}"]`);
-  checks.forEach(cb => {
-    cb.addEventListener('change', () => {
-      const idx = Number(cb.dataset.chargeIndex || 0);
-      checks.forEach(other => {
-        const oi = Number(other.dataset.chargeIndex || 0);
-        if (cb.checked) other.checked = oi <= idx;
-        else if (oi >= idx) other.checked = false;
-      });
-    });
-  });
 };
 
 /** HTML エスケープ */
@@ -188,7 +168,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const addSpellBtn = document.getElementById('add_spell_btn');
   const removeSpellBtn = document.getElementById('remove_spell_btn');
   let spellCount = 0;
-  const SPELL_HEADER_COUNT = 9;
+  const SPELL_HEADER_COUNT = 8;
   const SPELL_ROW_SIZE = 2;
 
   const bindSpellTextarea = (textarea) => {
@@ -213,16 +193,6 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     });
 
-    for (let i = 1; i <= 5; i++) {
-      const ida = document.getElementById(`charge_${rowA}_${i}`);
-      const idb = document.getElementById(`charge_${rowB}_${i}`);
-      if (ida && idb) {
-        const tmp = ida.checked;
-        ida.checked = idb.checked;
-        idb.checked = tmp;
-      }
-    }
-
     [rowA, rowB].forEach(r => resizeTextareaRow(spellList, '.spell-textarea', String(r)));
   };
 
@@ -240,13 +210,6 @@ document.addEventListener('DOMContentLoaded', () => {
         <textarea name="spell_skill_${n}" class="spell-textarea" rows="1" data-row="${n}"></textarea>
         <textarea name="spell_target_${n}" class="spell-textarea" rows="1" data-row="${n}"></textarea>
         <textarea name="spell_cost_${n}" class="spell-textarea" rows="1" data-row="${n}"></textarea>
-        <div class="box-container">
-          <input type="checkbox" id="charge_${n}_1" class="box-check" data-charge-row="${n}" data-charge-index="1"><label for="charge_${n}_1" class="box-label"></label>
-          <input type="checkbox" id="charge_${n}_2" class="box-check" data-charge-row="${n}" data-charge-index="2"><label for="charge_${n}_2" class="box-label"></label>
-          <input type="checkbox" id="charge_${n}_3" class="box-check" data-charge-row="${n}" data-charge-index="3"><label for="charge_${n}_3" class="box-label"></label>
-          <input type="checkbox" id="charge_${n}_4" class="box-check" data-charge-row="${n}" data-charge-index="4"><label for="charge_${n}_4" class="box-label"></label>
-          <input type="checkbox" id="charge_${n}_5" class="box-check" data-charge-row="${n}" data-charge-index="5"><label for="charge_${n}_5" class="box-label"></label>
-        </div>
         <textarea name="spell_effect_${n}" class="spell-textarea" rows="1" data-row="${n}"></textarea>
         <input type="text" name="spell_reference_p_${n}" />
         <div class="spell-move-cell">
@@ -265,7 +228,6 @@ document.addEventListener('DOMContentLoaded', () => {
       </div>`;
     spellList.insertAdjacentHTML('beforeend', rowHTML);
     spellList.querySelectorAll(`.spell-textarea[data-row="${n}"]`).forEach(bindSpellTextarea);
-    bindChargeChecks(spellList, n);
   };
 
   const removeSpellRow = () => {
@@ -313,28 +275,6 @@ document.addEventListener('DOMContentLoaded', () => {
   }
   if (addSpellBtn) addSpellBtn.addEventListener('click', addSpellRow);
   if (removeSpellBtn) removeSpellBtn.addEventListener('click', removeSpellRow);
-
-  // ──────────────────────────────
-  // 2. 魔力メーター
-  // ──────────────────────────────
-  const magicGroupMap = new Map();
-  document.querySelectorAll('.magic-meter input[type="checkbox"][data-magic-group]').forEach(cb => {
-    const g = cb.dataset.magicGroup || '';
-    if (!magicGroupMap.has(g)) magicGroupMap.set(g, []);
-    magicGroupMap.get(g).push(cb);
-  });
-  magicGroupMap.forEach(groupChecks => {
-    groupChecks.forEach(cb => {
-      cb.addEventListener('change', () => {
-        const idx = Number(cb.dataset.magicIndex || 0);
-        groupChecks.forEach(other => {
-          const oi = Number(other.dataset.magicIndex || 0);
-          if (cb.checked) other.checked = oi <= idx;
-          else if (oi >= idx) other.checked = false;
-        });
-      });
-    });
-  });
 
   // ──────────────────────────────
   // 3. 領域 → ギャップ連動
@@ -424,7 +364,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
     document.querySelectorAll('input[type="checkbox"]').forEach(el => {
       if (el.closest('#history_panel')) return;
-      if (el.id.startsWith('charge_') || el.id.startsWith('relation_check_')) return;
+      if (el.id.startsWith('relation_check_')) return;
       data.checkboxes[el.id] = el.checked;
     });
     data.spells = collectSpells().filter(row => !isEmptySpellRow(row));
@@ -442,7 +382,6 @@ document.addEventListener('DOMContentLoaded', () => {
     });
     document.querySelectorAll('.skill-check').forEach(cb => { cb.checked = false; });
     document.querySelectorAll('.gap-check').forEach(cb => { cb.checked = false; });
-    document.querySelectorAll('.magic-meter input[type="checkbox"]').forEach(cb => { cb.checked = false; });
     savedImageBase64 = null;
     clearPreview();
 
@@ -473,7 +412,6 @@ document.addEventListener('DOMContentLoaded', () => {
         q(`[name="spell_effect_${i}"]`).value = spell.effect || '';
         q(`[name="spell_phrase_${i}"]`).value = typeof spell.phrase === 'string' ? spell.phrase : '';
         q(`[name="spell_reference_p_${i}"]`).value = spell.ref || '';
-        if (spell.charges) spell.charges.forEach((ck, ci) => { const cb = document.getElementById(`charge_${i}_${ci + 1}`); if (cb) cb.checked = ck; });
         q(`[name="spell_effect_${i}"]`).dispatchEvent(new Event('input'));
         q(`[name="spell_phrase_${i}"]`).dispatchEvent(new Event('input'));
       });
@@ -544,7 +482,7 @@ document.addEventListener('DOMContentLoaded', () => {
     name: 'n', m_name: 'mn', gender: 'gd', age: 'a', points: 'pt',
     tier_number: 'tn', tier_name: 'tm', area: 'ar', attack: 'atk', defense: 'df',
     kongen: 'kg', history: 'hs', belief: 'bl', face: 'fc',
-    magic_max: 'mm', magic_temp: 'mt', setting: 'st',
+    setting: 'st',
     true_name: 'trn', true_effect: 'tre', true_description: 'trd', soul_skill: 'ss',
   };
   const INPUT_KEY_MAP_REV = Object.fromEntries(Object.entries(INPUT_KEY_MAP).map(([k, v]) => [v, k]));
@@ -559,16 +497,15 @@ document.addEventListener('DOMContentLoaded', () => {
     return a;
   };
 
-  /** 蔵書行を短縮配列に変換([名前,タイプ,指定特技,対象,コスト,効果,参照p,チャージ(5桁の01文字列),呪句]) */
+  /** 蔵書行を短縮配列に変換([名前,タイプ,指定特技,対象,コスト,効果,参照p,(旧チャージ機能の名残・位置互換のため空文字列),呪句]) */
   const spellsToArrays = (spells) => spells.map(sp => trimTrailingEmpty([
     sp.name || '', sp.type || '', sp.skill || '', sp.target || '', sp.cost || '', sp.effect || '', sp.ref || '',
-    (sp.charges || []).map(c => c ? '1' : '0').join(''),
+    '',
     typeof sp.phrase === 'string' ? sp.phrase : '',
   ]));
   const arraysToSpells = (arrs) => arrs.map(arr => ({
     name: arr[0] || '', type: arr[1] || '召喚', skill: arr[2] || '', target: arr[3] || '', cost: arr[4] || '',
     effect: arr[5] || '', ref: arr[6] || '',
-    charges: (arr[7] || '').split('').map(c => c === '1'),
     phrase: typeof arr[8] === 'string' ? arr[8] : '',
   }));
 
@@ -593,22 +530,14 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     if (data.checkboxes) {
       const skills = [];
-      let magicMaxLevel = 0;
-      let magicTempLevel = 0;
       const others = [];
       Object.entries(data.checkboxes).forEach(([id, checked]) => {
         if (!checked) return;
         const m = id.match(SKILL_ID_RE);
         if (m) { skills.push(packSkillIndex(Number(m[1]), Number(m[2]))); return; }
-        const mm = id.match(/^magic_max_(\d+)$/);
-        if (mm) { magicMaxLevel = Math.max(magicMaxLevel, Number(mm[1])); return; }
-        const mt = id.match(/^magic_temp_(\d+)$/);
-        if (mt) { magicTempLevel = Math.max(magicTempLevel, Number(mt[1])); return; }
         others.push(id); // gap1〜gap5など
       });
       if (skills.length) compact.sk = skills;
-      if (magicMaxLevel) compact.mgm = magicMaxLevel;
-      if (magicTempLevel) compact.mgt = magicTempLevel;
       if (others.length) compact.cb = others;
     }
     if (data.spells && data.spells.length) compact.sp = spellsToArrays(data.spells);
@@ -627,12 +556,6 @@ document.addEventListener('DOMContentLoaded', () => {
         const { row, col } = unpackSkillIndex(idx);
         data.checkboxes[`skill_r${row}_c${col}`] = true;
       });
-    }
-    if (compact.mgm) {
-      for (let n = 1; n <= compact.mgm; n++) data.checkboxes[`magic_max_${n}`] = true;
-    }
-    if (compact.mgt) {
-      for (let n = 1; n <= compact.mgt; n++) data.checkboxes[`magic_temp_${n}`] = true;
     }
     if (compact.cb) compact.cb.forEach(id => { data.checkboxes[id] = true; });
     if (compact.sp) data.spells = arraysToSpells(compact.sp);
@@ -989,7 +912,6 @@ const renderListItems = (items) => {
     });
     document.querySelectorAll('.skill-check').forEach(cb => { cb.checked = false; });
     document.querySelectorAll('.gap-check').forEach(cb => { cb.checked = false; });
-    document.querySelectorAll('.magic-meter input[type="checkbox"]').forEach(cb => { cb.checked = false; });
 
     savedImageBase64 = null;
     clearPreview();
@@ -1269,16 +1191,11 @@ FLT　その後表`;
       const commands = buildChatPaletteCommands();
       const ccfoliaSpells = collectSpells();
 
-      const magicMax = getFirstValue(['magic_max']);
-      const tempMagic = getFirstValue(['magic_temp']);
       const attackVal = getFirstValue(['attack']);
       const defenseVal = getFirstValue(['defense']);
       const rootVal = getFirstValue(['kongen']);
 
-      const statusArr = [
-        { label: '魔力', value: Number(magicMax), max: Number(magicMax) },
-        { label: '一時的魔力', value: Number(tempMagic), max: Number(tempMagic) }
-      ];
+      const statusArr = [];
       ccfoliaSpells.forEach(sp => {
         if (sp.name) statusArr.push({ label: `${sp.name}:${sp.cost}`, value: 0, max: Number(rootVal) });
       });
@@ -1316,14 +1233,6 @@ FLT　その後表`;
   const screenshotBtn = document.getElementById('screenshot_btn');
   if (!screenshotBtn) return;
 
-  const getMagicChecked = (group) => {
-    let max = 0;
-    document.querySelectorAll(`input[data-magic-group="${group}"]:checked`).forEach(cb => {
-      max = Math.max(max, Number(cb.dataset.magicIndex || 0));
-    });
-    return max;
-  };
-
   const AREA_NAMES = ['星', '獣', '力', '歌', '夢', '闇'];
   const SKILL_TABLE = [
     ['黄金','肉','重力','物語','追憶','深淵'],
@@ -1339,21 +1248,8 @@ FLT　その後表`;
     ['異界','エロス','円環','時','未来','死']
   ];
 
-  const chargeStr = (charges) => charges.map(c => c ? '■' : '□').join('');
-
-  const magicBar = (current, max) => {
-    const n = Number(max) || 0;
-    const c = Number(current) || 0;
-    if (!n) return '―';
-    let bar = '';
-    for (let i = 1; i <= n; i++) bar += i <= c ? '●' : '○';
-    return bar;
-  };
-
   const buildPreviewHTML = () => {
     const v = (id) => escapeHTML(getFieldValue(id));
-    const magicMax = getFieldValue('magic_max');
-    const magicTemp = getFieldValue('magic_temp');
     const setting = getFieldValue('setting');
     const trueDesc = getFieldValue('true_description');
     const soulSkill = getFieldValue('soul_skill');
@@ -1392,9 +1288,9 @@ FLT　その後表`;
 
     let spellHTML = '';
     if (spells.length) {
-      spellHTML = '<table class="pv-table"><thead><tr><th>魔法名</th><th>タイプ</th><th>指定特技</th><th>対象</th><th>コスト</th><th>チャージ</th><th>効果</th><th>呪句</th><th>参照p</th></tr></thead><tbody>';
+      spellHTML = '<table class="pv-table"><thead><tr><th>魔法名</th><th>タイプ</th><th>指定特技</th><th>対象</th><th>コスト</th><th>効果</th><th>呪句</th><th>参照p</th></tr></thead><tbody>';
       spells.forEach(sp => {
-        spellHTML += `<tr><td>${escapeHTML(sp.name)}</td><td>${escapeHTML(sp.type)}</td><td>${escapeHTML(sp.skill)}</td><td>${escapeHTML(sp.target)}</td><td>${escapeHTML(sp.cost)}</td><td class="pv-charge">${chargeStr(sp.charges)}</td><td class="pv-effect">${escapeHTML(sp.effect)}</td><td>${escapeHTML(sp.phrase || '□')}</td><td>${escapeHTML(sp.ref)}</td></tr>`;
+        spellHTML += `<tr><td>${escapeHTML(sp.name)}</td><td>${escapeHTML(sp.type)}</td><td>${escapeHTML(sp.skill)}</td><td>${escapeHTML(sp.target)}</td><td>${escapeHTML(sp.cost)}</td><td class="pv-effect">${escapeHTML(sp.effect)}</td><td>${escapeHTML(sp.phrase || '□')}</td><td>${escapeHTML(sp.ref)}</td></tr>`;
       });
       spellHTML += '</tbody></table>';
     }
@@ -1429,13 +1325,6 @@ FLT　その後表`;
               <dt>経歴/機関</dt><dd>${v('history')}</dd>
               <dt>信条</dt><dd>${v('belief')}</dd>
               <dt>表の顔</dt><dd>${v('face')}</dd>
-            </dl>
-          </div>
-          <div class="pv-section">
-            <h2>魔力</h2>
-            <dl class="pv-dl">
-              <dt>魔力の最大値 (${escapeHTML(magicMax)})</dt><dd class="pv-bar">${magicBar(getMagicChecked('magic_max'), magicMax)}</dd>
-              <dt>一時的魔力 (${escapeHTML(magicTemp)})</dt><dd class="pv-bar">${magicBar(getMagicChecked('magic_temp'), magicTemp)}</dd>
             </dl>
           </div>
         </div>
