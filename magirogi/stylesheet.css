@@ -608,8 +608,8 @@ textarea {
 		minmax(70px, 0.9fr)
 		minmax(60px, 0.9fr)
 		72px
-		minmax(140px, 3.19fr)
-		minmax(80px, 1fr)
+		minmax(140px, 3.44fr)
+		minmax(60px, 0.75fr)
 		58px;
 	gap: 1px;
 	background-color: var(--border);

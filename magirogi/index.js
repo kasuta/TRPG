@@ -263,7 +263,6 @@ document.addEventListener('DOMContentLoaded', () => {
     setVal('textarea[name="spell_effect_1"]',
       '１Ｄ６を振って分野をランダムに決め、その後２Ｄ６を振ってランダムに特技一つを選ぶ。それが指定特技になる。その特技の判定に成功すると、その特技に対応した精霊一体を召喚できる'
     );
-    setVal('input[name="spell_phrase_1"]', '「死の輪を踏みしめ、我が名を呼べ」');
     resizeTextareaRow(spellList, '.spell-textarea', '1');
   };
 
