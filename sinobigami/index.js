@@ -41,6 +41,85 @@
 })();
 
 // ==========================================
+// PC表示モード切り替え（特技/忍法を中央に、その他を左右に配置）
+// ==========================================
+(() => {
+  const LAYOUT_STORAGE_KEY = 'sinobigami_layout';
+  const btn = document.getElementById('layout_toggle_btn');
+  if (!btn) return;
+
+  const ICON_LAYOUT = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"/><line x1="9" y1="4" x2="9" y2="20"/><line x1="15" y1="4" x2="15" y2="20"/></svg>';
+
+  const applyLayout = (mode) => {
+    if (mode === 'pc') {
+      document.documentElement.setAttribute('data-layout', 'pc');
+      btn.innerHTML = `${ICON_LAYOUT}通常表示に戻す`;
+    } else {
+      document.documentElement.removeAttribute('data-layout');
+      btn.innerHTML = `${ICON_LAYOUT}PC表示に切替`;
+    }
+  };
+
+  const saved = localStorage.getItem(LAYOUT_STORAGE_KEY) || 'normal';
+  applyLayout(saved);
+
+  btn.addEventListener('click', () => {
+    const current = localStorage.getItem(LAYOUT_STORAGE_KEY) || 'normal';
+    const next = current === 'pc' ? 'normal' : 'pc';
+    localStorage.setItem(LAYOUT_STORAGE_KEY, next);
+    applyLayout(next);
+  });
+})();
+
+// ==========================================
+// PC表示モード：忍法/背景&関係/奥義&忍具の切り替え
+// ==========================================
+(() => {
+  const CENTER_PAGES = [
+    { key: 'ninpo', label: '忍法' },
+    { key: 'haikei-relation', label: '背景・関係' },
+    { key: 'ougi-ningu', label: '奥義・忍具' },
+  ];
+  const STORAGE_KEY = 'sinobigami_center_page';
+  const btn = document.getElementById('center_switch_btn');
+  if (!btn) return;
+
+  const PAGE_ROOT_SELECTORS = {
+    'ninpo': ['#ninpo_section'],
+    'haikei-relation': ['#haikei_section', '.relation-panel'],
+    'ougi-ningu': ['#ougi_section'],
+  };
+
+  // 非表示中に高さ0で固定されたテキストエリアを、表示された時点で再計算させる
+  const resyncTextareaHeights = (key) => {
+    (PAGE_ROOT_SELECTORS[key] || []).forEach(sel => {
+      const root = document.querySelector(sel);
+      if (!root) return;
+      root.querySelectorAll('textarea[data-resize-bound]').forEach(ta => {
+        ta.dispatchEvent(new Event('input', { bubbles: true }));
+      });
+    });
+  };
+
+  const applyPage = (key) => {
+    document.documentElement.setAttribute('data-center-page', key);
+    const page = CENTER_PAGES.find(p => p.key === key) || CENTER_PAGES[0];
+    btn.textContent = page.label;
+    resyncTextareaHeights(key);
+  };
+
+  applyPage(localStorage.getItem(STORAGE_KEY) || 'ninpo');
+
+  btn.addEventListener('click', () => {
+    const current = localStorage.getItem(STORAGE_KEY) || 'ninpo';
+    const idx = CENTER_PAGES.findIndex(p => p.key === current);
+    const next = CENTER_PAGES[(idx + 1) % CENTER_PAGES.length].key;
+    localStorage.setItem(STORAGE_KEY, next);
+    applyPage(next);
+  });
+})();
+
+// ==========================================
 // タブタイトルをキャラ名に同期
 // ==========================================
 const syncTabTitle = (() => {
@@ -304,6 +383,9 @@ const getAcquiredSkillIds = () => {
 const resizeTextareaRow = (container, selector, rowId) => {
   const rowTextareas = container.querySelectorAll(`${selector}[data-row="${rowId}"]`);
   if (!rowTextareas.length) return;
+  // PC表示モードでページ切り替え中など非表示（display:none）のときは scrollHeight が
+  // 常に0になり、高さ0で固定されてしまうため、表示されるまで計算をスキップする
+  if (container.offsetParent === null) return;
   rowTextareas.forEach(ta => { ta.style.height = 'auto'; });
   let maxHeight = 0;
   rowTextareas.forEach(ta => { maxHeight = Math.max(maxHeight, ta.scrollHeight); });
