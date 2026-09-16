@@ -1506,6 +1506,23 @@ textarea {
 	row-gap: 24px;
 }
 
+/* 関係欄：PC表示モードでは人物欄を通常の3/4程度、感情欄を1/5程度+4文字分に縮め、
+   欄全体の横幅を小さくする */
+[data-layout="pc"] .relation-grid {
+	width: fit-content;
+	grid-template-columns:
+		284px
+		40px
+		40px
+		40px
+		calc(45px + 4em);
+}
+
+/* 関係欄の枠自体も表の幅に合わせて縮め、右側の空欄をなくす */
+[data-layout="pc"][data-center-page="haikei-relation"] .relation-panel {
+	width: fit-content;
+}
+
 [data-layout="pc"] .side-panels,
 [data-layout="pc"] .relation-ningu-row {
 	display: contents;
