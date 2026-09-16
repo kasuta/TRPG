@@ -184,6 +184,12 @@ h1 {
 	gap: 24px;
 }
 
+.haikei-block {
+	display: flex;
+	flex-direction: column;
+	gap: 24px;
+}
+
 .input-panel::before,
 .input-left-top::before,
 .input-right::before {
@@ -269,7 +275,7 @@ h1 {
 	background-color: var(--border);
 	border: 1px solid var(--border);
 	border-radius: 8px;
-	min-width: 860px;
+	min-width: 620px;
 	overflow: hidden;
 }
 
@@ -1026,6 +1032,107 @@ textarea {
 .button-bar .theme-toggle-btn svg {
 	width: 18px;
 	height: 18px;
+}
+
+/* PC表示モード：左列（基本情報+真の姿/背景/設定）＋中央列（特技/蔵書・関係）の2列 */
+
+/* サイトタイトルをPC表示モードでは左上寄せにして、コンテンツ幅の左端に揃える */
+[data-layout="pc"] h1 {
+	margin: 24px auto 16px;
+	max-width: min(1600px, 96vw);
+	text-align: left;
+}
+
+[data-layout="pc"] .sheet-columns {
+	display: grid;
+	grid-template-columns: minmax(370px, 450px) 1fr;
+	grid-template-areas: "leftAll centerAll";
+	column-gap: 24px;
+	max-width: min(1600px, 96vw);
+	margin: 0 auto 80px;
+	padding: 0 20px;
+	align-items: start;
+}
+
+/* 中央列（特技/蔵書/関係）：3つとも縦に並べて表示 */
+[data-layout="pc"] .bottom-content {
+	grid-area: centerAll;
+	display: grid;
+	grid-template-columns: 1fr;
+	grid-template-areas:
+		"center1"
+		"center2a"
+		"center2b";
+	row-gap: 24px;
+	max-width: none;
+	margin: 0;
+	padding: 0;
+	align-items: start;
+}
+
+/* 左列（立ち絵/基本情報/設定/真の姿）は .top-content 自身を専用のサブグリッドにして、
+   中央列の行の高さに引きずられず1つの塊として詰めて並べる */
+[data-layout="pc"] .top-content {
+	grid-area: leftAll;
+	display: grid;
+	grid-template-columns: 1fr;
+	grid-template-areas:
+		"leftA"
+		"leftB"
+		"leftC"
+		"leftD";
+	row-gap: 0;
+	max-width: none;
+	margin: 0;
+	padding: 0;
+	align-items: start;
+}
+[data-layout="pc"] .input-left-stack,
+[data-layout="pc"] .input-left-top,
+[data-layout="pc"] .input-right {
+	display: contents;
+}
+
+[data-layout="pc"] .haikei-block      { grid-area: leftA; }
+[data-layout="pc"] .kihon-block       { grid-area: leftB; }
+[data-layout="pc"] .input-right-group { grid-area: leftC; }
+[data-layout="pc"] .true-form         { grid-area: leftD; }
+[data-layout="pc"] .skill-form        { grid-area: center1; }
+[data-layout="pc"] .skill-form .skill-grid-wrap { width: 100%; max-width: 874px; margin: 0 auto; }
+[data-layout="pc"] .spell-form        { grid-area: center2a; }
+[data-layout="pc"] .relation-form     { grid-area: center2b; }
+
+/* 立ち絵/基本情報/設定/真の姿 を1つの塊に見せる：継ぎ目の枠線・影を消して背景を連続させる */
+[data-layout="pc"] .haikei-block,
+[data-layout="pc"] .kihon-block,
+[data-layout="pc"] .input-right-group,
+[data-layout="pc"] .true-form {
+	background: var(--panel);
+	padding: 28px 32px 32px;
+	border-left: 1px solid rgba(199, 207, 216, 0.7);
+	border-right: 1px solid rgba(199, 207, 216, 0.7);
+	position: relative;
+	overflow: hidden;
+}
+[data-layout="pc"] .haikei-block {
+	border-top: 1px solid rgba(199, 207, 216, 0.7);
+	border-bottom: none;
+	border-radius: 18px 18px 0 0;
+	box-shadow: none;
+}
+[data-layout="pc"] .kihon-block,
+[data-layout="pc"] .input-right-group {
+	border-top: none;
+	border-bottom: none;
+	border-radius: 0;
+	box-shadow: none;
+}
+[data-layout="pc"] .true-form {
+	border-top: none;
+	border-bottom: 1px solid rgba(199, 207, 216, 0.7);
+	border-radius: 0 0 18px 18px;
+	box-shadow: 0 20px 50px var(--panel-shadow);
+	margin-top: 0;
 }
 
 @media (max-width: 720px) {

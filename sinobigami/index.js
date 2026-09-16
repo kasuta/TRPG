@@ -1697,6 +1697,14 @@ if (saveCharacterBtn) {
   });
 }
 
+// Ctrl+S (Macはcmd+S) で保存ボタンを押したことにする
+document.addEventListener('keydown', (e) => {
+  if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') {
+    e.preventDefault();
+    if (saveCharacterBtn && !saveCharacterBtn.disabled) saveCharacterBtn.click();
+  }
+});
+
   if (shareBtn) {
     shareBtn.addEventListener('click', async () => {
       const url = copyShareLink();

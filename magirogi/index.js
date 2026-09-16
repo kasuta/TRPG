@@ -41,6 +41,37 @@
 })();
 
 // ==========================================
+// PC表示モード切替
+// ==========================================
+(() => {
+  const LAYOUT_STORAGE_KEY = 'magirogi_layout';
+  const btn = document.getElementById('layout_toggle_btn');
+  if (!btn) return;
+
+  const ICON_LAYOUT = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"/><line x1="9" y1="4" x2="9" y2="20"/><line x1="15" y1="4" x2="15" y2="20"/></svg>';
+
+  const applyLayout = (mode) => {
+    if (mode === 'pc') {
+      document.documentElement.setAttribute('data-layout', 'pc');
+      btn.innerHTML = `${ICON_LAYOUT}通常表示に戻す`;
+    } else {
+      document.documentElement.removeAttribute('data-layout');
+      btn.innerHTML = `${ICON_LAYOUT}PC表示に切替`;
+    }
+  };
+
+  const saved = localStorage.getItem(LAYOUT_STORAGE_KEY) || 'normal';
+  applyLayout(saved);
+
+  btn.addEventListener('click', () => {
+    const current = localStorage.getItem(LAYOUT_STORAGE_KEY) || 'normal';
+    const next = current === 'pc' ? 'normal' : 'pc';
+    localStorage.setItem(LAYOUT_STORAGE_KEY, next);
+    applyLayout(next);
+  });
+})();
+
+// ==========================================
 // タブタイトルをキャラ名に同期
 // ==========================================
 const syncTabTitle = (() => {
@@ -1052,6 +1083,14 @@ if (newCharacterModal) newCharacterModal.addEventListener('click', (e) => { if (
       }
     });
   }
+
+  // Ctrl+S (Macはcmd+S) で保存ボタンを押したことにする
+  document.addEventListener('keydown', (e) => {
+    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') {
+      e.preventDefault();
+      if (saveCharacterBtn && !saveCharacterBtn.disabled) saveCharacterBtn.click();
+    }
+  });
 
   const shareBtn = document.getElementById('share_link_btn');
   if (shareBtn) {
