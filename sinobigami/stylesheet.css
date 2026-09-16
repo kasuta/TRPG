@@ -5,6 +5,7 @@ html {
 }
 
 :root {
+	color-scheme: light;
 	--ink: #211815;
 	--muted: #6b5d52;
 	--panel: #fffaf2;
@@ -63,6 +64,7 @@ html {
 
 /* テーマ: dark-full（黒背景・朱そのまま・入力欄やカードも黒ベース） */
 [data-theme="dark-full"] {
+	color-scheme: dark;
 	--bg-top: #1c1512;
 	--bg-bottom: #120d0b;
 	--accent: #c73a2a;

@@ -3,6 +3,44 @@
 // ==========================================
 
 // ==========================================
+// テーマ切り替え（白磁 / 黒背景 / 黒背景+ティールを抑える）
+// ==========================================
+(() => {
+  const THEMES = [
+    { key: 'light', label: 'デフォルトテーマ' },
+    { key: 'dark', label: 'ダークモード1' },
+    { key: 'dark-muted', label: 'ダークモード2' },
+    { key: 'dark-full', label: 'ダークモード3' },
+  ];
+  const STORAGE_KEY = 'magirogi_theme';
+  const btn = document.getElementById('theme_toggle_btn');
+  if (!btn) return;
+
+  const ICON_THEME = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79Z"/></svg>';
+
+  const applyTheme = (key) => {
+    if (key === 'light') {
+      document.documentElement.removeAttribute('data-theme');
+    } else {
+      document.documentElement.setAttribute('data-theme', key);
+    }
+    const theme = THEMES.find(t => t.key === key) || THEMES[0];
+    btn.innerHTML = `${ICON_THEME}${theme.label}`;
+  };
+
+  const saved = localStorage.getItem(STORAGE_KEY) || 'light';
+  applyTheme(saved);
+
+  btn.addEventListener('click', () => {
+    const current = localStorage.getItem(STORAGE_KEY) || 'light';
+    const idx = THEMES.findIndex(t => t.key === current);
+    const next = THEMES[(idx + 1) % THEMES.length].key;
+    localStorage.setItem(STORAGE_KEY, next);
+    applyTheme(next);
+  });
+})();
+
+// ==========================================
 // タブタイトルをキャラ名に同期
 // ==========================================
 const syncTabTitle = (() => {
@@ -1346,12 +1384,32 @@ FLT　その後表`;
       const container = document.createElement('div');
       container.id = 'preview-render-container';
       container.innerHTML = buildPreviewHTML();
+
+      // 現在のテーマのCSS変数値を明示的に取得してインライン指定する。
+      // html2canvasは [data-theme="..."] のような属性セレクタ経由のCSS変数を
+      // 正しく解決できずデフォルト(:root)値にフォールバックすることがあるため、
+      // 生成前に実際の計算値をコンテナへ直接焼き込んで確実に反映させる。
+      const THEME_VAR_NAMES = [
+        '--ink', '--muted', '--panel', '--panel-shadow', '--border', '--highlight',
+        '--bg-top', '--bg-bottom', '--accent', '--accent-strong', '--accent-rgb',
+        '--accent-hover', '--h1-color', '--footer-color', '--texture-color',
+        '--corner-glow', '--accent-glow', '--surface', '--surface-alt', '--text',
+        '--selected-bg', '--selected-color',
+      ];
+      const rootStyle = getComputedStyle(document.documentElement);
+      THEME_VAR_NAMES.forEach(name => {
+        const value = rootStyle.getPropertyValue(name).trim();
+        if (value) container.style.setProperty(name, value);
+      });
+
       document.body.appendChild(container);
 
       await new Promise(resolve => setTimeout(resolve, 200));
 
+      const themeBgColor = rootStyle.getPropertyValue('--bg-top').trim() || '#f7efe3';
+
       const canvas = await html2canvas(container.querySelector('.pv-sheet'), {
-        useCORS: true, scale: 2, backgroundColor: '#f7efe3'
+        useCORS: true, scale: 2, backgroundColor: themeBgColor
       });
       document.body.removeChild(container);
 
