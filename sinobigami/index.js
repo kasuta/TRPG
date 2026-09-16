@@ -80,9 +80,9 @@
     { key: 'haikei-relation', label: '背景・関係' },
     { key: 'ougi-ningu', label: '奥義・忍具' },
   ];
-  const STORAGE_KEY = 'sinobigami_center_page';
   const btn = document.getElementById('center_switch_btn');
   if (!btn) return;
+  let currentCenterPage = 'ninpo';
 
   const PAGE_ROOT_SELECTORS = {
     'ninpo': ['#ninpo_section'],
@@ -102,19 +102,18 @@
   };
 
   const applyPage = (key) => {
+    currentCenterPage = key;
     document.documentElement.setAttribute('data-center-page', key);
     const page = CENTER_PAGES.find(p => p.key === key) || CENTER_PAGES[0];
     btn.textContent = page.label;
     resyncTextareaHeights(key);
   };
 
-  applyPage(localStorage.getItem(STORAGE_KEY) || 'ninpo');
+  applyPage('ninpo');
 
   btn.addEventListener('click', () => {
-    const current = localStorage.getItem(STORAGE_KEY) || 'ninpo';
-    const idx = CENTER_PAGES.findIndex(p => p.key === current);
+    const idx = CENTER_PAGES.findIndex(p => p.key === currentCenterPage);
     const next = CENTER_PAGES[(idx + 1) % CENTER_PAGES.length].key;
-    localStorage.setItem(STORAGE_KEY, next);
     applyPage(next);
   });
 })();
@@ -974,6 +973,9 @@ document.addEventListener('DOMContentLoaded', () => {
         q(`[name="ougi_effect_${i}"]`).value = og.effect || '';
         q(`[name="ougi_effect_${i}"]`).dispatchEvent(new Event('input'));
       });
+      // 奥義が1件も無いデータを読み込むと行が0件になり欄ごと消えて見えるため、
+      // 新規作成時と同様に空の行を1つ残す
+      if (document.querySelectorAll('.ougi-textarea[name^="ougi_name_"]').length === 0) addOugiRow();
     }
     if (data.ninpo) {
       if (ninpoInputMode === 'text') {
@@ -999,6 +1001,9 @@ document.addEventListener('DOMContentLoaded', () => {
         q(`[name="haikei_ref_${i}"]`).value = hk.ref || '';
         q(`[name="haikei_effect_${i}"]`).dispatchEvent(new Event('input'));
       });
+      // 背景が1件も無いデータを読み込むと行が0件になり欄ごと消えて見えるため、
+      // 新規作成時と同様に空の行を1つ残す
+      if (document.querySelectorAll('.haikei-textarea[name^="haikei_name_"]').length === 0) addHaikeiRow();
     }
     if (data.relations) {
       while (document.querySelectorAll('.relation-textarea[name^="relation_name_"]').length > 0) removeRelationRow();
@@ -1013,6 +1018,9 @@ document.addEventListener('DOMContentLoaded', () => {
         document.querySelector(`[name="relation_emotion_${j}"]`).value = rel.emotion || '';
         document.querySelector(`[name="relation_name_${j}"]`).dispatchEvent(new Event('input'));
       });
+      // 関係が1件も無いデータを読み込むと行が0件になり欄ごと消えて見えるため、
+      // 新規作成時と同様に空の行を1つ残す
+      if (document.querySelectorAll('.relation-textarea[name^="relation_name_"]').length === 0) addRelationRow();
     }
     if (data.image) {
       savedImageBase64 = data.image;
