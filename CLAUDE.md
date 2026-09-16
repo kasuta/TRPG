@@ -8,7 +8,7 @@ Static, client-side character sheet ("キャラシ") tools for tabletop RPGs, ho
 
 - `magirogi/` — character sheet creator for the TRPG "マギロギ" (Magirogi)
 - `sinobigami/` — character sheet creator for the TRPG "シノビガミ" (Shinobigami)
-- `sinobigami_tool/` — a standalone, single-file skill-check/dice tool for Shinobigami (self-contained `index.html`, no JS/CSS file, no backend calls)
+- `sinobigami_tool/` — a standalone, single-file tool for Shinobigami that loads saved character JSON files and computes skill distances / target numbers on the skill-area wheel (self-contained `index.html`, no JS/CSS file, no backend calls)
 
 `magirogi/` and `sinobigami/` are structurally parallel apps: each is one `index.html` + one `index.js` + one `stylesheet.css`, built from vanilla JS with no frameworks. They are largely independent copies of the same pattern rather than sharing a common module — when fixing a bug in one app's cross-cutting logic (auth, history, save/share), check whether the equivalent code in the other app's `index.js` needs the same fix.
 

@@ -380,11 +380,21 @@ const distCardsEl = document.getElementById('dist_cards');
 
 let selectedSkill = null; // { row, col, id, name }
 
-function buildMasterTable() {
-  let html = '<table class="master-table"><thead><tr><th class="num-col"></th>';
+/**
+ * 特技一覧テーブルの thead/tbody を生成する共通ヘルパー
+ * cellClass: 特技セルの基本クラス名
+ * onClass: 習得済み(idSet内)のときに付与するクラス名
+ * idSet: 習得済み特技IDのSet（省略時はどのセルも「習得済み」扱いにしない）
+ * gaps: ギャップ状態オブジェクト（省略時はギャップ列を常に非アクティブ表示にする）
+ */
+function buildSkillTableInner({ cellClass, onClass = null, idSet = null, gaps = null }) {
+  let html = '<thead><tr><th class="num-col"></th>';
   AREA_NAMES.forEach((a, ai) => {
     html += `<th>${a}</th>`;
-    if (ai < 5) html += '<th class="gap-col"></th>';
+    if (ai < 5) {
+      const gapOn = gaps && gaps[`gap${ai + 1}`] ? ' gap-on' : '';
+      html += `<th class="gap-col${gapOn}"></th>`;
+    }
   });
   html += '</tr></thead><tbody>';
   SKILL_TABLE.forEach((row, ri) => {
@@ -392,13 +402,21 @@ function buildMasterTable() {
     html += `<tr><td class="num-col">${rowNum}</td>`;
     row.forEach((skillName, ci) => {
       const skillId = `skill_r${rowNum}_c${ci + 1}`;
-      html += `<td class="m-skill" data-skill-id="${skillId}" data-row="${rowNum}" data-col="${ci + 1}">${skillName}</td>`;
-      if (ci < 5) html += '<td class="gap-col"></td>';
+      const on = (idSet && onClass && idSet.has(skillId)) ? ` ${onClass}` : '';
+      html += `<td class="${cellClass}${on}" data-skill-id="${skillId}" data-row="${rowNum}" data-col="${ci + 1}">${skillName}</td>`;
+      if (ci < 5) {
+        const gapOn = gaps && gaps[`gap${ci + 1}`] ? ' gap-on' : '';
+        html += `<td class="gap-col${gapOn}"></td>`;
+      }
     });
     html += '</tr>';
   });
-  html += '</tbody></table>';
-  masterTableWrap.innerHTML = html;
+  html += '</tbody>';
+  return html;
+}
+
+function buildMasterTable() {
+  masterTableWrap.innerHTML = `<table class="master-table">${buildSkillTableInner({ cellClass: 'm-skill' })}</table>`;
 
   // クリックイベント
   masterTableWrap.querySelectorAll('.m-skill').forEach(td => {
@@ -489,7 +507,7 @@ function updateDistanceResults() {
   distTitleEl.textContent = `「${selectedSkill.name}」の達成値`;
 
   let html = '';
-  characters.forEach((charData, ci) => {
+  characters.forEach((charData) => {
     if (charData.acquiredSkillIds.length === 0) {
       html += `
         <div class="dist-card">
@@ -543,7 +561,6 @@ function updateDistanceResults() {
 // ==========================================
 const characters = [];
 const charactersEl = document.getElementById('characters');
-const noDataEl = document.getElementById('no_data');
 const loadFileEl = document.getElementById('load_file');
 const loadBtn = document.getElementById('load_btn');
 const clearBtn = document.getElementById('clear_btn');
@@ -582,39 +599,11 @@ function parseCharData(data) {
 
 /** 特技テーブルHTMLを生成 */
 function buildSkillTableHTML(acquiredSkillIds, gaps) {
-  const idSet = new Set(acquiredSkillIds);
-
   // gap1=器術↔体術(col1-2), gap2=体術↔忍術(col2-3), gap3=忍術↔謀術(col3-4),
   // gap4=謀術↔戦術(col4-5), gap5=戦術↔妖術(col5-6), gap6=妖術↔器術
   // gap6 は表では直接可視化しにくいため省略
-
-  let html = '<table class="skill-table"><thead><tr><th class="num-col"></th>';
-  AREA_NAMES.forEach((a, ai) => {
-    html += `<th>${a}</th>`;
-    if (ai < 5) {
-      const gapOn = gaps[`gap${ai + 1}`] ? ' gap-on' : '';
-      html += `<th class="gap-col${gapOn}"></th>`;
-    }
-  });
-  html += '</tr></thead><tbody>';
-
-  SKILL_TABLE.forEach((row, ri) => {
-    const rowNum = ri + 2;
-    html += `<tr><td class="num-col">${rowNum}</td>`;
-    row.forEach((skillName, ci) => {
-      const skillId = `skill_r${rowNum}_c${ci + 1}`;
-      const on = idSet.has(skillId) ? ' skill-on' : '';
-      html += `<td class="skill-cell${on}">${skillName}</td>`;
-      if (ci < 5) {
-        const gapOn = gaps[`gap${ci + 1}`] ? ' gap-on' : '';
-        html += `<td class="gap-col${gapOn}"></td>`;
-      }
-    });
-    html += '</tr>';
-  });
-
-  html += '</tbody></table>';
-  return html;
+  const idSet = new Set(acquiredSkillIds);
+  return `<table class="skill-table">${buildSkillTableInner({ cellClass: 'skill-cell', onClass: 'skill-on', idSet, gaps })}</table>`;
 }
 
 /** キャラクターカードHTMLを生成 */
@@ -667,6 +656,7 @@ function render() {
       const idx = parseInt(btn.dataset.index, 10);
       characters.splice(idx, 1);
       render();
+      updateDistanceResults();
     });
   });
 }

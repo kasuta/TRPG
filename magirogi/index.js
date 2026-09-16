@@ -131,6 +131,7 @@ const imageInput = document.getElementById('setting_image');
 const imagePreview = document.getElementById('setting_image_preview');
 const imageEmpty = document.getElementById('setting_image_empty');
 let previewUrl = null;
+let savedImageBase64 = null;
 
 const clearPreview = () => {
   if (previewUrl) { URL.revokeObjectURL(previewUrl); previewUrl = null; }
@@ -139,12 +140,14 @@ const clearPreview = () => {
   imageEmpty.hidden = false;
 };
 
+/** プレビュー表示とセーブ用base64変換をまとめて行う */
 imageInput.addEventListener('change', () => {
   const file = imageInput.files && imageInput.files[0];
-  if (!file) { clearPreview(); return; }
+  if (!file) { clearPreview(); savedImageBase64 = null; return; }
   if (!file.type.startsWith('image/')) {
     clearPreview();
     imageEmpty.textContent = '画像ファイルを選択してください';
+    savedImageBase64 = null;
     return;
   }
   if (previewUrl) URL.revokeObjectURL(previewUrl);
@@ -152,6 +155,10 @@ imageInput.addEventListener('change', () => {
   imagePreview.src = previewUrl;
   imagePreview.classList.add('is-visible');
   imageEmpty.hidden = true;
+
+  const reader = new FileReader();
+  reader.onload = (e) => { savedImageBase64 = e.target.result; };
+  reader.readAsDataURL(file);
 });
 
 clearPreview();
@@ -269,7 +276,6 @@ document.addEventListener('DOMContentLoaded', () => {
   if (spellList) {
     addSpellRow();
     addSpellRow();
-    spellList.querySelectorAll('.spell-textarea').forEach(bindSpellTextarea);
     setDefaultSpellPreset();
   }
   if (addSpellBtn) addSpellBtn.addEventListener('click', addSpellRow);
@@ -338,18 +344,6 @@ document.addEventListener('DOMContentLoaded', () => {
   // ──────────────────────────────
   const saveBtn = document.getElementById('save_data_btn');
   const loadFile = document.getElementById('load_data_file');
-  let savedImageBase64 = null;
-
-  imageInput.addEventListener('change', () => {
-    const file = imageInput.files && imageInput.files[0];
-    if (file && file.type.startsWith('image/')) {
-      const reader = new FileReader();
-      reader.onload = (e) => { savedImageBase64 = e.target.result; };
-      reader.readAsDataURL(file);
-    } else {
-      savedImageBase64 = null;
-    }
-  });
 
   /** 現在の入力内容からセーブデータ(JSON化可能なオブジェクト)を構築 */
   const buildSaveData = () => {
@@ -371,8 +365,8 @@ document.addEventListener('DOMContentLoaded', () => {
     return data;
   };
 
-  /** セーブデータ(JSON)を現在のフォームへ反映(前のキャラの残留を防ぐため、まず全体をクリアしてから適用) */
-  const applyLoadedData = (data) => {
+  /** フォームの入力欄・チェック状態・画像を初期状態にクリアする(applyLoadedData/resetCharacterFormで共有) */
+  const clearCharacterForm = () => {
     document.querySelectorAll('input[type="text"], input[type="number"], select, textarea').forEach(el => {
       if (el.closest('#history_panel')) return;
       if (/^(spell_|relation_)/.test(el.name || '')) return;
@@ -383,6 +377,11 @@ document.addEventListener('DOMContentLoaded', () => {
     document.querySelectorAll('.gap-check').forEach(cb => { cb.checked = false; });
     savedImageBase64 = null;
     clearPreview();
+  };
+
+  /** セーブデータ(JSON)を現在のフォームへ反映(前のキャラの残留を防ぐため、まず全体をクリアしてから適用) */
+  const applyLoadedData = (data) => {
+    clearCharacterForm();
 
     if (data.inputs) {
       for (const [key, value] of Object.entries(data.inputs)) {
@@ -402,17 +401,15 @@ document.addEventListener('DOMContentLoaded', () => {
       data.spells.filter(row => !isEmptySpellRow(row)).forEach((spell, idx) => {
         addSpellRow();
         const i = idx + 1;
-        const q = (s) => document.querySelector(s);
-        q(`[name="spell_name_${i}"]`).value = spell.name || '';
-        q(`[name="spell_type_${i}"]`).value = spell.type || '召喚';
-        q(`[name="spell_skill_${i}"]`).value = spell.skill || '';
-        q(`[name="spell_target_${i}"]`).value = spell.target || '';
-        q(`[name="spell_cost_${i}"]`).value = spell.cost || '';
-        q(`[name="spell_effect_${i}"]`).value = spell.effect || '';
-        q(`[name="spell_phrase_${i}"]`).value = typeof spell.phrase === 'string' ? spell.phrase : '';
-        q(`[name="spell_reference_p_${i}"]`).value = spell.ref || '';
-        q(`[name="spell_effect_${i}"]`).dispatchEvent(new Event('input'));
-        q(`[name="spell_phrase_${i}"]`).dispatchEvent(new Event('input'));
+        SPELL_TEXT_FIELDS.forEach(({ key, attr }) => {
+          const el = document.querySelector(`[name="spell_${attr}_${i}"]`);
+          if (!el) return;
+          if (key === 'type') el.value = spell.type || '召喚';
+          else if (key === 'phrase') el.value = typeof spell.phrase === 'string' ? spell.phrase : '';
+          else el.value = spell[key] || '';
+        });
+        document.querySelector(`[name="spell_effect_${i}"]`).dispatchEvent(new Event('input'));
+        document.querySelector(`[name="spell_phrase_${i}"]`).dispatchEvent(new Event('input'));
       });
     }
 
@@ -570,6 +567,17 @@ document.addEventListener('DOMContentLoaded', () => {
   const GAME_LABEL = { sinobigami: 'シノビガミ', magirogi: 'マギロギ' };
   let currentCharacterId = null;
 
+  /** JSON POSTリクエストを送り、{ok, json}を返す共通ヘルパー(login/registerで共有) */
+  const postJSON = async (path, body) => {
+    const res = await fetch(`${API_BASE}${path}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+    const json = await res.json().catch(() => ({}));
+    return { ok: res.ok, json };
+  };
+
   /** 保存履歴(localStorage)に記録する */
   const addToHistory = (id, name) => {
     const historyJson = localStorage.getItem('sinobigami_history') || '[]';
@@ -585,7 +593,6 @@ document.addEventListener('DOMContentLoaded', () => {
     localStorage.setItem('sinobigami_history', JSON.stringify(history));
   };
 
-  const AUTH_API_BASE = API_BASE;
   const AUTH_TOKEN_KEY = 'sinobigami_auth_token';
   const AUTH_USER_KEY = 'sinobigami_auth_username';
 
@@ -693,7 +700,7 @@ const renderListItems = (items) => {
     if (listEl) listEl.innerHTML = '<p class="history-empty">読み込み中...</p>';
 
     try {
-      const res = await fetch(`${AUTH_API_BASE}/api/my-characters`, {
+      const res = await fetch(`${API_BASE}/api/my-characters`, {
         headers: { Authorization: `Bearer ${getAuthToken()}` },
       });
       if (!res.ok) throw new Error('取得に失敗しました');
@@ -755,13 +762,8 @@ const renderListItems = (items) => {
       const password = document.getElementById('login_password').value;
 
       try {
-        const res = await fetch(`${AUTH_API_BASE}/api/login`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ username, password }),
-        });
-        const json = await res.json();
-        if (!res.ok) { errorEl.textContent = json.error || 'ログインに失敗しました'; return; }
+        const { ok, json } = await postJSON('/api/login', { username, password });
+        if (!ok) { errorEl.textContent = json.error || 'ログインに失敗しました'; return; }
         setAuth(json.token, json.username);
         loginForm.reset();
         updateAuthUI();
@@ -782,21 +784,11 @@ const renderListItems = (items) => {
       const password = document.getElementById('register_password').value;
 
       try {
-        const res = await fetch(`${AUTH_API_BASE}/api/register`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ username, password }),
-        });
-        const json = await res.json();
-        if (!res.ok) { errorEl.textContent = json.error || '登録に失敗しました'; return; }
-        const loginRes = await fetch(`${AUTH_API_BASE}/api/login`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ username, password }),
-        });
-        const loginJson = await loginRes.json();
-        if (loginRes.ok) {
-          setAuth(loginJson.token, loginJson.username);
+        const { ok, json } = await postJSON('/api/register', { username, password });
+        if (!ok) { errorEl.textContent = json.error || '登録に失敗しました'; return; }
+        const loginResult = await postJSON('/api/login', { username, password });
+        if (loginResult.ok) {
+          setAuth(loginResult.json.token, loginResult.json.username);
           registerForm.reset();
           updateAuthUI();
         }
@@ -812,7 +804,7 @@ const renderListItems = (items) => {
   if (logoutBtn) {
     logoutBtn.addEventListener('click', async () => {
       try {
-        await fetch(`${AUTH_API_BASE}/api/logout`, {
+        await fetch(`${API_BASE}/api/logout`, {
           method: 'POST',
           headers: { Authorization: `Bearer ${getAuthToken()}` },
         });
@@ -903,17 +895,7 @@ const renderListItems = (items) => {
 
   /** キャラクターシートを新規作成用に初期状態へリセットする */
   const resetCharacterForm = () => {
-    document.querySelectorAll('input[type="text"], input[type="number"], select, textarea').forEach(el => {
-      if (el.closest('#history_panel')) return;
-      if (/^(spell_|relation_)/.test(el.name || '')) return;
-      if (el.tagName === 'SELECT') el.selectedIndex = 0;
-      else el.value = '';
-    });
-    document.querySelectorAll('.skill-check').forEach(cb => { cb.checked = false; });
-    document.querySelectorAll('.gap-check').forEach(cb => { cb.checked = false; });
-
-    savedImageBase64 = null;
-    clearPreview();
+    clearCharacterForm();
     if (imageInput) imageInput.value = '';
 
     while (document.querySelectorAll('.spell-textarea[name^="spell_name_"]').length > 0) removeSpellRow();
@@ -932,7 +914,6 @@ const renderListItems = (items) => {
 const newCharacterModal = document.getElementById('new_character_modal');
 const newCharChoiceSinobigami = document.getElementById('new_char_choice_sinobigami');
 const newCharChoiceMagirogi = document.getElementById('new_char_choice_magirogi');
-const newCharacterModalCancel = document.getElementById('new_character_modal_cancel');
 
 const openNewCharacterModal = () => {
   if (!newCharacterModal) return;
@@ -960,7 +941,6 @@ const newCharacterBtn = document.getElementById('new_character_btn');
 if (newCharacterBtn) newCharacterBtn.addEventListener('click', openNewCharacterModal);
 if (newCharChoiceSinobigami) newCharChoiceSinobigami.addEventListener('click', () => startNewCharacter('sinobigami'));
 if (newCharChoiceMagirogi) newCharChoiceMagirogi.addEventListener('click', () => startNewCharacter('magirogi'));
-if (newCharacterModalCancel) newCharacterModalCancel.addEventListener('click', closeNewCharacterModal);
 if (newCharacterModal) newCharacterModal.addEventListener('click', (e) => { if (e.target === newCharacterModal) closeNewCharacterModal(); });
   /** キャラクターを保存する(currentCharacterIdの有無で新規/更新を自動判定) */
   const saveCharacter = async () => {
@@ -1086,13 +1066,11 @@ if (newCharacterModal) newCharacterModal.addEventListener('click', (e) => { if (
   // ──────────────────────────────
 
   /** チャットパレット形式のコマンド文字列を組み立てる(CCFOLIA形式出力とチャパレ形式出力で共通) */
-  const buildChatPaletteCommands = () => {
+  const buildChatPaletteCommands = (spells = collectSpells()) => {
     let commands = 'ーーー特技ーーー\n';
     document.querySelectorAll('.skill-check:checked').forEach(cb => { commands += `2d6>=5 《${cb.value}》\n`; });
-    const soulSkill = getFirstValue(['soul_skill', 'true_skill']);
+    const soulSkill = getFirstValue(['soul_skill']);
     if (soulSkill !== '0') commands += `2d6>=6 《${soulSkill}》\n`;
-
-    const spells = collectSpells();
 
     commands += '\nーーー魔法ーーー\n';
     spells.forEach(sp => {
@@ -1187,8 +1165,8 @@ FLT　その後表`;
       const nameValue = nameInput.value;
       if (!nameValue) { showToast('かりそめの名前が入力されていません。'); return; }
 
-      const commands = buildChatPaletteCommands();
       const ccfoliaSpells = collectSpells();
+      const commands = buildChatPaletteCommands(ccfoliaSpells);
 
       const attackVal = getFirstValue(['attack']);
       const defenseVal = getFirstValue(['defense']);

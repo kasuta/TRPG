@@ -82,32 +82,39 @@ const getFieldValue = (key, fallback = '') => {
   return el ? (el.value || fallback) : fallback;
 };
 
-/** 複数のキー候補から最初に値が見つかったものを返す */
-const getFirstValue = (keys, fallback = '0') => {
-  for (const key of keys) {
-    const v = getFieldValue(key);
-    if (v) return v;
+/** name属性から値を読むフィールドgetterを作る */
+const textField = (name) => (i) => {
+  const el = document.querySelector(`[name="${name}_${i}"]`);
+  return el ? (el.value || '') : '';
+};
+
+/** id属性からチェック状態を読むフィールドgetterを作る */
+const checkboxField = (name) => (i) => {
+  const el = document.getElementById(`${name}_${i}`);
+  return el ? el.checked : false;
+};
+
+/** existsSelector(i)が見つかる限りi=1,2,...と行を収集し、fieldGettersで各行のオブジェクトを組み立てる */
+const collectRows = (existsSelector, fieldGetters) => {
+  const rows = [];
+  let i = 1;
+  while (document.querySelector(existsSelector(i))) {
+    const row = {};
+    Object.entries(fieldGetters).forEach(([key, getter]) => { row[key] = getter(i); });
+    rows.push(row);
+    i++;
   }
-  return fallback;
+  return rows;
 };
 
 /** 奥義データを収集 */
-const collectOugi = () => {
-  const ougi = [];
-  let i = 1;
-  while (document.querySelector(`[name="ougi_name_${i}"]`)) {
-    ougi.push({
-      name: document.querySelector(`[name="ougi_name_${i}"]`).value || '',
-      skill: document.querySelector(`[name="ougi_skill_${i}"]`).value || '',
-      kaizou: document.querySelector(`[name="ougi_kaizou_${i}"]`).value || '',
-      effect: document.querySelector(`[name="ougi_effect_${i}"]`).value || '',
-    });
-    i++;
-  }
-  return ougi;
-};
+const collectOugi = () => collectRows(i => `[name="ougi_name_${i}"]`, {
+  name: textField('ougi_name'),
+  skill: textField('ougi_skill'),
+  kaizou: textField('ougi_kaizou'),
+  effect: textField('ougi_effect'),
+});
 
-const NINPO_FIELD_ORDER = ['name', 'type', 'skill', 'range', 'cost', 'effect', 'ref'];
 const NINPO_TEXT_FIELD_ORDER = ['type', 'range', 'cost', 'skill', 'ref'];
 const NINPO_LABEL_MAP = {
   type: 'タイプ',
@@ -143,10 +150,10 @@ const escapeNinpoText = (value = '') => normalizeNinpoText(value).trimEnd();
 
 const normalizeNinpoName = (value = '') => String(value).trim().split(/\s+/)[0] || '';
 
-const getNinpoFieldValue = (text, label) => {
-  const normalized = normalizeNinpoText(text);
+/** 事前にsplit済みの行配列からラベル付き値を1つ取り出す（呼び出しごとの再split/正規表現生成を避けるため行配列を受け取る） */
+const getNinpoFieldValue = (lines, label) => {
   const pattern = new RegExp(`^${label}(?:[：:]|[\\s\\u3000]+)\\s*(.*)$`);
-  for (const line of normalized.split('\n')) {
+  for (const line of lines) {
     const match = line.match(pattern);
     if (match) return match[1].trim();
   }
@@ -166,12 +173,11 @@ const parseNinpoBlock = (block = '') => {
   const remainingLines = [];
   let inEffect = false;
 
-  const labelSource = restLines.join('\n');
-  const type = getNinpoFieldValue(labelSource, 'タイプ');
-  const range = getNinpoFieldValue(labelSource, '間合');
-  const cost = getNinpoFieldValue(labelSource, 'コスト');
-  const skill = getNinpoFieldValue(labelSource, '指定特技');
-  const ref = getNinpoFieldValue(labelSource, '参照p');
+  const type = getNinpoFieldValue(restLines, 'タイプ');
+  const range = getNinpoFieldValue(restLines, '間合');
+  const cost = getNinpoFieldValue(restLines, 'コスト');
+  const skill = getNinpoFieldValue(restLines, '指定特技');
+  const ref = getNinpoFieldValue(restLines, '参照p');
 
   for (let i = 0; i < restLines.length; i++) {
     const line = restLines[i];
@@ -226,18 +232,19 @@ const serializeNinpoText = (rows = []) => rows.map(serializeNinpoBlock).filter(B
 const collectNinpoFromGrid = ({ includeDisabled = true } = {}) => {
   const ninpo = [];
   let i = 1;
-  while (document.querySelector(`[name="ninpo_name_${i}"]`)) {
-    const isDisabled = document.querySelector(`[name="ninpo_name_${i}"]`)?.closest('.ninpo-grid, .ninpo-row')?.querySelector(`.btn-ninpo-disable[data-ninpo-row="${i}"]`)?.classList.contains('is-disabled')
+  let nameEl;
+  while ((nameEl = document.querySelector(`[name="ninpo_name_${i}"]`))) {
+    const isDisabled = nameEl.closest('.ninpo-grid, .ninpo-row')?.querySelector(`.btn-ninpo-disable[data-ninpo-row="${i}"]`)?.classList.contains('is-disabled')
       || document.querySelector(`.btn-ninpo-disable[data-ninpo-row="${i}"]`)?.classList.contains('is-disabled');
     if (!includeDisabled && isDisabled) { i++; continue; }
     ninpo.push({
-      name: normalizeNinpoName(document.querySelector(`[name="ninpo_name_${i}"]`).value || ''),
-      type: document.querySelector(`[name="ninpo_type_${i}"]`).value || '',
-      skill: document.querySelector(`[name="ninpo_skill_${i}"]`).value || '',
-      range: document.querySelector(`[name="ninpo_range_${i}"]`).value || '',
-      cost: document.querySelector(`[name="ninpo_cost_${i}"]`).value || '',
-      effect: document.querySelector(`[name="ninpo_effect_${i}"]`).value || '',
-      ref: document.querySelector(`[name="ninpo_ref_${i}"]`).value || '',
+      name: normalizeNinpoName(nameEl.value || ''),
+      type: textField('ninpo_type')(i),
+      skill: textField('ninpo_skill')(i),
+      range: textField('ninpo_range')(i),
+      cost: textField('ninpo_cost')(i),
+      effect: textField('ninpo_effect')(i),
+      ref: textField('ninpo_ref')(i),
     });
     i++;
   }
@@ -252,10 +259,12 @@ const collectNinpoFromText = () => {
     .filter(row => !isEmptyNinpoRow(row));
 };
 
-const isEmptyNinpoRow = (row = {}) => !row.name && !row.type && !row.skill && !row.range && !row.cost && !row.effect && !row.ref;
-const isEmptyOugiRow = (row = {}) => !row.name && !row.skill && !row.kaizou && !row.effect;
-const isEmptyHaikeiRow = (row = {}) => !row.name && !row.merit && !row.cost && !row.effect && !row.ref;
-const isEmptyRelationRow = (row = {}) => !row.name && !row.location && !row.secret && !row.ougi && !row.emotion_sign && !row.emotion;
+/** 指定フィールドが全てfalsyな行を「空行」とみなす判定関数を作る */
+const makeEmptyRowChecker = (fields) => (row = {}) => fields.every(field => !row[field]);
+const isEmptyNinpoRow = makeEmptyRowChecker(['name', 'type', 'skill', 'range', 'cost', 'effect', 'ref']);
+const isEmptyOugiRow = makeEmptyRowChecker(['name', 'skill', 'kaizou', 'effect']);
+const isEmptyHaikeiRow = makeEmptyRowChecker(['name', 'merit', 'cost', 'effect', 'ref']);
+const isEmptyRelationRow = makeEmptyRowChecker(['name', 'location', 'secret', 'ougi', 'emotion_sign', 'emotion']);
 
 /** 忍法データを収集 (disabled行を除外するかどうか選択可能) */
 const collectNinpo = ({ includeDisabled = true } = {}) => {
@@ -266,52 +275,29 @@ const collectNinpo = ({ includeDisabled = true } = {}) => {
 };
 
 /** 背景データを収集 */
-const collectHaikei = () => {
-  const haikei = [];
-  let i = 1;
-  while (document.querySelector(`[name="haikei_name_${i}"]`)) {
-    haikei.push({
-      name: document.querySelector(`[name="haikei_name_${i}"]`).value || '',
-      merit: document.querySelector(`[name="haikei_merit_${i}"]`).value || '',
-      cost: document.querySelector(`[name="haikei_cost_${i}"]`).value || '',
-      effect: document.querySelector(`[name="haikei_effect_${i}"]`).value || '',
-      ref: document.querySelector(`[name="haikei_ref_${i}"]`).value || '',
-    });
-    i++;
-  }
-  return haikei;
-};
+const collectHaikei = () => collectRows(i => `[name="haikei_name_${i}"]`, {
+  name: textField('haikei_name'),
+  merit: textField('haikei_merit'),
+  cost: textField('haikei_cost'),
+  effect: textField('haikei_effect'),
+  ref: textField('haikei_ref'),
+});
 
 /** 関係データを収集 */
-const collectRelations = () => {
-  const relations = [];
-  let j = 1;
-  while (document.querySelector(`[name="relation_name_${j}"]`)) {
-    relations.push({
-      name: document.querySelector(`[name="relation_name_${j}"]`).value || '',
-      location: document.getElementById(`relation_location_${j}`) ? document.getElementById(`relation_location_${j}`).checked : false,
-      secret: document.getElementById(`relation_secret_${j}`) ? document.getElementById(`relation_secret_${j}`).checked : false,
-      ougi: document.getElementById(`relation_ougi_${j}`) ? document.getElementById(`relation_ougi_${j}`).checked : false,
-      emotion_sign: document.getElementById(`relation_emotion_sign_${j}`) ? document.getElementById(`relation_emotion_sign_${j}`).checked : false,
-      emotion: document.querySelector(`[name="relation_emotion_${j}"]`).value || '',
-    });
-    j++;
-  }
-  return relations;
-};
+const collectRelations = () => collectRows(i => `[name="relation_name_${i}"]`, {
+  name: textField('relation_name'),
+  location: checkboxField('relation_location'),
+  secret: checkboxField('relation_secret'),
+  ougi: checkboxField('relation_ougi'),
+  emotion_sign: checkboxField('relation_emotion_sign'),
+  emotion: textField('relation_emotion'),
+});
 
 /** 習得済み特技IDリストを返す */
 const getAcquiredSkillIds = () => {
   const ids = [];
   document.querySelectorAll('.skill-check:checked').forEach(cb => ids.push(cb.id));
   return ids;
-};
-
-/** 習得済み特技名リストを返す（CCFOLIA用） */
-const getAcquiredSkillNames = () => {
-  const skills = [];
-  document.querySelectorAll('.skill-check:checked').forEach(cb => skills.push(cb.value));
-  return skills;
 };
 
 /** テキストエリア行の高さ同期 */
@@ -322,6 +308,23 @@ const resizeTextareaRow = (container, selector, rowId) => {
   let maxHeight = 0;
   rowTextareas.forEach(ta => { maxHeight = Math.max(maxHeight, ta.scrollHeight); });
   rowTextareas.forEach(ta => { ta.style.height = `${maxHeight}px`; });
+};
+
+/** リストの末尾からrowSize個の子要素を削除する（ヘッダー行数以下にはしない） */
+const removeLastRow = (list, headerCount, rowSize) => {
+  if (!list || list.children.length <= headerCount) return false;
+  for (let i = 0; i < rowSize; i++) {
+    if (list.lastElementChild) list.removeChild(list.lastElementChild);
+  }
+  return true;
+};
+
+/** 指定コンテナ・セレクタに対する行単位の自動リサイズbinderを作る（二重バインド防止付き） */
+const bindAutoResize = (container, selector) => (textarea) => {
+  if (textarea.dataset.resizeBound) return;
+  textarea.dataset.resizeBound = 'true';
+  textarea.addEventListener('input', () => resizeTextareaRow(container, selector, textarea.dataset.row));
+  resizeTextareaRow(container, selector, textarea.dataset.row);
 };
 
 /** HTML エスケープ */
@@ -407,12 +410,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const OUGI_HEADER_COUNT = 5;
   const OUGI_ROW_SIZE = 5;
 
-  const bindOugiTextarea = (textarea) => {
-    if (textarea.dataset.resizeBound) return;
-    textarea.dataset.resizeBound = 'true';
-    textarea.addEventListener('input', () => resizeTextareaRow(ougiList, '.ougi-textarea', textarea.dataset.row));
-    resizeTextareaRow(ougiList, '.ougi-textarea', textarea.dataset.row);
-  };
+  const bindOugiTextarea = bindAutoResize(ougiList, '.ougi-textarea');
 
   const addOugiRow = () => {
     ougiCount++;
@@ -429,11 +427,8 @@ document.addEventListener('DOMContentLoaded', () => {
   };
 
   const removeOugiRow = () => {
-    if (!ougiList || ougiList.children.length <= OUGI_HEADER_COUNT || ougiCount === 0) return;
-    for (let i = 0; i < OUGI_ROW_SIZE; i++) {
-      if (ougiList.lastElementChild) ougiList.removeChild(ougiList.lastElementChild);
-    }
-    ougiCount = Math.max(0, ougiCount - 1);
+    if (ougiCount === 0) return;
+    if (removeLastRow(ougiList, OUGI_HEADER_COUNT, OUGI_ROW_SIZE)) ougiCount = Math.max(0, ougiCount - 1);
   };
 
   if (ougiList) {
@@ -457,12 +452,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const NINPO_HEADER_COUNT = 8;
   const NINPO_ROW_SIZE = 8;
 
-  const bindNinpoTextarea = (textarea) => {
-    if (textarea.dataset.resizeBound) return;
-    textarea.dataset.resizeBound = 'true';
-    textarea.addEventListener('input', () => resizeTextareaRow(ninpoList, '.ninpo-textarea', textarea.dataset.row));
-    resizeTextareaRow(ninpoList, '.ninpo-textarea', textarea.dataset.row);
-  };
+  const bindNinpoTextarea = bindAutoResize(ninpoList, '.ninpo-textarea');
 
   const resizeNinpoGridRows = () => {
     if (!ninpoList) return;
@@ -471,12 +461,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   };
 
-  const bindNinpoTextBlock = (textarea) => {
-    if (textarea.dataset.resizeBound) return;
-    textarea.dataset.resizeBound = 'true';
-    textarea.addEventListener('input', () => resizeTextareaRow(ninpoTextList, '.ninpo-text-block', textarea.dataset.row));
-    resizeTextareaRow(ninpoTextList, '.ninpo-text-block', textarea.dataset.row);
-  };
+  const bindNinpoTextBlock = bindAutoResize(ninpoTextList, '.ninpo-text-block');
 
   const countNinpoTextRows = () => ninpoTextList ? ninpoTextList.querySelectorAll('.ninpo-text-row').length : 0;
 
@@ -718,12 +703,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const HAIKEI_HEADER_COUNT = 5;
   const HAIKEI_ROW_SIZE = 5;
 
-  const bindHaikeiTextarea = (textarea) => {
-    if (textarea.dataset.resizeBound) return;
-    textarea.dataset.resizeBound = 'true';
-    textarea.addEventListener('input', () => resizeTextareaRow(haikeiList, '.haikei-textarea', textarea.dataset.row));
-    resizeTextareaRow(haikeiList, '.haikei-textarea', textarea.dataset.row);
-  };
+  const bindHaikeiTextarea = bindAutoResize(haikeiList, '.haikei-textarea');
 
   const addHaikeiRow = () => {
     haikeiCount++;
@@ -742,11 +722,8 @@ document.addEventListener('DOMContentLoaded', () => {
   };
 
   const removeHaikeiRow = () => {
-    if (!haikeiList || haikeiList.children.length <= HAIKEI_HEADER_COUNT || haikeiCount === 0) return;
-    for (let i = 0; i < HAIKEI_ROW_SIZE; i++) {
-      if (haikeiList.lastElementChild) haikeiList.removeChild(haikeiList.lastElementChild);
-    }
-    haikeiCount = Math.max(0, haikeiCount - 1);
+    if (haikeiCount === 0) return;
+    if (removeLastRow(haikeiList, HAIKEI_HEADER_COUNT, HAIKEI_ROW_SIZE)) haikeiCount = Math.max(0, haikeiCount - 1);
   };
 
   if (haikeiList) {
@@ -766,10 +743,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const RELATION_HEADER_COUNT = 5;
   const RELATION_ROW_SIZE = 5;
 
-  const bindRelationTextarea = (textarea) => {
-    textarea.addEventListener('input', () => resizeTextareaRow(relationList, '.relation-textarea', textarea.dataset.row));
-    resizeTextareaRow(relationList, '.relation-textarea', textarea.dataset.row);
-  };
+  const bindRelationTextarea = bindAutoResize(relationList, '.relation-textarea');
 
   const addRelationRow = () => {
     relationCount++;
@@ -802,11 +776,8 @@ document.addEventListener('DOMContentLoaded', () => {
   };
 
   const removeRelationRow = () => {
-    if (!relationList || relationList.children.length <= RELATION_HEADER_COUNT || relationCount === 0) return;
-    for (let i = 0; i < RELATION_ROW_SIZE; i++) {
-      if (relationList.lastElementChild) relationList.removeChild(relationList.lastElementChild);
-    }
-    relationCount = Math.max(0, relationCount - 1);
+    if (relationCount === 0) return;
+    if (removeLastRow(relationList, RELATION_HEADER_COUNT, RELATION_ROW_SIZE)) relationCount = Math.max(0, relationCount - 1);
   };
 
   if (relationList) addRelationRow();
@@ -868,7 +839,7 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     });
     document.querySelectorAll('input[type="checkbox"]').forEach(el => {
-      if (!el.id.startsWith('relation_secret_') && !el.id.startsWith('relation_ougi_')) {
+      if (!el.id.startsWith('relation_secret_') && !el.id.startsWith('relation_ougi_') && !el.id.startsWith('relation_location_') && !el.id.startsWith('relation_emotion_sign_')) {
         data.checkboxes[el.id] = el.checked;
       }
     });
@@ -1531,7 +1502,6 @@ const resetCharacterForm = () => {
 const newCharacterModal = document.getElementById('new_character_modal');
 const newCharChoiceSinobigami = document.getElementById('new_char_choice_sinobigami');
 const newCharChoiceMagirogi = document.getElementById('new_char_choice_magirogi');
-const newCharacterModalCancel = document.getElementById('new_character_modal_cancel');
 
 const openNewCharacterModal = () => {
   if (!newCharacterModal) return;
@@ -1559,7 +1529,6 @@ const newCharacterBtn = document.getElementById('new_character_btn');
 if (newCharacterBtn) newCharacterBtn.addEventListener('click', openNewCharacterModal);
 if (newCharChoiceSinobigami) newCharChoiceSinobigami.addEventListener('click', () => startNewCharacter('sinobigami'));
 if (newCharChoiceMagirogi) newCharChoiceMagirogi.addEventListener('click', () => startNewCharacter('magirogi'));
-if (newCharacterModalCancel) newCharacterModalCancel.addEventListener('click', closeNewCharacterModal);
 if (newCharacterModal) newCharacterModal.addEventListener('click', (e) => { if (e.target === newCharacterModal) closeNewCharacterModal(); });
 
 /** キャラクターを保存する(currentCharacterIdの有無で新規/更新を自動判定) */
@@ -1703,11 +1672,6 @@ if (saveCharacterBtn) {
       });
       const specialSkill = getFieldValue('special_skill');
       if (specialSkill) commands += `\n特記: ${specialSkill}\n`;
-
-      // commands += '\nーーー奥義ーーー\n';
-      // collectOugi().forEach(og => {
-      //   if (og.name) commands += `「${og.name}」/指定特技=${og.skill}/効果・改造=${og.kaizou}/${og.ref}エフェクト：${og.effect}\n`;
-      // });
 
       commands += '\nーーー忍法ーーー\n';
       collectNinpo({ includeDisabled: false }).forEach(np => {
