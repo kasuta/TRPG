@@ -1816,7 +1816,7 @@ GWT　戦国変調表`;
         { label: '戦術', value: Number(getFieldValue('senjutsu', '1')), max: Number(getFieldValue('senjutsu', '1')) },
         { label: '妖術', value: Number(getFieldValue('youjutsu', '1')), max: Number(getFieldValue('youjutsu', '1')) },
         { label: '頑健', value: Number(getFieldValue('life_extra', '0')), max: Number(getFieldValue('life_extra', '0')) },
-        { label: '忍具', value: ninguTotal, max: ninguTotal }
+        { label: '忍具', value: ninguTotal, max: 6 }
       ];
 
       const paramsArr = [
