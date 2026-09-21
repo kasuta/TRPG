@@ -160,6 +160,12 @@ const getFieldValue = (key, fallback = '') => {
   return el ? (el.value || fallback) : fallback;
 };
 
+/** 忍具欄の入力値を数値にする。半角/全角数字のみで構成されていればその数、それ以外(空欄・文字混じり等)は0 */
+const parseNinguCount = (value = '') => {
+  const halfWidth = String(value).trim().replace(/[０-９]/g, c => String.fromCharCode(c.charCodeAt(0) - 0xFEE0));
+  return /^\d+$/.test(halfWidth) ? Number(halfWidth) : 0;
+};
+
 /** 習得済み特技のチェックボックスを、列が若い順(同じ列なら行が若い順)に並べて返す */
 const getCheckedSkillsByColumn = () => {
   const pos = (cb) => {
@@ -1786,7 +1792,7 @@ document.addEventListener('keydown', (e) => {
       commands += '\nーーー忍法ーーー\n';
       collectNinpo({ includeDisabled: false }).forEach(np => {
         const effectOneLine = np.effect.replace(/\r?\n/g, '');
-        if (np.name) commands += `【${np.name}】(${np.type}/指定特技:${np.skill}/間合:${np.range}/コスト:${np.cost})　効果:${effectOneLine}\n`;
+        if (np.name) commands += `【${np.name}】(${np.type}/指定特技:${np.skill}/間合:${np.range}/コスト:${np.cost}/参照p:${np.ref})　効果:${effectOneLine}\n`;
       });
 
       commands += `\nーーー表ーーー
@@ -1797,6 +1803,10 @@ ET　感情表
 WT　変調表
 GWT　戦国変調表`;
 
+      // 忍具の各欄(兵糧丸・神通丸・遁甲符・その他)の数字の合計
+      const ninguTotal = ['ningu_hyorogan', 'ningu_jintsumaru', 'ningu_tonkofu', 'ningu_other']
+        .reduce((sum, key) => sum + parseNinguCount(getFieldValue(key)), 0);
+
       // シノビガミ用ステータス配列
       const statusArr = [
         { label: '器術', value: Number(getFieldValue('kijutsu', '1')), max: Number(getFieldValue('kijutsu', '1')) },
@@ -1806,7 +1816,7 @@ GWT　戦国変調表`;
         { label: '戦術', value: Number(getFieldValue('senjutsu', '1')), max: Number(getFieldValue('senjutsu', '1')) },
         { label: '妖術', value: Number(getFieldValue('youjutsu', '1')), max: Number(getFieldValue('youjutsu', '1')) },
         { label: '頑健', value: Number(getFieldValue('life_extra', '0')), max: Number(getFieldValue('life_extra', '0')) },
-        { label: '忍具', value: Number(getFieldValue('ningu_total', '0')), max: Number(getFieldValue('ningu_total', '0')) }
+        { label: '忍具', value: ninguTotal, max: ninguTotal }
       ];
 
       const paramsArr = [
@@ -1815,7 +1825,7 @@ GWT　戦国変調表`;
 
       const ccfoliaData = {
         kind: 'character',
-        data: { name: ccfoliaName, initiative: 0, commands, status: statusArr, params: paramsArr }
+        data: { name: ccfoliaName, initiative: 0, commands, status: statusArr, params: paramsArr, externalUrl: copyShareLink() || '' }
       };
 
       navigator.clipboard.writeText(JSON.stringify(ccfoliaData))
