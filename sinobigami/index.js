@@ -160,6 +160,18 @@ const getFieldValue = (key, fallback = '') => {
   return el ? (el.value || fallback) : fallback;
 };
 
+/** 習得済み特技のチェックボックスを、列が若い順(同じ列なら行が若い順)に並べて返す */
+const getCheckedSkillsByColumn = () => {
+  const pos = (cb) => {
+    const m = /^skill_r(\d+)_c(\d+)$/.exec(cb.id);
+    return m ? { r: Number(m[1]), c: Number(m[2]) } : { r: Infinity, c: Infinity };
+  };
+  return Array.from(document.querySelectorAll('.skill-check:checked')).sort((a, b) => {
+    const pa = pos(a), pb = pos(b);
+    return pa.c - pb.c || pa.r - pb.r;
+  });
+};
+
 /** name属性から値を読むフィールドgetterを作る */
 const textField = (name) => (i) => {
   const el = document.querySelector(`[name="${name}_${i}"]`);
@@ -1765,7 +1777,7 @@ document.addEventListener('keydown', (e) => {
       const ccfoliaName = furiganaValue ? `${nameValue}(${furiganaValue})` : nameValue;
 
       let commands = 'ーーー特技ーーー\n';
-      document.querySelectorAll('.skill-check:checked').forEach(cb => {
+      getCheckedSkillsByColumn().forEach(cb => {
         commands += `SG>=5 《${cb.value}》\n`;
       });
       const specialSkill = getFieldValue('special_skill');

@@ -180,6 +180,18 @@ const getAcquiredSkills = () => {
   return skills;
 };
 
+/** 習得済み特技のチェックボックスを、列が若い順(同じ列なら行が若い順)に並べて返す */
+const getCheckedSkillsByColumn = () => {
+  const pos = (cb) => {
+    const m = /^skill_r(\d+)_c(\d+)$/.exec(cb.id);
+    return m ? { r: Number(m[1]), c: Number(m[2]) } : { r: Infinity, c: Infinity };
+  };
+  return Array.from(document.querySelectorAll('.skill-check:checked')).sort((a, b) => {
+    const pa = pos(a), pb = pos(b);
+    return pa.c - pb.c || pa.r - pb.r;
+  });
+};
+
 /** テキストエリア行の高さ同期（汎用） */
 const resizeTextareaRow = (container, selector, rowId) => {
   const rowTextareas = container.querySelectorAll(`${selector}[data-row="${rowId}"]`);
@@ -1145,7 +1157,7 @@ if (newCharacterModal) newCharacterModal.addEventListener('click', (e) => { if (
   /** チャットパレット形式のコマンド文字列を組み立てる(CCFOLIA形式出力とチャパレ形式出力で共通) */
   const buildChatPaletteCommands = (spells = collectSpells()) => {
     let commands = 'ーーー特技ーーー\n';
-    document.querySelectorAll('.skill-check:checked').forEach(cb => { commands += `2d6>=5 《${cb.value}》\n`; });
+    getCheckedSkillsByColumn().forEach(cb => { commands += `2d6>=5 《${cb.value}》\n`; });
     const soulSkill = getFirstValue(['soul_skill']);
     if (soulSkill !== '0') commands += `2d6>=6 《${soulSkill}》\n`;
 
