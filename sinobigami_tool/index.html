@@ -39,6 +39,8 @@
       --gap-on: rgba(140, 68, 51, 0.35);
       --skill-head-bg: #211815;
       --selected-bg: #211815;
+      --lost-hatch: rgba(33, 24, 21, 0.16);
+      --acquired-bg: #f1e2c2;
       --line-strong: #211815;
       --target-line: #5c2c22;
       --error: #b3261e;
@@ -88,19 +90,21 @@
       --shadow: rgba(0, 0, 0, 0.45);
       --gap-on: rgba(199, 58, 42, 0.45);
       --selected-bg: #efe4d6;
+      --lost-hatch: rgba(255, 255, 255, 0.14);
+      --acquired-bg: #3d2e20;
       --line-strong: #efe4d6;
       --target-line: #e2543c;
       --error: #f28b82;
 
-      /* 黒い背景では、5=背景に沈む暗い青 → 12以上=最も明るく目立つ青(背景 #150f0c で --ordinal 検証済み) */
-      --heat-5: #07519d;  --heat-text-5: #efe4d6;
-      --heat-6: #2163b1;  --heat-text-6: #efe4d6;
-      --heat-7: #3576c6;  --heat-text-7: #150f0c;
-      --heat-8: #4889da;  --heat-text-8: #150f0c;
-      --heat-9: #5b9def;  --heat-text-9: #150f0c;
-      --heat-10: #74b1fd; --heat-text-10: #150f0c;
-      --heat-11: #99c5fd; --heat-text-11: #150f0c;
-      --heat-12: #bcd8fd; --heat-text-12: #150f0c;
+      /* 明るいテーマと同じく、5=淡い青 → 12以上=濃い青(背景 #150f0c で --ordinal 検証済み) */
+      --heat-5: #c9e0fe;  --heat-text-5: #150f0c;
+      --heat-6: #a7cdfe;  --heat-text-6: #150f0c;
+      --heat-7: #85b9fd;  --heat-text-7: #150f0c;
+      --heat-8: #63a5f8;  --heat-text-8: #150f0c;
+      --heat-9: #5091e3;  --heat-text-9: #150f0c;
+      --heat-10: #3d7ece; --heat-text-10: #150f0c;
+      --heat-11: #2a6bba; --heat-text-11: #efe4d6;
+      --heat-12: #1459a5; --heat-text-12: #efe4d6;
 
       /* categorical の dark 列(背景 #150f0c ですべて 3:1 以上) */
       --char-0: #3987e5; --char-1: #d95926; --char-2: #199e70; --char-3: #c98500;
@@ -252,14 +256,21 @@
     .lost-toggle[aria-pressed="true"]:hover:not(:disabled) { background: var(--accent-strong); }
     .skill-cell { background: var(--surface); padding: 4px 2px; height: 44px; position: relative; }
     .skill-name { display: block; line-height: 1.2; }
+    /* 習得特技: ◆印・太字・太い枠。目標値の色が無いマスでは背景にも色を付ける */
     .skill-cell.is-acquired .skill-name { font-weight: 700; }
+    .skill-cell.is-acquired .skill-name::before { content: '◆'; font-size: 0.8em; margin-right: 2px; }
+    .skill-cell.is-acquired:not([class*="heat-"]) { background-color: var(--acquired-bg); }
     .skill-cell.is-acquired::after {
       content: '';
       position: absolute;
-      inset: 2px;
-      border: 2px solid var(--cell-line, var(--line-strong));
-      border-radius: 4px;
+      inset: 1px;
+      border: 3px solid var(--cell-line, var(--line-strong));
+      border-radius: 5px;
       pointer-events: none;
+    }
+    /* 使用不可の分野のマスは斜線(判断の要素は見出しのボタンと、この斜線) */
+    .skill-cell.is-lost {
+      background-image: repeating-linear-gradient(135deg, var(--lost-hatch) 0 4px, transparent 4px 8px);
     }
     /* 目標値の色分け(朱の単色で、5=薄い → 12以上=濃い。dataviz の validate_palette.js --ordinal で検証済み) */
     .skill-value { display: block; font-size: 0.95rem; font-weight: 700; line-height: 1.1; margin-top: 2px; }
@@ -337,7 +348,15 @@
     .skill-cell .cell-note { display: block; font-size: 0.65rem; color: var(--muted); }
     .session-footer { display: flex; justify-content: flex-end; margin-top: 12px; }
     .table-legend { display: flex; flex-wrap: wrap; gap: 4px 14px; margin-top: 8px; font-size: 0.75rem; color: var(--muted); }
-    .legend-acquired { display: inline-block; width: 14px; height: 14px; border: 2px solid var(--line-strong); border-radius: 3px; vertical-align: -3px; margin-right: 4px; }
+    .legend-acquired { display: inline-block; width: 14px; height: 14px; border: 3px solid var(--line-strong); border-radius: 3px; background: var(--acquired-bg); vertical-align: -3px; margin-right: 4px; }
+    .legend-lost { display: inline-block; width: 14px; height: 14px; border: 1px solid var(--border); vertical-align: -3px; margin-right: 4px; background-image: repeating-linear-gradient(135deg, var(--lost-hatch) 0 4px, transparent 4px 8px); }
+    /* 魔界工学(器術と妖術をつなぐ)の切り替え */
+    .table-controls { display: flex; align-items: center; flex-wrap: wrap; gap: 6px 10px; margin-bottom: 8px; }
+    .makai-toggle { background: var(--surface); color: var(--text); border-color: var(--border); font-weight: 700; }
+    .makai-toggle:hover:not(:disabled) { background: var(--surface-alt); }
+    .makai-toggle[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: #fff; }
+    .makai-toggle[aria-pressed="true"]:hover:not(:disabled) { background: var(--accent-strong); }
+    .area-head-link { display: block; font-size: 0.65rem; font-weight: 700; margin-top: 2px; letter-spacing: 0; }
   </style>
 </head>
 <body>
@@ -446,11 +465,16 @@
 
     <section class="card" aria-labelledby="table_heading">
       <h2 id="table_heading">特技表</h2>
+      <div class="table-controls">
+        <button type="button" class="makai-toggle" id="makai_toggle" aria-pressed="false">魔界工学</button>
+        <span class="load-note">器術と妖術を、隣り合う分野として扱います(間は塗りつぶしていない隙間1つ)。忍法に「魔界工学」があるキャラは自動でオンになります。</span>
+      </div>
       <div class="skill-table-wrap">
         <table class="skill-table" id="skill_table"></table>
       </div>
       <div class="table-legend">
-        <span><span class="legend-acquired"></span>習得特技</span>
+        <span><span class="legend-acquired"></span>◆ 習得特技</span>
+        <span><span class="legend-lost"></span>使用不可の分野</span>
         <span>見出しのボタン: ✓ 使用可 / ✕ 使用不可(生命力を失った分野。押して切り替え)</span>
       </div>
     </section>
@@ -494,24 +518,31 @@ const GAP_IDS = ['gap1', 'gap2', 'gap3', 'gap4', 'gap5'];
 
 /**
  * 2つの分野列間の距離を計算(ギャップ考慮)。
- * 特技表の端はつながっていない(器術と妖術は隣ではない)ので、左右に並んだ列の間を数えるだけ。
+ * 特技表の端は通常つながっていない(器術と妖術は隣ではない)ので、左右に並んだ列の間を数える。
+ * 忍法【魔界工学】を持つ(makai が true)ときだけ、器術と妖術が隣り合う。
+ * その間は、塗りつぶしていない隙間として数える(ほかの隣の分野と同じ = 2マス)。
  * col1, col2: 1〜6
  * gaps: { gap1: bool, ..., gap5: bool }。gap_i は col_i と col_(i+1) の間にある
  *   塗りつぶし(true)  → ギャップ0マス + 移動1マス = 1マス
  *   塗りつぶしなし(false) → ギャップ1マス + 移動1マス = 2マス
  */
-function calcColumnDistance(col1, col2, gaps) {
+function calcColumnDistance(col1, col2, gaps, makai = false) {
   const [left, right] = col1 < col2 ? [col1, col2] : [col2, col1];
-  let steps = 0;
-  for (let gapIdx = left; gapIdx < right; gapIdx++) {
-    steps += gaps[`gap${gapIdx}`] ? 1 : 2;
-  }
-  return steps;
+  const cost = (gapIdx) => (gaps[`gap${gapIdx}`] ? 1 : 2);
+  let direct = 0;
+  for (let gapIdx = left; gapIdx < right; gapIdx++) direct += cost(gapIdx);
+  if (!makai || left === right) return direct;
+
+  // 左の列から器術へ戻り、妖術へ渡って(2マス)、右の列まで戻る道
+  let around = 2;
+  for (let gapIdx = 1; gapIdx < left; gapIdx++) around += cost(gapIdx);
+  for (let gapIdx = right; gapIdx < 6; gapIdx++) around += cost(gapIdx);
+  return Math.min(direct, around);
 }
 
 /** 2つの特技間の距離(分野間距離 + 行の差) */
-function calcSkillDistance(row1, col1, row2, col2, gaps) {
-  return calcColumnDistance(col1, col2, gaps) + Math.abs(row1 - row2);
+function calcSkillDistance(row1, col1, row2, col2, gaps, makai = false) {
+  return calcColumnDistance(col1, col2, gaps, makai) + Math.abs(row1 - row2);
 }
 
 /** skill ID から (row, col) を解析 */
@@ -533,7 +564,8 @@ function usableSkillIds() {
 function targetNumber(fromId, toId) {
   const from = parseSkillId(fromId);
   const to = parseSkillId(toId);
-  return 5 + calcSkillDistance(from.row, from.col, to.row, to.col, currentCharacter().gaps);
+  const c = currentCharacter();
+  return 5 + calcSkillDistance(from.row, from.col, to.row, to.col, c.gaps, !!c.makai);
 }
 
 /**
@@ -605,18 +637,25 @@ function saveState() {
 // キャラクターデータの変換
 // ==========================================
 
-/** 読み込んだデータを、ツールで使う形({ name, meta, skills, gaps })にする */
-function toCharacter({ inputs = {}, checkedIds = [] }) {
+/**
+ * 読み込んだデータを、ツールで使う形にする。
+ * { name, schools, skills, gaps, makai, attacks }。attacks は攻撃忍法([{ name, skill }])で、読み込み時に
+ * セッションへ登録するためだけに使う(保存はしない)
+ */
+function toCharacter({ inputs = {}, checkedIds = [], ninpo = [] }) {
   // 流派(上位流派と流派)だけを表示に使う
   const schools = [inputs.school, inputs.sub_school].filter(Boolean);
   const checked = new Set(checkedIds);
   const gaps = {};
   GAP_IDS.forEach(gid => { gaps[gid] = checked.has(gid); });
+  const text = (v) => (typeof v === 'string' ? v.trim() : '');
   return {
     name: inputs.name || '(名前未設定)',
     schools,
     skills: checkedIds.filter(id => SKILL_ID_MAP[id]),
     gaps,
+    makai: ninpo.some(n => text(n.name).includes('魔界工学')),
+    attacks: ninpo.filter(n => text(n.type) === '攻撃').map(n => ({ name: text(n.name), skill: text(n.skill) })),
   };
 }
 
@@ -659,7 +698,11 @@ function characterFromCompact(compact) {
     .filter(idx => Number.isInteger(idx) && idx >= 0 && idx < 66)
     .map(idx => `skill_r${Math.floor(idx / 6) + 2}_c${(idx % 6) + 1}`);
   const otherIds = (Array.isArray(compact.cb) ? compact.cb : []).filter(id => typeof id === 'string');
-  return toCharacter({ inputs, checkedIds: [...skillIds, ...otherIds] });
+  // 忍法は [名前, 種別, 指定特技, …] の配列(キャラシの NINPO_ORDER)
+  const ninpo = (Array.isArray(compact.np) ? compact.np : [])
+    .filter(Array.isArray)
+    .map(([name, type, skill]) => ({ name, type, skill }));
+  return toCharacter({ inputs, checkedIds: [...skillIds, ...otherIds], ninpo });
 }
 
 /** サーバーからIDでキャラを読み込む(GET /api/load/:id) */
@@ -750,26 +793,71 @@ async function fetchMyLayout() {
 function characterFromSaveData(data) {
   if (!data || typeof data !== 'object' || !data.checkboxes) throw new Error('キャラシのデータではありません');
   const checkedIds = Object.entries(data.checkboxes).filter(([, on]) => on).map(([id]) => id);
-  return toCharacter({ inputs: data.inputs || {}, checkedIds });
+  const ninpo = (Array.isArray(data.ninpo) ? data.ninpo : []).filter(n => n && typeof n === 'object');
+  return toCharacter({ inputs: data.inputs || {}, checkedIds, ninpo });
 }
 
 /**
  * 読み込んだキャラを一覧に追加して選び、画面を描き直す。
  * サーバーの同じキャラ(sourceId が同じ)をもう一度読んだときは、追加せずに内容だけ更新する(使用不可の状態は保つ)。
  */
-function addCharacter(character, message) {
+function addCharacter(loaded, message) {
+  const { attacks = [], ...character } = loaded;
   const existing = character.sourceId && state.characters.find(c => c.sourceId === character.sourceId);
   if (existing) {
-    Object.assign(existing, character, { key: existing.key, lostColumns: existing.lostColumns });
+    // 魔界工学は、手で切り替えた状態を保つ(忍法にあればオン)
+    Object.assign(existing, character, {
+      key: existing.key, lostColumns: existing.lostColumns, makai: existing.makai || character.makai,
+    });
     state.activeCharKey = existing.key;
   } else {
     const entry = { ...character, key: newId(), lostColumns: [] };
     state.characters.push(entry);
     state.activeCharKey = entry.key;
   }
+  const registered = registerAttackNinpo(character.name, attacks);
   saveState();
   render();
-  showLoadMessage(existing ? `${message}(読み込み済みのキャラクターを最新の内容に更新しました)` : message);
+  const notes = [existing ? '読み込み済みのキャラクターを最新の内容に更新しました。' : '', registered].filter(Boolean);
+  showLoadMessage([message, ...notes].join(' '));
+}
+
+/**
+ * 攻撃忍法を、キャラクター名(読み込んだキャラの名前)のボタンとしてセッションに登録する。
+ * 同じ名前・同じ指定特技のボタンが既にあれば登録しない。結果の説明文を返す。
+ */
+function registerAttackNinpo(ownerName, attacks) {
+  if (!attacks.length) return '';
+  const valid = attacks.filter(a => SKILL_NAME_TO_ID[a.skill]);
+  const skipped = attacks.length - valid.length;
+  const skippedNote = skipped ? `指定特技が特技名と一致しない攻撃忍法${skipped}個は登録していません。` : '';
+  if (!valid.length) return skippedNote;
+
+  let owner = state.names.find(n => n.name === ownerName);
+  if (!owner) {
+    if (state.names.length >= MAX_NAMES) {
+      return `セッションのキャラクター名が${MAX_NAMES}人に達しているため、攻撃忍法を登録できませんでした。`;
+    }
+    owner = createSessionName(ownerName);
+  }
+  let added = 0;
+  valid.forEach(a => {
+    const skillId = SKILL_NAME_TO_ID[a.skill];
+    const label = a.name || a.skill;
+    if (state.buttons.some(b => b.nameId === owner.id && b.label === label && b.skillId === skillId)) return;
+    state.buttons.push({ id: newId(), label, nameId: owner.id, skillId });
+    added++;
+  });
+  return [added ? `攻撃忍法${added}個をセッションに登録しました。` : '', skippedNote].filter(Boolean).join(' ');
+}
+
+/** セッションのキャラクター名を追加する(色の番号は、空いている一番小さいもの) */
+function createSessionName(name) {
+  const usedSlots = new Set(state.names.map(n => n.slot));
+  const slot = [...Array(MAX_NAMES).keys()].find(i => !usedSlots.has(i));
+  const entry = { id: newId(), name, slot };
+  state.names.push(entry);
+  return entry;
 }
 
 // ==========================================
@@ -907,8 +995,10 @@ function renderSkillTable() {
   AREA_NAMES.forEach((area, ai) => {
     const col = ai + 1;
     const isLost = lost.has(col);
+    // 魔界工学のときは、器術と妖術の見出しに、つながっている相手を示す
+    const link = c && c.makai && (col === 1 || col === 6) ? `<span class="area-head-link">⇄ ${col === 1 ? '妖術' : '器術'}</span>` : '';
     html += `<th class="area-head" scope="col">
-        <span class="area-head-name">${area}</span>
+        <span class="area-head-name">${area}</span>${link}
         <button type="button" class="lost-toggle" data-col="${col}" aria-pressed="${isLost}"
           title="生命力を失ってこの分野の特技が使えないときに押す"${c ? '' : ' disabled'}>${isLost ? '✕ 使用不可' : '✓ 使用可'}</button>
       </th>`;
@@ -925,6 +1015,7 @@ function renderSkillTable() {
       const extra = state.mode === 'diagnosis' ? diagnosisCell(skillId) : sessionCell(skillId);
       const classes = ['skill-cell', ...extra.classes];
       if (acquired.has(skillId)) classes.push('is-acquired');
+      if (lost.has(col)) classes.push('is-lost');
       html += `<td class="${classes.join(' ')}" data-skill-id="${skillId}" title="${escapeHTML(extra.title)}"><span class="skill-name">${skillName}</span>${extra.html}</td>`;
       if (ci < 5) html += `<td class="gap-col${gaps[`gap${col}`] ? ' gap-on' : ''}"></td>`;
     });
@@ -932,6 +1023,11 @@ function renderSkillTable() {
   });
   html += '</tbody>';
   skillTableEl.innerHTML = html;
+
+  const makaiToggle = document.getElementById('makai_toggle');
+  makaiToggle.disabled = !c;
+  makaiToggle.setAttribute('aria-pressed', String(!!(c && c.makai)));
+  makaiToggle.textContent = c && c.makai ? '✓ 魔界工学(器術と妖術がつながる)' : '魔界工学';
 }
 
 function renderMode() {
@@ -1209,6 +1305,15 @@ shareForm.addEventListener('submit', async (e) => {
   }
 });
 
+// 魔界工学(選んでいるキャラに対して)
+document.getElementById('makai_toggle').addEventListener('click', () => {
+  const c = currentCharacter();
+  if (!c) return;
+  c.makai = !c.makai;
+  saveState();
+  render();
+});
+
 // 読み込んだキャラクターの切り替えと、一覧から外す
 charSummaryEl.addEventListener('click', (e) => {
   const remove = e.target.closest('.char-remove');
@@ -1245,10 +1350,7 @@ nameForm.addEventListener('submit', (e) => {
     nameMessage.textContent = `「${name}」はもう登録されています。`;
     return;
   }
-  const usedSlots = new Set(state.names.map(n => n.slot));
-  const slot = [...Array(MAX_NAMES).keys()].find(i => !usedSlots.has(i));
-  const entry = { id: newId(), name, slot };
-  state.names.push(entry);
+  const entry = createSessionName(name);
   saveState();
   nameInput.value = '';
   render();
