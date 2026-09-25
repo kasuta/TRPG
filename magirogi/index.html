@@ -59,7 +59,13 @@
     </div>
 
     <div class="history-panel-sub-head">
-      <h3 id="history_list_title">ゲスト履歴</h3>
+      <div class="history-list-title-row">
+        <h3 id="history_list_title">ゲスト履歴</h3>
+        <button type="button" id="new_folder_btn" class="history-new-folder-btn" style="display:none;">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><path d="M12 11v4M10 13h4"/></svg>
+          フォルダ作成
+        </button>
+      </div>
       <div class="game-filter-tabs" id="game_filter_tabs" style="display:none;">
         <button type="button" class="game-filter-tab is-active" data-filter="all">すべて</button>
         <button type="button" class="game-filter-tab" data-filter="sinobigami">シノビガミ</button>
