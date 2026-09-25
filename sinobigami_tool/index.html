@@ -206,6 +206,25 @@
     }
     .judge-delete:hover:not(:disabled) { background: var(--surface-alt); color: var(--accent); }
     .session-empty { color: var(--muted); font-size: 0.85rem; }
+    .judge-result {
+      border: 1px solid var(--border); border-left: 6px solid var(--char-color, var(--border));
+      border-radius: 8px; background: var(--surface); padding: 10px 14px; margin-bottom: 14px;
+    }
+    .judge-result-head { display: flex; align-items: center; gap: 6px; font-size: 0.85rem; font-weight: 700; }
+    .judge-result-main { display: flex; align-items: baseline; flex-wrap: wrap; gap: 4px 12px; margin-top: 2px; }
+    .judge-result-target { font-size: 2.2rem; font-weight: 700; line-height: 1.2; }
+    .judge-result-target small { font-size: 1rem; margin-right: 4px; }
+    .judge-result-from { font-size: 1rem; font-weight: 700; }
+    .judge-result-note { font-size: 0.78rem; color: var(--muted); margin-top: 2px; }
+    /* セッション: 特技表の指定特技と最良の特技 */
+    .skill-cell.is-target { outline: 3px solid var(--accent-strong); outline-offset: -3px; }
+    .cell-badge {
+      position: absolute; top: 1px; right: 2px;
+      font-size: 0.6rem; font-weight: 700; line-height: 1.3;
+      padding: 0 3px; border-radius: 3px; background: var(--ink); color: #fff;
+    }
+    .cell-badge.badge-target { left: 2px; right: auto; background: var(--accent-strong); }
+    .skill-cell .cell-note { display: block; font-size: 0.65rem; color: var(--muted); }
     .session-footer { display: flex; justify-content: flex-end; margin-top: 12px; }
     .table-legend { display: flex; flex-wrap: wrap; gap: 4px 14px; margin-top: 8px; font-size: 0.75rem; color: var(--muted); }
     .legend-acquired { display: inline-block; width: 14px; height: 14px; border: 2px solid var(--ink); border-radius: 3px; vertical-align: -3px; margin-right: 4px; }
@@ -294,6 +313,7 @@
           </form>
         </div>
         <div>
+          <div class="judge-result" id="judge_result" aria-live="polite"></div>
           <div class="button-groups" id="button_groups"></div>
           <div class="session-footer">
             <button type="button" class="btn-outline" id="session_clear_btn">すべてクリア</button>
@@ -436,8 +456,9 @@ const STATE_KEY = 'sinobigamiToolState';
  * mode: 'diagnosis' | 'session'
  * names: セッションで登録したキャラクター名([{ id, name, slot }]。slot は色の番号で、名前ごとに固定)
  * buttons: 登録したボタン([{ id, label, nameId, skillId }])
+ * activeButtonId: 押したボタン(結果を表示しているもの)
  */
-const state = { character: null, lostColumns: [], mode: 'diagnosis', names: [], buttons: [] };
+const state = { character: null, lostColumns: [], mode: 'diagnosis', names: [], buttons: [], activeButtonId: null };
 
 function loadState() {
   try {
@@ -451,6 +472,7 @@ function loadState() {
       const nameIds = new Set(state.names.map(n => n.id));
       state.buttons = saved.buttons.filter(b => b && b.id && nameIds.has(b.nameId) && SKILL_ID_MAP[b.skillId]);
     }
+    if (state.buttons.some(b => b.id === saved.activeButtonId)) state.activeButtonId = saved.activeButtonId;
   } catch {}
 }
 
@@ -613,6 +635,75 @@ function diagnosisCell(skillId) {
   };
 }
 
+/** 押しているボタン(無ければ null) */
+const activeButton = () => state.buttons.find(b => b.id === state.activeButtonId) || null;
+
+/**
+ * セッション: 押したボタンの指定特技を枠で示し、使える習得特技ごとの目標値を表示する(一番低いものに「最良」)
+ */
+function sessionCell(skillId) {
+  const name = SKILL_ID_MAP[skillId];
+  const button = activeButton();
+  const c = state.character;
+  if (!button || !c) return { classes: [], html: '', title: name };
+
+  const classes = [];
+  let html = '';
+  let title = name;
+  if (skillId === button.skillId) {
+    classes.push('is-target');
+    html += '<span class="cell-badge badge-target">指定</span>';
+    title = `${name}: 指定特技`;
+  }
+  if (c.skills.includes(skillId)) {
+    const result = targetsFor(button.skillId).find(t => t.from === skillId);
+    if (result) {
+      const best = targetsFor(button.skillId)[0].target;
+      classes.push(heatClass(result.target));
+      html += `<span class="skill-value">${result.target}</span>`;
+      if (result.target === best) html += '<span class="cell-badge">最良</span>';
+      title = `${name}で判定: 目標値 ${result.target}`;
+    } else {
+      html += '<span class="cell-note">使用不可</span>';
+      title = `${name}: 使えない分野の特技です`;
+    }
+  }
+  return { classes, html, title };
+}
+
+/** セッション: 押したボタンの結果(一番低い目標値と、それで判定する特技)を表示する */
+function renderJudgeResult() {
+  const el = document.getElementById('judge_result');
+  const button = activeButton();
+  if (!button) {
+    el.style.removeProperty('--char-color');
+    el.innerHTML = '<p class="session-empty">登録したボタンを押すと、ここに目標値が表示されます。</p>';
+    return;
+  }
+  const owner = state.names.find(n => n.id === button.nameId);
+  el.style.setProperty('--char-color', CHARACTER_COLORS[owner.slot]);
+  const head = `<div class="judge-result-head"><span class="char-dot" aria-hidden="true"></span>${escapeHTML(owner.name)}「${escapeHTML(button.label)}」 指定特技: ${SKILL_ID_MAP[button.skillId]}</div>`;
+  if (!state.character) {
+    el.innerHTML = `${head}<p class="judge-result-note">キャラクターを読み込むと、目標値を計算します。</p>`;
+    return;
+  }
+  const results = targetsFor(button.skillId);
+  if (!results.length) {
+    el.innerHTML = `${head}<div class="judge-result-main"><span class="judge-result-from">判定に使える特技がありません</span></div>
+      <p class="judge-result-note">すべての習得特技が「使用不可」の分野にあります。</p>`;
+    return;
+  }
+  const best = results[0].target;
+  const bestSkills = results.filter(r => r.target === best).map(r => SKILL_ID_MAP[r.from]);
+  const others = results.filter(r => r.target !== best).slice(0, 3).map(r => `${SKILL_ID_MAP[r.from]} ${r.target}`);
+  el.innerHTML = `${head}
+    <div class="judge-result-main">
+      <span class="judge-result-target"><small>目標値</small>${best}</span>
+      <span class="judge-result-from">${bestSkills.join('・')}で判定</span>
+    </div>
+    ${others.length ? `<p class="judge-result-note">ほかの候補: ${others.join(' / ')}</p>` : ''}`;
+}
+
 /** 特技表を描く。マスの中身は、モードごとの関数(diagnosisCell など)で足す */
 function renderSkillTable() {
   const c = state.character;
@@ -639,7 +730,7 @@ function renderSkillTable() {
     row.forEach((skillName, ci) => {
       const col = ci + 1;
       const skillId = `skill_r${rowNum}_c${col}`;
-      const extra = state.mode === 'diagnosis' ? diagnosisCell(skillId) : { classes: [], html: '', title: skillName };
+      const extra = state.mode === 'diagnosis' ? diagnosisCell(skillId) : sessionCell(skillId);
       const classes = ['skill-cell', ...extra.classes];
       if (acquired.has(skillId)) classes.push('is-acquired');
       if (lost.has(col)) classes.push('is-lost');
@@ -701,7 +792,7 @@ function renderSession() {
     const list = buttons.length
       ? buttons.map(b => `
           <span class="judge-item">
-            <button type="button" class="judge-btn" data-button-id="${b.id}">
+            <button type="button" class="judge-btn${b.id === state.activeButtonId ? ' is-active' : ''}" data-button-id="${b.id}" aria-pressed="${b.id === state.activeButtonId}">
               <span class="judge-btn-label">${escapeHTML(b.label)}</span>
               <span class="judge-btn-skill">指定特技: ${SKILL_ID_MAP[b.skillId]}</span>
             </button>
@@ -716,6 +807,7 @@ function renderSession() {
   }).join('');
   document.getElementById('button_groups').innerHTML = groups || '<p class="session-empty">キャラクター名を登録してから、ボタンを登録してください。</p>';
   document.getElementById('session_clear_btn').disabled = !state.names.length;
+  renderJudgeResult();
 }
 
 /** マイキャラの選択欄を、読み込んでいるキャラに合わせる(マイキャラ以外から読んだら未選択) */
@@ -874,6 +966,7 @@ document.getElementById('name_list').addEventListener('click', (e) => {
   if (count && !confirm(`「${entry.name}」と、そのボタン${count}個を削除します。よろしいですか？`)) return;
   state.names = state.names.filter(n => n.id !== entry.id);
   state.buttons = state.buttons.filter(b => b.nameId !== entry.id);
+  if (!activeButton()) state.activeButtonId = null;
   saveState();
   render();
 });
@@ -910,8 +1003,16 @@ buttonForm.addEventListener('submit', (e) => {
 
 document.getElementById('button_groups').addEventListener('click', (e) => {
   const del = e.target.closest('.judge-delete');
-  if (!del) return;
-  state.buttons = state.buttons.filter(b => b.id !== del.dataset.buttonId);
+  if (del) {
+    state.buttons = state.buttons.filter(b => b.id !== del.dataset.buttonId);
+    if (!activeButton()) state.activeButtonId = null;
+    saveState();
+    render();
+    return;
+  }
+  const judge = e.target.closest('.judge-btn');
+  if (!judge) return;
+  state.activeButtonId = judge.dataset.buttonId;
   saveState();
   render();
 });
@@ -920,6 +1021,7 @@ document.getElementById('session_clear_btn').addEventListener('click', () => {
   if (!confirm('登録したキャラクター名とボタンを、すべて削除します。よろしいですか？')) return;
   state.names = [];
   state.buttons = [];
+  state.activeButtonId = null;
   saveState();
   render();
 });
