@@ -43,15 +43,15 @@
       --target-line: #5c2c22;
       --error: #b3261e;
 
-      /* 目標値 5〜12以上: 朱の単色で薄い→濃い(背景 #fffdf8 で --ordinal 検証済み) */
-      --heat-5: #fa9a83;  --heat-text-5: #211815;
-      --heat-6: #e58770;  --heat-text-6: #211815;
-      --heat-7: #cf745e;  --heat-text-7: #211815;
-      --heat-8: #bb614c;  --heat-text-8: #fff;
-      --heat-9: #a64f3a;  --heat-text-9: #fff;
-      --heat-10: #923d29; --heat-text-10: #fff;
-      --heat-11: #7e2a17; --heat-text-11: #fff;
-      --heat-12: #6a1702; --heat-text-12: #fff;
+      /* 目標値 5〜12以上: 青の単色で薄い→濃い(朱の見出しと区別するため青。背景 #fffdf8 で --ordinal 検証済み) */
+      --heat-5: #82b8fe;  --heat-text-5: #211815;
+      --heat-6: #63a3f7;  --heat-text-6: #211815;
+      --heat-7: #5090e2;  --heat-text-7: #211815;
+      --heat-8: #3d7ccd;  --heat-text-8: #fff;
+      --heat-9: #2969b8;  --heat-text-9: #fff;
+      --heat-10: #1356a3; --heat-text-10: #fff;
+      --heat-11: #01458b; --heat-text-11: #fff;
+      --heat-12: #00356e; --heat-text-12: #fff;
 
       /* セッションのキャラクターの色(categorical の固定順。名前ごとに番号を固定) */
       --char-0: #2a78d6; --char-1: #eb6834; --char-2: #1baf7a; --char-3: #eda100;
@@ -93,15 +93,15 @@
       --target-line: #e2543c;
       --error: #f28b82;
 
-      /* 黒い背景では、5=背景に沈む暗い色 → 12以上=最も明るく目立つ色(背景 #150f0c で --ordinal 検証済み) */
-      --heat-5: #90291d;  --heat-text-5: #efe4d6;
-      --heat-6: #a53d2f;  --heat-text-6: #efe4d6;
-      --heat-7: #b95041;  --heat-text-7: #efe4d6;
-      --heat-8: #cf6353;  --heat-text-8: #150f0c;
-      --heat-9: #e47665;  --heat-text-9: #150f0c;
-      --heat-10: #fa8978; --heat-text-10: #150f0c;
-      --heat-11: #fea899; --heat-text-11: #150f0c;
-      --heat-12: #fdc7bd; --heat-text-12: #150f0c;
+      /* 黒い背景では、5=背景に沈む暗い青 → 12以上=最も明るく目立つ青(背景 #150f0c で --ordinal 検証済み) */
+      --heat-5: #07519d;  --heat-text-5: #efe4d6;
+      --heat-6: #2163b1;  --heat-text-6: #efe4d6;
+      --heat-7: #3576c6;  --heat-text-7: #150f0c;
+      --heat-8: #4889da;  --heat-text-8: #150f0c;
+      --heat-9: #5b9def;  --heat-text-9: #150f0c;
+      --heat-10: #74b1fd; --heat-text-10: #150f0c;
+      --heat-11: #99c5fd; --heat-text-11: #150f0c;
+      --heat-12: #bcd8fd; --heat-text-12: #150f0c;
 
       /* categorical の dark 列(背景 #150f0c ですべて 3:1 以上) */
       --char-0: #3987e5; --char-1: #d95926; --char-2: #199e70; --char-3: #c98500;
@@ -181,7 +181,24 @@
     .load-message.is-error { color: var(--error); }
 
     /* ── 読み込んだキャラクター ── */
-    .char-summary { display: flex; align-items: baseline; flex-wrap: wrap; gap: 6px 14px; }
+    .char-summary { display: flex; flex-direction: column; gap: 10px; }
+    .char-tabs { display: flex; flex-wrap: wrap; gap: 6px; }
+    .char-tab-item { display: inline-flex; align-items: stretch; }
+    .char-tab {
+      background: var(--surface); color: var(--text);
+      border: 1px solid var(--border); border-radius: 999px 0 0 999px;
+      padding: 3px 10px 3px 12px; font-weight: 700;
+    }
+    .char-tab:hover:not(:disabled) { background: var(--surface-alt); }
+    .char-tab.is-active { background: var(--accent); border-color: var(--accent); color: #fff; }
+    .char-remove {
+      background: var(--surface); color: var(--muted);
+      border: 1px solid var(--border); border-left: none; border-radius: 0 999px 999px 0;
+      padding: 0 9px 0 6px;
+    }
+    .char-remove:hover:not(:disabled) { background: var(--surface-alt); color: var(--accent-text); }
+    .char-tab-item.is-active .char-remove { border-color: var(--accent); }
+    .char-detail { display: flex; align-items: baseline; flex-wrap: wrap; gap: 6px 14px; }
     .char-summary-name { font-family: 'Shippori Mincho', serif; font-size: 1.3rem; font-weight: 700; }
     .char-summary-meta { display: flex; flex-wrap: wrap; gap: 6px; font-size: 0.8rem; }
     .char-summary-meta span { background: var(--surface-alt); border: 1px solid var(--border); border-radius: 4px; padding: 0 6px; }
@@ -211,15 +228,19 @@
     .skill-table .gap-col.gap-on { background: var(--gap-on); }
     .area-head { background: var(--accent-strong); color: #fff; padding: 4px 2px; vertical-align: top; }
     .area-head-name { display: block; font-weight: 700; }
+    /* 使用可=白い札、使用不可=黒い札(目標値の色と紛れないよう、色味を持たせない) */
     .lost-toggle {
       margin-top: 3px;
       font-size: 0.68rem;
-      padding: 1px 6px;
-      border-color: rgba(255, 255, 255, 0.6);
-      background: transparent;
+      font-weight: 700;
+      padding: 1px 7px;
+      background: #fffdf8;
+      color: #211815;
+      border: 1px solid #fffdf8;
     }
-    .lost-toggle:hover:not(:disabled) { background: rgba(255, 255, 255, 0.15); }
-    .lost-toggle[aria-pressed="true"] { background: #fff; color: var(--accent-strong); border-color: #fff; }
+    .lost-toggle:hover:not(:disabled) { background: #e8ddc9; }
+    .lost-toggle[aria-pressed="true"] { background: #211815; color: #fff; border-color: rgba(255, 255, 255, 0.7); }
+    .lost-toggle[aria-pressed="true"]:hover:not(:disabled) { background: #3b322c; }
     .area-head.is-lost { background: var(--area-lost-bg); }
     .skill-cell { background: var(--surface); padding: 4px 2px; height: 44px; position: relative; }
     .skill-name { display: block; line-height: 1.2; }
@@ -508,16 +529,17 @@ function parseSkillId(id) {
 
 /** 使える習得特技(使用不可の分野を除く) */
 function usableSkillIds() {
-  if (!state.character) return [];
-  const lost = new Set(state.lostColumns);
-  return state.character.skills.filter(id => !lost.has(parseSkillId(id).col));
+  const c = currentCharacter();
+  if (!c) return [];
+  const lost = new Set(c.lostColumns);
+  return c.skills.filter(id => !lost.has(parseSkillId(id).col));
 }
 
 /** 習得特技 fromId で、指定特技 toId を判定するときの目標値(5 + 距離) */
 function targetNumber(fromId, toId) {
   const from = parseSkillId(fromId);
   const to = parseSkillId(toId);
-  return 5 + calcSkillDistance(from.row, from.col, to.row, to.col, state.character.gaps);
+  return 5 + calcSkillDistance(from.row, from.col, to.row, to.col, currentCharacter().gaps);
 }
 
 /**
@@ -539,21 +561,36 @@ const heatClass = (target) => `heat-${Math.min(Math.max(target, 5), 12)}`;
 const STATE_KEY = 'sinobigamiToolState';
 
 /**
- * character: 読み込んだキャラ({ name, meta[], skills[], gaps{} }。計算に要る部分だけ)
- * lostColumns: 使えない分野の列番号(1〜6)
+ * characters: 読み込んだキャラ([{ key, name, meta[], skills[], gaps{}, sourceId?, lostColumns[] }]。計算に要る部分だけ)
+ *   lostColumns は使えない分野の列番号(1〜6)で、生命力はキャラごとなのでキャラごとに持つ
+ * activeCharKey: 表示・計算に使っているキャラ
  * mode: 'diagnosis' | 'session'
  * names: セッションで登録したキャラクター名([{ id, name, slot }]。slot は色の番号で、名前ごとに固定)
  * buttons: 登録したボタン([{ id, label, nameId, skillId }])
  * activeButtonId: 押したボタン(結果を表示しているもの)
  */
-const state = { character: null, lostColumns: [], mode: 'diagnosis', names: [], buttons: [], activeButtonId: null };
+const state = { characters: [], activeCharKey: null, mode: 'diagnosis', names: [], buttons: [], activeButtonId: null };
+
+/** 表示・計算に使っているキャラ(読み込んでいなければ null) */
+const currentCharacter = () => state.characters.find(c => c.key === state.activeCharKey) || null;
+
+const validLostColumns = (cols) => (Array.isArray(cols) ? cols.filter(c => Number.isInteger(c) && c >= 1 && c <= 6) : []);
 
 function loadState() {
   try {
     const saved = JSON.parse(localStorage.getItem(STATE_KEY) || 'null');
     if (!saved || typeof saved !== 'object') return;
-    if (saved.character && Array.isArray(saved.character.skills)) state.character = saved.character;
-    if (Array.isArray(saved.lostColumns)) state.lostColumns = saved.lostColumns.filter(c => c >= 1 && c <= 6);
+    if (Array.isArray(saved.characters)) {
+      state.characters = saved.characters
+        .filter(c => c && c.key && Array.isArray(c.skills))
+        .map(c => ({ ...c, lostColumns: validLostColumns(c.lostColumns) }));
+    } else if (saved.character && Array.isArray(saved.character.skills)) {
+      // 1キャラだけ読み込めた頃の保存形式
+      state.characters = [{ ...saved.character, key: 'c1', lostColumns: validLostColumns(saved.lostColumns) }];
+    }
+    state.activeCharKey = state.characters.some(c => c.key === saved.activeCharKey)
+      ? saved.activeCharKey
+      : (state.characters[0] ? state.characters[0].key : null);
     if (saved.mode === 'diagnosis' || saved.mode === 'session') state.mode = saved.mode;
     if (Array.isArray(saved.names)) state.names = saved.names.filter(n => n && n.id && n.name && Number.isInteger(n.slot));
     if (Array.isArray(saved.buttons)) {
@@ -672,12 +709,23 @@ function characterFromSaveData(data) {
   return toCharacter({ inputs: data.inputs || {}, checkedIds });
 }
 
-/** 読み込んだキャラを設定して、画面を描き直す */
-function setCharacter(character, message) {
-  state.character = character;
+/**
+ * 読み込んだキャラを一覧に追加して選び、画面を描き直す。
+ * サーバーの同じキャラ(sourceId が同じ)をもう一度読んだときは、追加せずに内容だけ更新する(使用不可の状態は保つ)。
+ */
+function addCharacter(character, message) {
+  const existing = character.sourceId && state.characters.find(c => c.sourceId === character.sourceId);
+  if (existing) {
+    Object.assign(existing, character, { key: existing.key, lostColumns: existing.lostColumns });
+    state.activeCharKey = existing.key;
+  } else {
+    const entry = { ...character, key: newId(), lostColumns: [] };
+    state.characters.push(entry);
+    state.activeCharKey = entry.key;
+  }
   saveState();
   render();
-  showLoadMessage(message);
+  showLoadMessage(existing ? `${message}(読み込み済みのキャラクターを最新の内容に更新しました)` : message);
 }
 
 // ==========================================
@@ -697,15 +745,27 @@ function showLoadMessage(message, isError = false) {
 }
 
 function renderCharSummary() {
-  const c = state.character;
+  const c = currentCharacter();
   if (!c) {
-    charSummaryEl.innerHTML = '<p class="char-summary-empty">キャラクターが読み込まれていません。上の方法で1人読み込んでください。</p>';
+    charSummaryEl.innerHTML = '<p class="char-summary-empty">キャラクターが読み込まれていません。上の方法で読み込んでください。何人でも読み込んで、ここで切り替えられます。</p>';
     return;
   }
+  const tabs = state.characters.map(ch => {
+    const active = ch.key === c.key;
+    return `
+      <span class="char-tab-item${active ? ' is-active' : ''}">
+        <button type="button" class="char-tab${active ? ' is-active' : ''}" data-char-key="${ch.key}" aria-pressed="${active}">${escapeHTML(ch.name)}</button>
+        <button type="button" class="char-remove" data-char-key="${ch.key}" title="一覧から外す" aria-label="「${escapeHTML(ch.name)}」を一覧から外す">×</button>
+      </span>`;
+  }).join('');
+  const lostNames = c.lostColumns.map(col => AREA_NAMES[col - 1]);
   charSummaryEl.innerHTML = `
-    <span class="char-summary-name">${escapeHTML(c.name)}</span>
-    <span class="char-summary-meta">${c.meta.map(m => `<span>${escapeHTML(m)}</span>`).join('')}</span>
-    <span class="load-note">習得特技 ${c.skills.length}個</span>`;
+    <div class="char-tabs" aria-label="読み込んだキャラクター(押すと切り替え)">${tabs}</div>
+    <div class="char-detail">
+      <span class="char-summary-name">${escapeHTML(c.name)}</span>
+      <span class="char-summary-meta">${c.meta.map(m => `<span>${escapeHTML(m)}</span>`).join('')}</span>
+      <span class="load-note">習得特技 ${c.skills.length}個${lostNames.length ? ` / 使用不可: ${lostNames.join('・')}` : ''}</span>
+    </div>`;
 }
 
 /**
@@ -713,7 +773,7 @@ function renderCharSummary() {
  */
 function diagnosisCell(skillId) {
   const name = SKILL_ID_MAP[skillId];
-  if (!state.character) return { classes: [], html: '', title: name };
+  if (!currentCharacter()) return { classes: [], html: '', title: name };
   const [best] = targetsFor(skillId);
   if (!best) return { classes: ['heat-none'], html: '<span class="skill-value">−</span>', title: `${name}: 判定に使える特技がありません` };
   return {
@@ -732,7 +792,7 @@ const activeButton = () => state.buttons.find(b => b.id === state.activeButtonId
 function sessionCell(skillId) {
   const name = SKILL_ID_MAP[skillId];
   const button = activeButton();
-  const c = state.character;
+  const c = currentCharacter();
   if (!button || !c) return { classes: [], html: '', title: name };
 
   const classes = [];
@@ -771,20 +831,22 @@ function renderJudgeResult() {
   const owner = state.names.find(n => n.id === button.nameId);
   el.style.setProperty('--char-color', charColor(owner.slot));
   const head = `<div class="judge-result-head"><span class="char-dot" aria-hidden="true"></span>${escapeHTML(owner.name)}「${escapeHTML(button.label)}」 指定特技: ${SKILL_ID_MAP[button.skillId]}</div>`;
-  if (!state.character) {
+  const c = currentCharacter();
+  if (!c) {
     el.innerHTML = `${head}<p class="judge-result-note">キャラクターを読み込むと、目標値を計算します。</p>`;
     return;
   }
   const results = targetsFor(button.skillId);
+  const forWhom = `<p class="judge-result-note">${escapeHTML(c.name)}が判定する場合</p>`;
   if (!results.length) {
-    el.innerHTML = `${head}<div class="judge-result-main"><span class="judge-result-from">判定に使える特技がありません</span></div>
+    el.innerHTML = `${head}${forWhom}<div class="judge-result-main"><span class="judge-result-from">判定に使える特技がありません</span></div>
       <p class="judge-result-note">すべての習得特技が「使用不可」の分野にあります。</p>`;
     return;
   }
   const best = results[0].target;
   const bestSkills = results.filter(r => r.target === best).map(r => SKILL_ID_MAP[r.from]);
   const others = results.filter(r => r.target !== best).slice(0, 3).map(r => `${SKILL_ID_MAP[r.from]} ${r.target}`);
-  el.innerHTML = `${head}
+  el.innerHTML = `${head}${forWhom}
     <div class="judge-result-main">
       <span class="judge-result-target"><small>目標値</small>${best}</span>
       <span class="judge-result-from">${bestSkills.join('・')}で判定</span>
@@ -794,10 +856,10 @@ function renderJudgeResult() {
 
 /** 特技表を描く。マスの中身は、モードごとの関数(diagnosisCell など)で足す */
 function renderSkillTable() {
-  const c = state.character;
+  const c = currentCharacter();
   const acquired = new Set(c ? c.skills : []);
   const gaps = c ? c.gaps : {};
-  const lost = new Set(state.lostColumns);
+  const lost = new Set(c ? c.lostColumns : []);
 
   let html = '<thead><tr><th class="num-col"></th>';
   AREA_NAMES.forEach((area, ai) => {
@@ -806,7 +868,7 @@ function renderSkillTable() {
     html += `<th class="area-head${isLost ? ' is-lost' : ''}" scope="col">
         <span class="area-head-name">${area}</span>
         <button type="button" class="lost-toggle" data-col="${col}" aria-pressed="${isLost}"
-          title="生命力を失ってこの分野の特技が使えないときに押す">${isLost ? '使用不可' : '使用可'}</button>
+          title="生命力を失ってこの分野の特技が使えないときに押す"${c ? '' : ' disabled'}>${isLost ? '✕ 使用不可' : '✓ 使用可'}</button>
       </th>`;
     if (ai < 5) html += `<th class="gap-col${gaps[`gap${col}`] ? ' gap-on' : ''}"></th>`;
   });
@@ -901,7 +963,8 @@ function renderSession() {
 /** マイキャラの選択欄を、読み込んでいるキャラに合わせる(マイキャラ以外から読んだら未選択) */
 function syncMyCharSelect() {
   const select = document.getElementById('my_char_select');
-  const id = state.character && state.character.sourceId;
+  const c = currentCharacter();
+  const id = c && c.sourceId;
   select.value = [...select.options].some(o => o.value === id) ? id : '';
 }
 
@@ -968,10 +1031,12 @@ document.querySelectorAll('.mode-tab').forEach(tab => {
 skillTableEl.addEventListener('click', (e) => {
   const toggle = e.target.closest('.lost-toggle');
   if (!toggle) return;
+  const c = currentCharacter();
+  if (!c) return;
   const col = Number(toggle.dataset.col);
-  state.lostColumns = state.lostColumns.includes(col)
-    ? state.lostColumns.filter(c => c !== col)
-    : [...state.lostColumns, col].sort();
+  c.lostColumns = c.lostColumns.includes(col)
+    ? c.lostColumns.filter(n => n !== col)
+    : [...c.lostColumns, col].sort();
   saveState();
   render();
 });
@@ -1022,7 +1087,7 @@ myCharSelect.addEventListener('change', async () => {
   showLoadMessage('読み込み中…');
   try {
     const character = await fetchCharacterById(id);
-    setCharacter({ ...character, sourceId: id }, `「${character.name}」を読み込みました。`);
+    addCharacter({ ...character, sourceId: id }, `「${character.name}」を読み込みました。`);
   } catch (err) {
     console.error(err);
     showLoadMessage(err instanceof LoadError ? err.message : 'キャラクターを読み込めませんでした。', true);
@@ -1050,7 +1115,7 @@ shareForm.addEventListener('submit', async (e) => {
   showLoadMessage('読み込み中…');
   try {
     const character = await fetchCharacterById(ref.id);
-    setCharacter({ ...character, sourceId: ref.id }, `「${character.name}」を読み込みました。`);
+    addCharacter({ ...character, sourceId: ref.id }, `「${character.name}」を読み込みました。`);
     shareInput.value = '';
   } catch (err) {
     console.error(err);
@@ -1058,6 +1123,28 @@ shareForm.addEventListener('submit', async (e) => {
   } finally {
     shareLoadBtn.disabled = false;
   }
+});
+
+// 読み込んだキャラクターの切り替えと、一覧から外す
+charSummaryEl.addEventListener('click', (e) => {
+  const remove = e.target.closest('.char-remove');
+  if (remove) {
+    const index = state.characters.findIndex(c => c.key === remove.dataset.charKey);
+    if (index < 0) return;
+    state.characters.splice(index, 1);
+    if (!currentCharacter()) {
+      const next = state.characters[Math.min(index, state.characters.length - 1)];
+      state.activeCharKey = next ? next.key : null;
+    }
+    saveState();
+    render();
+    return;
+  }
+  const tab = e.target.closest('.char-tab');
+  if (!tab) return;
+  state.activeCharKey = tab.dataset.charKey;
+  saveState();
+  render();
 });
 
 // セッション: キャラクター名
@@ -1164,7 +1251,7 @@ loadJsonFile.addEventListener('change', async (e) => {
   if (!file) return;
   try {
     const character = characterFromSaveData(JSON.parse(await file.text()));
-    setCharacter(character, `「${character.name}」を読み込みました(${file.name})。`);
+    addCharacter(character, `「${character.name}」を読み込みました(${file.name})。`);
   } catch (err) {
     console.error(err);
     showLoadMessage(`「${file.name}」を読み込めませんでした。キャラシで保存したJSONファイルか確認してください。`, true);
