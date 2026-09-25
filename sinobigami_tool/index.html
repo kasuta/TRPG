@@ -181,6 +181,14 @@
     <section class="card" aria-labelledby="load_heading">
       <h2 id="load_heading">キャラクターを読み込む</h2>
       <div class="load-sources">
+        <form class="load-source" id="share_form">
+          <label class="load-source-label" for="share_input">共有リンク / ID</label>
+          <div class="load-source-row">
+            <input type="text" id="share_input" placeholder="https://…/sinobigami/index.html#id=… または ID" autocomplete="off" />
+            <button type="submit" id="share_load_btn">読み込む</button>
+          </div>
+          <span class="load-note">ほかのプレイヤーのキャラも、キャラシの共有リンクから読み込めます</span>
+        </form>
         <div class="load-source">
           <span class="load-source-label">JSONファイル</span>
           <div class="load-source-row">
@@ -384,6 +392,64 @@ function toCharacter({ inputs = {}, checkedIds = [] }) {
   };
 }
 
+/** ユーザーに見せる理由付きのエラー(メッセージをそのまま表示する) */
+class LoadError extends Error {}
+
+/** キャラシと同じく、localhostで開いたときはローカルのAPI(sinobigami-api の npm run dev)に接続する */
+const API_BASE = ['localhost', '127.0.0.1'].includes(location.hostname)
+  ? 'http://localhost:8787'
+  : 'https://sinobigami-api.kasu-kasu.workers.dev';
+
+/** 共有リンク(…#id=XXXX)か、IDだけの入力から { id, isMagirogiLink } を取り出す。読めなければ null */
+function parseCharacterRef(text) {
+  const t = text.trim();
+  const m = t.match(/[#&?]id=([A-Za-z0-9_-]{1,64})/);
+  if (m) return { id: m[1], isMagirogiLink: /\/magirogi\//.test(t) };
+  return /^[A-Za-z0-9_-]{1,64}$/.test(t) ? { id: t, isMagirogiLink: false } : null;
+}
+
+// 短縮形(キャラシの compactifyForShare)の入力欄キーのうち、ツールで使うもの
+const SHARE_INPUT_KEYS = { n: 'name', sc: 'school', ss: 'sub_school', rk: 'rank', bl: 'belief' };
+// /api/load の結果にはゲームの種別が無いので、そのゲームにしか無いキーで見分ける(sk の形式は両ゲームで同じ)
+const MAGIROGI_ONLY_KEYS = { top: ['sp'], inputs: ['tn', 'tm', 'ar', 'atk', 'df', 'kg', 'hs', 'trn', 'tre', 'trd', 'gd'] };
+const SINOBIGAMI_ONLY_KEYS = { top: ['np', 'og', 'hk'], inputs: ['fu', 'g', 'sc', 'rk', 'jc', 'nm', 'le', 'nh', 'nj', 'nt', 'no'] };
+const hasAnyKey = (compact, keys) =>
+  keys.top.some(k => k in compact) || keys.inputs.some(k => compact.i && k in compact.i);
+
+/** 短縮形のデータが(シノビガミの印が無く)マギロギのものか */
+function isMagirogiCompact(compact) {
+  return hasAnyKey(compact, MAGIROGI_ONLY_KEYS) && !hasAnyKey(compact, SINOBIGAMI_ONLY_KEYS);
+}
+
+/** 短縮形(/api/load の結果)から変換する */
+function characterFromCompact(compact) {
+  const inputs = {};
+  Object.entries(SHARE_INPUT_KEYS).forEach(([short, key]) => {
+    if (compact.i && typeof compact.i[short] === 'string') inputs[key] = compact.i[short];
+  });
+  const skillIds = (Array.isArray(compact.sk) ? compact.sk : [])
+    .filter(idx => Number.isInteger(idx) && idx >= 0 && idx < 66)
+    .map(idx => `skill_r${Math.floor(idx / 6) + 2}_c${(idx % 6) + 1}`);
+  const otherIds = (Array.isArray(compact.cb) ? compact.cb : []).filter(id => typeof id === 'string');
+  return toCharacter({ inputs, checkedIds: [...skillIds, ...otherIds] });
+}
+
+/** サーバーからIDでキャラを読み込む(GET /api/load/:id) */
+async function fetchCharacterById(id) {
+  let res;
+  try {
+    res = await fetch(`${API_BASE}/api/load/${encodeURIComponent(id)}`);
+  } catch {
+    throw new LoadError('サーバーに接続できませんでした。通信状態を確認してください。');
+  }
+  if (res.status === 404) throw new LoadError('キャラクターが見つかりませんでした。リンクやIDが正しいか確認してください。');
+  if (!res.ok) throw new LoadError(`キャラクターを読み込めませんでした(${res.status})。`);
+  const compact = await res.json();
+  if (!compact || typeof compact !== 'object') throw new LoadError('キャラクターのデータが読み取れませんでした。');
+  if (isMagirogiCompact(compact)) throw new LoadError('マギロギのキャラクターは、このツールでは読み込めません。');
+  return characterFromCompact(compact);
+}
+
 /** キャラシの「データを保存 (.json)」(buildSaveData の形式)から変換する */
 function characterFromSaveData(data) {
   if (!data || typeof data !== 'object' || !data.checkboxes) throw new Error('キャラシのデータではありません');
@@ -519,6 +585,35 @@ skillTableEl.addEventListener('click', (e) => {
     : [...state.lostColumns, col].sort();
   saveState();
   render();
+});
+
+// 共有リンク / ID
+const shareForm = document.getElementById('share_form');
+const shareInput = document.getElementById('share_input');
+const shareLoadBtn = document.getElementById('share_load_btn');
+shareForm.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const ref = parseCharacterRef(shareInput.value);
+  if (!ref) {
+    showLoadMessage('共有リンク(…#id=…)か、キャラクターのIDを入力してください。', true);
+    return;
+  }
+  if (ref.isMagirogiLink) {
+    showLoadMessage('マギロギのキャラクターは、このツールでは読み込めません。', true);
+    return;
+  }
+  shareLoadBtn.disabled = true;
+  showLoadMessage('読み込み中…');
+  try {
+    const character = await fetchCharacterById(ref.id);
+    setCharacter(character, `「${character.name}」を読み込みました。`);
+    shareInput.value = '';
+  } catch (err) {
+    console.error(err);
+    showLoadMessage(err instanceof LoadError ? err.message : 'キャラクターを読み込めませんでした。', true);
+  } finally {
+    shareLoadBtn.disabled = false;
+  }
 });
 
 // JSONファイル
