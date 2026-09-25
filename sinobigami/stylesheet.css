@@ -2042,6 +2042,57 @@ textarea {
 .history-item.drop-before::before { top: -5px; }
 .history-item.drop-after::after { bottom: -5px; }
 
+/* マイキャラ一覧のフォルダ */
+.history-folder {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	padding: 8px 10px;
+	border: 1px solid var(--border);
+	border-radius: 8px;
+	background: var(--surface-alt);
+	cursor: pointer;
+	font-weight: 700;
+	transition: background 0.15s;
+}
+.history-folder:hover { background: var(--surface); }
+.history-folder:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.history-folder-caret,
+.history-folder-icon { flex-shrink: 0; display: flex; }
+.history-folder-caret svg { width: 14px; height: 14px; color: var(--muted); transition: transform 0.15s; }
+.history-folder.is-open .history-folder-caret svg { transform: rotate(90deg); }
+.history-folder-icon svg { width: 17px; height: 17px; color: var(--accent); }
+.history-folder-name {
+	flex: 1;
+	min-width: 0;
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+.history-folder-count {
+	flex-shrink: 0;
+	min-width: 1.6em;
+	padding: 0 6px;
+	border-radius: 999px;
+	background: var(--surface);
+	color: var(--muted);
+	font-size: 0.72rem;
+	text-align: center;
+}
+.history-folder-children {
+	display: flex;
+	flex-direction: column;
+	gap: 6px;
+	margin-left: 12px;
+	padding-left: 8px;
+	border-left: 2px solid var(--border);
+}
+.history-folder-empty {
+	margin: 2px 0;
+	font-size: 0.75rem;
+	color: var(--muted);
+}
+
 .history-item-info { min-width: 0; }
 
 .history-item-name {

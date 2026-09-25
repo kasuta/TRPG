@@ -1281,6 +1281,31 @@ const removeFromHistory = (id) => {
   localStorage.setItem('sinobigami_history', JSON.stringify(history));
 };
 
+const LIST_TRASH_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>';
+const LIST_FOLDER_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>';
+const LIST_CARET_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg>';
+
+/** 一覧のキャラ1行分のHTML(ゲスト履歴とマイキャラで共用。folderId があればフォルダの中の行) */
+const buildListItemHTML = (h) => {
+  const date = new Date(h.updatedAt);
+  const dateStr = isNaN(date) ? '' : date.toLocaleString('ja-JP', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+  const badge = h.game ? `<span class="history-item-game-badge badge-${h.game}">${GAME_LABEL[h.game] || h.game}</span>` : '';
+
+  const deleteBtn = h.deletable
+    ? `<button type="button" class="history-item-delete" data-delete-id="${h.id}" data-delete-type="${h.deleteType || 'local'}" title="削除">${LIST_TRASH_ICON}</button>`
+    : '';
+  const dragAttrs = h.draggable ? ' draggable="true"' : '';
+  const folderAttr = h.folderId ? ` data-parent-folder="${h.folderId}"` : '';
+  return `
+      <div class="history-item${h.draggable ? ' is-draggable' : ''}" data-id="${h.id}" data-game="${h.game || ''}"${folderAttr}${dragAttrs}>
+        <div class="history-item-info">
+          <div class="history-item-name">${badge}${escapeHTML(h.name || '(名前未設定)')}</div>
+          <div class="history-item-date">${dateStr}</div>
+        </div>
+        ${deleteBtn}
+      </div>`;
+};
+
 /** 一覧を描画する共通処理 */
 const renderListItems = (items) => {
   const listEl = document.getElementById('history_list');
@@ -1289,25 +1314,7 @@ const renderListItems = (items) => {
     listEl.innerHTML = '<p class="history-empty">データがありません</p>';
     return;
   }
-  listEl.innerHTML = items.map(h => {
-    const date = new Date(h.updatedAt);
-    const dateStr = isNaN(date) ? '' : date.toLocaleString('ja-JP', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' });
-    const badge = h.game ? `<span class="history-item-game-badge badge-${h.game}">${GAME_LABEL[h.game] || h.game}</span>` : '';
-    const TRASH_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>';
-
-    const deleteBtn = h.deletable
-      ? `<button type="button" class="history-item-delete" data-delete-id="${h.id}" data-delete-type="${h.deleteType || 'local'}" title="削除">${TRASH_ICON}</button>`
-      : '';
-    const dragAttrs = h.draggable ? ' draggable="true"' : '';
-    return `
-      <div class="history-item${h.draggable ? ' is-draggable' : ''}" data-id="${h.id}" data-game="${h.game || ''}"${dragAttrs}>
-        <div class="history-item-info">
-          <div class="history-item-name">${badge}${escapeHTML(h.name || '(名前未設定)')}</div>
-          <div class="history-item-date">${dateStr}</div>
-        </div>
-        ${deleteBtn}
-      </div>`;
-  }).join('');
+  listEl.innerHTML = items.map(buildListItemHTML).join('');
 };
 
 /** ゲスト履歴を描画する */
@@ -1342,13 +1349,66 @@ const canReorderByDrag = () => window.matchMedia('(hover: hover) and (pointer: f
 /** 絞り込みタブで表示するキャラか */
 const matchesGameFilter = (c) => gameFilter === 'all' || c.game === gameFilter;
 
-const applyGameFilter = () => {
+/** 開いているフォルダのID(ブラウザごとに記憶する。両アプリで共通のキー) */
+const OPEN_FOLDERS_KEY = 'characterListOpenFolders';
+const getOpenFolderIds = () => {
+  try {
+    const ids = JSON.parse(localStorage.getItem(OPEN_FOLDERS_KEY) || '[]');
+    return new Set(Array.isArray(ids) ? ids : []);
+  } catch {
+    return new Set();
+  }
+};
+const setFolderOpen = (folderId, open) => {
+  const ids = getOpenFolderIds();
+  if (open) ids.add(folderId); else ids.delete(folderId);
+  try {
+    localStorage.setItem(OPEN_FOLDERS_KEY, JSON.stringify([...ids]));
+  } catch {}
+};
+
+/** フォルダ1行分のHTML。count は絞り込み後のキャラの数 */
+const buildFolderHTML = (folder, count, isOpen) => `
+      <div class="history-folder${isOpen ? ' is-open' : ''}" data-folder-id="${folder.id}" role="button" tabindex="0" aria-expanded="${isOpen}">
+        <span class="history-folder-caret">${LIST_CARET_ICON}</span>
+        <span class="history-folder-icon">${LIST_FOLDER_ICON}</span>
+        <span class="history-folder-name">${escapeHTML(folder.name)}</span>
+        <span class="history-folder-count">${count}</span>
+      </div>`;
+
+/** ログイン中のキャラ一覧を、フォルダを含むツリーとして描画する(絞り込み中もフォルダは表示する) */
+const renderMyLayoutList = () => {
+  const listEl = document.getElementById('history_list');
+  if (!listEl) return;
   const draggable = canReorderByDrag();
-  // フォルダ内のキャラは、フォルダのUI(機能B)ができるまで並べ替えの対象にしない
-  const rootIds = new Set(myLayoutItems.filter(item => item.type !== 'folder').map(item => item.id));
-  renderListItems(myCharactersCache.filter(matchesGameFilter).map(c => ({
-    ...c, deletable: true, deleteType: 'server', draggable: draggable && rootIds.has(c.id),
-  })));
+  const openIds = getOpenFolderIds();
+  const charRow = (c, folderId) => buildListItemHTML({
+    ...c, deletable: true, deleteType: 'server', folderId,
+    // フォルダ内のキャラの移動は、フォルダのドラッグ操作(機能BのT3)ができるまで対象にしない
+    draggable: draggable && !folderId,
+  });
+
+  const html = myLayoutItems.map(item => {
+    if (item.type !== 'folder') return matchesGameFilter(item) ? charRow(item, null) : '';
+    const visible = item.items.filter(matchesGameFilter);
+    const isOpen = openIds.has(item.id);
+    const children = visible.length
+      ? visible.map(c => charRow(c, item.id)).join('')
+      : '<p class="history-folder-empty">キャラクターがいません</p>';
+    return buildFolderHTML(item, visible.length, isOpen)
+      + (isOpen ? `<div class="history-folder-children" data-folder-id="${item.id}">${children}</div>` : '');
+  }).join('');
+  listEl.innerHTML = html || '<p class="history-empty">データがありません</p>';
+};
+
+/** フォルダを開閉する */
+const toggleFolder = (folderId) => {
+  setFolderOpen(folderId, !getOpenFolderIds().has(folderId));
+  renderMyLayoutList();
+};
+
+const applyGameFilter = () => {
+  renderMyLayoutList();
 };
 
 /** ツリーを、保存用のIDだけの形(PUT /api/my-layout の本文)にする */
@@ -1643,6 +1703,11 @@ if (historyListEl) {
       }
       return;
     }
+    const folderRow = e.target.closest('.history-folder');
+    if (folderRow) {
+      toggleFolder(folderRow.dataset.folderId);
+      return;
+    }
     const item = e.target.closest('.history-item');
     if (item) {
       const game = item.dataset.game;
@@ -1654,6 +1719,16 @@ if (historyListEl) {
       window.location.hash = `id=${item.dataset.id}`;
       window.location.reload();
     }
+  });
+
+  // フォルダ行はキーボード(Enter/Space)でも開閉できる
+  historyListEl.addEventListener('keydown', (e) => {
+    if (e.key !== 'Enter' && e.key !== ' ') return;
+    const folderRow = e.target.closest('.history-folder');
+    if (!folderRow || e.target !== folderRow) return;
+    e.preventDefault();
+    toggleFolder(folderRow.dataset.folderId);
+    historyListEl.querySelector(`.history-folder[data-folder-id="${folderRow.dataset.folderId}"]`)?.focus();
   });
 
   // ドラッグで並べ替える(ログイン中の一覧・PCのみ。行に draggable が付いているときだけ動く)
