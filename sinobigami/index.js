@@ -1229,7 +1229,10 @@ document.addEventListener('DOMContentLoaded', () => {
     return data;
   };
   
-const API_BASE = 'https://sinobigami-api.kasu-kasu.workers.dev';
+// localhostで開いたときは、ローカルのAPI(sinobigami-api の npm run dev)に接続する(本番APIはlocalhostを許可していない)
+const API_BASE = ['localhost', '127.0.0.1'].includes(location.hostname)
+  ? 'http://localhost:8787'
+  : 'https://sinobigami-api.kasu-kasu.workers.dev';
 const CURRENT_GAME = 'sinobigami';
 const GAME_LABEL = { sinobigami: 'シノビガミ', magirogi: 'マギロギ' };
 let currentCharacterId = null;
