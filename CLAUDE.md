@@ -28,7 +28,7 @@ Key endpoints (used identically from both apps, differentiated by a `game` query
 - `POST /api/save?game=<game>` — save a new character
 - `PUT /api/update/:id` — update an existing character
 - `GET /api/load/:id` — load a character by id (used when opening a shared link)
-- `GET /api/character/:id` — fetch character detail (authenticated)
+- `DELETE /api/character/:id` — delete a character (owner only, requires `Authorization`; also removes the R2 image)
 - `POST /api/upload-image/:id` — upload character portrait (requires `Authorization` header)
 - `GET /api/image/:id` — fetch character portrait
 - `GET /api/my-characters` — list the logged-in user's characters
@@ -37,6 +37,17 @@ Key endpoints (used identically from both apps, differentiated by a `game` query
 Since the API source isn't in this repo, when changing request shapes/headers, cross-check both `magirogi/index.js` and `sinobigami/index.js` for consistency, and assume the worker is opaque (treat API errors from the deployed worker as ground truth about its actual contract, not just what the JS assumes).
 
 `.wrangler/` present locally is Cloudflare tooling state, not part of the app source here.
+
+### API source and contract notes (added 2026-09-21)
+
+The Worker source now lives in its own repo: `https://github.com/kasuta/sinobigami-api` (private; local clone at `C:\Users\bokem\Documents\sinobigami-api`). Its `AGENTS.md` and `docs/development-log.md` have the conventions, history and open issues — check them before changing request shapes. The points below affect this frontend:
+
+- **Character IDs**: new IDs are 12 hex chars (older ones are 8). `#id=<id>` links of either length keep working; don't hard-code the length.
+- **Request limits**: `save`/`update` bodies are limited to 64KB (413), login/register to 4KB. Uploaded images are limited to 5MB and must be png/jpeg/gif/webp/avif — SVG/HEIC/BMP get 415. The image input uses `accept="image/*"` and sends the file as-is, so those types currently fail with the generic "画像のアップロードに失敗しました" (the character itself is already saved by then).
+- **Error bodies**: errors are `{ "error": "<message>" }` JSON with CORS headers. Only login/register show the server message (`json.error`); save/update/image upload show fixed messages, so 413/415 reasons are not surfaced to the user (a possible improvement).
+- **`v` field**: the server adds `v` (data version, currently 1) to saved data and returns it from `/api/load`. `expandFromShare` ignores unknown keys, so this is harmless; if `compactifyForShare`'s format changes, send a new `v` from the client.
+- **Anonymous characters** (saved while logged out) can still be overwritten by anyone who has the link, and cannot be deleted — this is intentional (shared editing). Hidden-section passwords (`pw`) are stored and returned in plain text — also intentional.
+- Rate limiting is **not** enabled on the API yet (on hold because of unclear pricing), so don't assume 429 handling exists server-side.
 
 ## Client-side architecture (per app: magirogi/index.js, sinobigami/index.js)
 
