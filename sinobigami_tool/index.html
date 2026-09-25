@@ -166,6 +166,47 @@
     .heat-legend { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 8px; font-size: 0.8rem; }
     .heat-legend-label { color: var(--muted); margin-right: 4px; }
     .heat-swatch { display: inline-flex; align-items: center; justify-content: center; min-width: 34px; height: 24px; padding: 0 4px; border-radius: 4px; font-weight: 700; }
+    /* ── セッション ── */
+    .session-layout { display: grid; grid-template-columns: minmax(260px, 1fr) 2fr; gap: 16px; margin-top: 4px; }
+    @media (max-width: 720px) { .session-layout { grid-template-columns: 1fr; } }
+    .session-form { display: flex; flex-direction: column; gap: 6px; margin-bottom: 14px; }
+    .session-form-row { display: flex; gap: 6px; }
+    .session-form-row > input, .session-form-row > select { flex: 1; }
+    .session-subhead { font-size: 0.82rem; font-weight: 700; margin-bottom: 6px; }
+    .form-message { font-size: 0.8rem; color: #b3261e; min-height: 1.2em; }
+    .name-list { list-style: none; display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 14px; }
+    .name-chip {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 2px 4px 2px 8px; border: 1px solid var(--border); border-radius: 999px;
+      background: var(--surface); font-size: 0.85rem;
+    }
+    .char-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--char-color); flex-shrink: 0; }
+    .icon-btn {
+      border: none; background: transparent; color: var(--muted);
+      padding: 0 4px; font-size: 1rem; line-height: 1;
+    }
+    .icon-btn:hover:not(:disabled) { background: transparent; color: var(--accent); }
+    .button-groups { display: flex; flex-direction: column; gap: 12px; }
+    .button-group-head { display: flex; align-items: center; gap: 6px; font-weight: 700; font-size: 0.9rem; margin-bottom: 6px; }
+    .button-group-list { display: flex; flex-wrap: wrap; gap: 6px; }
+    .judge-item { display: inline-flex; align-items: stretch; }
+    .judge-btn {
+      display: flex; flex-direction: column; align-items: flex-start;
+      background: var(--surface); color: var(--ink);
+      border: 1px solid var(--border); border-left: 6px solid var(--char-color);
+      border-radius: 6px 0 0 6px; padding: 4px 10px; text-align: left;
+    }
+    .judge-btn:hover:not(:disabled) { background: var(--surface-alt); }
+    .judge-btn.is-active { background: var(--surface-alt); box-shadow: inset 0 0 0 2px var(--ink); }
+    .judge-btn-label { font-weight: 700; font-size: 0.9rem; }
+    .judge-btn-skill { font-size: 0.72rem; color: var(--muted); }
+    .judge-delete {
+      border: 1px solid var(--border); border-left: none; border-radius: 0 6px 6px 0;
+      background: var(--surface); color: var(--muted); padding: 0 8px;
+    }
+    .judge-delete:hover:not(:disabled) { background: var(--surface-alt); color: var(--accent); }
+    .session-empty { color: var(--muted); font-size: 0.85rem; }
+    .session-footer { display: flex; justify-content: flex-end; margin-top: 12px; }
     .table-legend { display: flex; flex-wrap: wrap; gap: 4px 14px; margin-top: 8px; font-size: 0.75rem; color: var(--muted); }
     .legend-acquired { display: inline-block; width: 14px; height: 14px; border: 2px solid var(--ink); border-radius: 3px; vertical-align: -3px; margin-right: 4px; }
     .legend-lost { display: inline-block; width: 14px; height: 14px; border: 1px solid var(--border); vertical-align: -3px; margin-right: 4px; background-image: repeating-linear-gradient(135deg, var(--lost-hatch) 0 4px, transparent 4px 8px); }
@@ -227,7 +268,38 @@
 
     <section class="card mode-panel" id="panel_session" data-mode="session" role="tabpanel" hidden>
       <h2>セッション</h2>
-      <p class="load-note">登録したボタンを押すと、その指定特技で判定するときの目標値を表示します。</p>
+      <p class="load-note">登録したボタンを押すと、その指定特技で判定するときの目標値を表示します。登録内容はこのブラウザに保存されます。</p>
+      <div class="session-layout">
+        <div>
+          <form class="session-form" id="name_form">
+            <label class="session-subhead" for="name_input">1. キャラクター名を登録</label>
+            <div class="session-form-row">
+              <input type="text" id="name_input" maxlength="30" placeholder="例: ボスA" autocomplete="off" />
+              <button type="submit" id="name_add_btn">追加</button>
+            </div>
+            <p class="form-message" id="name_message" role="status"></p>
+          </form>
+          <ul class="name-list" id="name_list"></ul>
+
+          <form class="session-form" id="button_form">
+            <span class="session-subhead">2. ボタンを登録</span>
+            <input type="text" id="button_label" maxlength="30" placeholder="名前(忍法名など。空なら指定特技名)" autocomplete="off" aria-label="ボタンの名前" />
+            <select id="button_owner" aria-label="キャラクター"></select>
+            <div class="session-form-row">
+              <input type="text" id="button_skill" list="skill_options" placeholder="指定特技(入力して候補から選ぶ)" autocomplete="off" aria-label="指定特技" />
+              <button type="submit" id="button_add_btn">登録</button>
+            </div>
+            <datalist id="skill_options"></datalist>
+            <p class="form-message" id="button_message" role="status"></p>
+          </form>
+        </div>
+        <div>
+          <div class="button-groups" id="button_groups"></div>
+          <div class="session-footer">
+            <button type="button" class="btn-outline" id="session_clear_btn">すべてクリア</button>
+          </div>
+        </div>
+      </div>
     </section>
 
     <section class="card" aria-labelledby="table_heading">
@@ -362,8 +434,10 @@ const STATE_KEY = 'sinobigamiToolState';
  * character: 読み込んだキャラ({ name, meta[], skills[], gaps{} }。計算に要る部分だけ)
  * lostColumns: 使えない分野の列番号(1〜6)
  * mode: 'diagnosis' | 'session'
+ * names: セッションで登録したキャラクター名([{ id, name, slot }]。slot は色の番号で、名前ごとに固定)
+ * buttons: 登録したボタン([{ id, label, nameId, skillId }])
  */
-const state = { character: null, lostColumns: [], mode: 'diagnosis' };
+const state = { character: null, lostColumns: [], mode: 'diagnosis', names: [], buttons: [] };
 
 function loadState() {
   try {
@@ -372,6 +446,11 @@ function loadState() {
     if (saved.character && Array.isArray(saved.character.skills)) state.character = saved.character;
     if (Array.isArray(saved.lostColumns)) state.lostColumns = saved.lostColumns.filter(c => c >= 1 && c <= 6);
     if (saved.mode === 'diagnosis' || saved.mode === 'session') state.mode = saved.mode;
+    if (Array.isArray(saved.names)) state.names = saved.names.filter(n => n && n.id && n.name && Number.isInteger(n.slot));
+    if (Array.isArray(saved.buttons)) {
+      const nameIds = new Set(state.names.map(n => n.id));
+      state.buttons = saved.buttons.filter(b => b && b.id && nameIds.has(b.nameId) && SKILL_ID_MAP[b.skillId]);
+    }
   } catch {}
 }
 
@@ -584,6 +663,61 @@ function renderMode() {
   });
 }
 
+// セッションのキャラクターの色(dataviz の categorical パレットの固定順。validate_palette.js で検証済み)。
+// 色は名前ごとに固定し、ほかの名前を消しても変わらない。色の数(8)が登録できる名前の上限。
+const CHARACTER_COLORS = ['#2a78d6', '#eb6834', '#1baf7a', '#eda100', '#e87ba4', '#008300', '#4a3aa7', '#e34948'];
+const MAX_NAMES = CHARACTER_COLORS.length;
+
+const newId = () => (crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random()}`).replaceAll('-', '').slice(0, 12);
+
+/** 特技名 → 特技ID */
+const SKILL_NAME_TO_ID = Object.fromEntries(Object.entries(SKILL_ID_MAP).map(([id, name]) => [name, id]));
+
+function renderSession() {
+  // キャラクター名
+  document.getElementById('name_list').innerHTML = state.names.map(n => `
+    <li class="name-chip" style="--char-color: ${CHARACTER_COLORS[n.slot]}">
+      <span class="char-dot" aria-hidden="true"></span>${escapeHTML(n.name)}
+      <button type="button" class="icon-btn name-delete" data-name-id="${n.id}" title="「${escapeHTML(n.name)}」を削除" aria-label="「${escapeHTML(n.name)}」を削除">×</button>
+    </li>`).join('');
+  const full = state.names.length >= MAX_NAMES;
+  document.getElementById('name_add_btn').disabled = full;
+  document.getElementById('name_input').disabled = full;
+  document.getElementById('name_input').placeholder = full ? `キャラクターは${MAX_NAMES}人までです` : '例: ボスA';
+
+  // ボタン登録フォームのキャラクター選択(選んでいたものは保つ)
+  const owner = document.getElementById('button_owner');
+  const selected = owner.value;
+  owner.innerHTML = state.names.length
+    ? state.names.map(n => `<option value="${n.id}">${escapeHTML(n.name)}</option>`).join('')
+    : '<option value="">先にキャラクター名を登録してください</option>';
+  if (state.names.some(n => n.id === selected)) owner.value = selected;
+  owner.disabled = !state.names.length;
+  document.getElementById('button_add_btn').disabled = !state.names.length;
+
+  // キャラクターごとのボタン
+  const groups = state.names.map(n => {
+    const buttons = state.buttons.filter(b => b.nameId === n.id);
+    const list = buttons.length
+      ? buttons.map(b => `
+          <span class="judge-item">
+            <button type="button" class="judge-btn" data-button-id="${b.id}">
+              <span class="judge-btn-label">${escapeHTML(b.label)}</span>
+              <span class="judge-btn-skill">指定特技: ${SKILL_ID_MAP[b.skillId]}</span>
+            </button>
+            <button type="button" class="judge-delete" data-button-id="${b.id}" title="このボタンを削除" aria-label="「${escapeHTML(b.label)}」を削除">×</button>
+          </span>`).join('')
+      : '<span class="session-empty">ボタンがありません</span>';
+    return `
+      <section class="button-group" style="--char-color: ${CHARACTER_COLORS[n.slot]}">
+        <h3 class="button-group-head"><span class="char-dot" aria-hidden="true"></span>${escapeHTML(n.name)}</h3>
+        <div class="button-group-list">${list}</div>
+      </section>`;
+  }).join('');
+  document.getElementById('button_groups').innerHTML = groups || '<p class="session-empty">キャラクター名を登録してから、ボタンを登録してください。</p>';
+  document.getElementById('session_clear_btn').disabled = !state.names.length;
+}
+
 /** マイキャラの選択欄を、読み込んでいるキャラに合わせる(マイキャラ以外から読んだら未選択) */
 function syncMyCharSelect() {
   const select = document.getElementById('my_char_select');
@@ -595,6 +729,7 @@ function render() {
   syncMyCharSelect();
   renderCharSummary();
   renderMode();
+  renderSession();
   renderSkillTable();
 }
 
@@ -703,6 +838,90 @@ shareForm.addEventListener('submit', async (e) => {
   } finally {
     shareLoadBtn.disabled = false;
   }
+});
+
+// セッション: キャラクター名
+const nameForm = document.getElementById('name_form');
+const nameInput = document.getElementById('name_input');
+const nameMessage = document.getElementById('name_message');
+nameForm.addEventListener('submit', (e) => {
+  e.preventDefault();
+  const name = nameInput.value.trim();
+  nameMessage.textContent = '';
+  if (!name) return;
+  if (state.names.length >= MAX_NAMES) return;
+  if (state.names.some(n => n.name === name)) {
+    nameMessage.textContent = `「${name}」はもう登録されています。`;
+    return;
+  }
+  const usedSlots = new Set(state.names.map(n => n.slot));
+  const slot = CHARACTER_COLORS.findIndex((_, i) => !usedSlots.has(i));
+  const entry = { id: newId(), name, slot };
+  state.names.push(entry);
+  saveState();
+  nameInput.value = '';
+  render();
+  document.getElementById('button_owner').value = entry.id;
+  nameInput.focus();
+});
+
+document.getElementById('name_list').addEventListener('click', (e) => {
+  const btn = e.target.closest('.name-delete');
+  if (!btn) return;
+  const entry = state.names.find(n => n.id === btn.dataset.nameId);
+  if (!entry) return;
+  const count = state.buttons.filter(b => b.nameId === entry.id).length;
+  if (count && !confirm(`「${entry.name}」と、そのボタン${count}個を削除します。よろしいですか？`)) return;
+  state.names = state.names.filter(n => n.id !== entry.id);
+  state.buttons = state.buttons.filter(b => b.nameId !== entry.id);
+  saveState();
+  render();
+});
+
+// セッション: ボタン
+document.getElementById('skill_options').innerHTML =
+  SKILL_TABLE.flat().map(name => `<option value="${name}"></option>`).join('');
+const buttonForm = document.getElementById('button_form');
+const buttonLabel = document.getElementById('button_label');
+const buttonOwner = document.getElementById('button_owner');
+const buttonSkill = document.getElementById('button_skill');
+const buttonMessage = document.getElementById('button_message');
+buttonForm.addEventListener('submit', (e) => {
+  e.preventDefault();
+  buttonMessage.textContent = '';
+  const skillName = buttonSkill.value.trim();
+  const skillId = SKILL_NAME_TO_ID[skillName];
+  if (!buttonOwner.value) {
+    buttonMessage.textContent = '先にキャラクター名を登録してください。';
+    return;
+  }
+  if (!skillId) {
+    buttonMessage.textContent = skillName ? `「${skillName}」という特技はありません。候補から選んでください。` : '指定特技を入力してください。';
+    buttonSkill.focus();
+    return;
+  }
+  state.buttons.push({ id: newId(), label: buttonLabel.value.trim() || skillName, nameId: buttonOwner.value, skillId });
+  saveState();
+  buttonLabel.value = '';
+  buttonSkill.value = '';
+  render();
+  buttonLabel.focus();
+});
+
+document.getElementById('button_groups').addEventListener('click', (e) => {
+  const del = e.target.closest('.judge-delete');
+  if (!del) return;
+  state.buttons = state.buttons.filter(b => b.id !== del.dataset.buttonId);
+  saveState();
+  render();
+});
+
+document.getElementById('session_clear_btn').addEventListener('click', () => {
+  if (!confirm('登録したキャラクター名とボタンを、すべて削除します。よろしいですか？')) return;
+  state.names = [];
+  state.buttons = [];
+  saveState();
+  render();
 });
 
 // JSONファイル
