@@ -2025,11 +2025,16 @@ textarea {
 
 .history-item:hover { background: var(--surface-alt); }
 
-/* ドラッグで並べ替えられる行(ログイン中の一覧・PCのみ) */
-.history-item.is-draggable { position: relative; cursor: grab; }
-.history-item.is-dragging { opacity: 0.4; }
+/* ドラッグで並べ替えられる行(ログイン中の一覧・PCのみ。キャラ行とフォルダ行) */
+.history-item.is-draggable,
+.history-folder.is-draggable { position: relative; cursor: grab; }
+.history-item.is-dragging,
+.history-folder.is-dragging { opacity: 0.4; }
 .history-item.drop-before::before,
-.history-item.drop-after::after {
+.history-item.drop-after::after,
+.history-folder.drop-before::before,
+.history-folder.drop-after::after,
+.history-list.drop-at-end::after {
 	content: '';
 	position: absolute;
 	left: 4px;
@@ -2039,8 +2044,14 @@ textarea {
 	background: var(--accent);
 	pointer-events: none;
 }
-.history-item.drop-before::before { top: -5px; }
-.history-item.drop-after::after { bottom: -5px; }
+.history-item.drop-before::before,
+.history-folder.drop-before::before { top: -5px; }
+.history-item.drop-after::after,
+.history-folder.drop-after::after { bottom: -5px; }
+/* 一覧の末尾に置くときの線(フレックスの最後の要素として出す) */
+.history-list.drop-at-end::after { position: static; flex-shrink: 0; margin: 0 4px; }
+/* フォルダの中へ入れる先 */
+.history-folder.drop-into { outline: 2px solid var(--accent); outline-offset: -1px; background: var(--surface); }
 
 /* マイキャラ一覧のフォルダ */
 .history-folder {
