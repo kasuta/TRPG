@@ -181,6 +181,13 @@
     <section class="card" aria-labelledby="load_heading">
       <h2 id="load_heading">キャラクターを読み込む</h2>
       <div class="load-sources">
+        <div class="load-source">
+          <label class="load-source-label" for="my_char_select">マイキャラ</label>
+          <div class="load-source-row" id="my_char_row" hidden>
+            <select id="my_char_select"></select>
+          </div>
+          <span class="load-note" id="my_char_note">読み込み中…</span>
+        </div>
         <form class="load-source" id="share_form">
           <label class="load-source-label" for="share_input">共有リンク / ID</label>
           <div class="load-source-row">
@@ -450,6 +457,25 @@ async function fetchCharacterById(id) {
   return characterFromCompact(compact);
 }
 
+/** キャラシと共通のログイン情報(キャラシでログインすると、ここでも使える) */
+const AUTH_TOKEN_KEY = 'sinobigami_auth_token';
+const getAuthToken = () => {
+  try { return localStorage.getItem(AUTH_TOKEN_KEY); } catch { return null; }
+};
+
+/**
+ * ログイン中のユーザーのキャラ一覧(GET /api/my-layout のツリー)を取得する。
+ * 未ログイン・ログイン切れなら null。
+ */
+async function fetchMyLayout() {
+  const token = getAuthToken();
+  if (!token) return null;
+  const res = await fetch(`${API_BASE}/api/my-layout`, { headers: { Authorization: `Bearer ${token}` } });
+  if (res.status === 401) return null;
+  if (!res.ok) throw new Error(`マイキャラの取得に失敗しました(${res.status})`);
+  return (await res.json()).items;
+}
+
 /** キャラシの「データを保存 (.json)」(buildSaveData の形式)から変換する */
 function characterFromSaveData(data) {
   if (!data || typeof data !== 'object' || !data.checkboxes) throw new Error('キャラシのデータではありません');
@@ -558,7 +584,15 @@ function renderMode() {
   });
 }
 
+/** マイキャラの選択欄を、読み込んでいるキャラに合わせる(マイキャラ以外から読んだら未選択) */
+function syncMyCharSelect() {
+  const select = document.getElementById('my_char_select');
+  const id = state.character && state.character.sourceId;
+  select.value = [...select.options].some(o => o.value === id) ? id : '';
+}
+
 function render() {
+  syncMyCharSelect();
   renderCharSummary();
   renderMode();
   renderSkillTable();
@@ -587,6 +621,61 @@ skillTableEl.addEventListener('click', (e) => {
   render();
 });
 
+// マイキャラ(シノビガミのキャラだけを、キャラシと同じ並び・フォルダで選べるようにする)
+const myCharRow = document.getElementById('my_char_row');
+const myCharSelect = document.getElementById('my_char_select');
+const myCharNote = document.getElementById('my_char_note');
+const LOGIN_NOTE = 'キャラシでログインすると、自分のキャラクターから選べます。';
+
+async function renderMyCharacterOptions() {
+  let items;
+  try {
+    items = await fetchMyLayout();
+  } catch (err) {
+    console.error(err);
+    myCharRow.hidden = true;
+    myCharNote.textContent = 'マイキャラを取得できませんでした。再読み込みしてください。';
+    return;
+  }
+  if (!items) {
+    myCharRow.hidden = true;
+    myCharNote.innerHTML = `${LOGIN_NOTE}(<a href="../sinobigami/index.html">キャラシへ</a>)`;
+    return;
+  }
+  const isSinobigami = (c) => c.game === 'sinobigami';
+  const option = (c) => `<option value="${escapeHTML(c.id)}">${escapeHTML(c.name)}</option>`;
+  const html = items.map(item => {
+    if (item.type !== 'folder') return isSinobigami(item) ? option(item) : '';
+    const chars = item.items.filter(isSinobigami);
+    return chars.length ? `<optgroup label="${escapeHTML(item.name)}">${chars.map(option).join('')}</optgroup>` : '';
+  }).join('');
+  if (!html) {
+    myCharRow.hidden = true;
+    myCharNote.textContent = 'シノビガミのキャラクターがまだありません。';
+    return;
+  }
+  myCharSelect.innerHTML = `<option value="">キャラクターを選ぶ</option>${html}`;
+  syncMyCharSelect();
+  myCharRow.hidden = false;
+  myCharNote.textContent = '選ぶとすぐに読み込みます(フォルダはキャラシと同じです)';
+}
+
+myCharSelect.addEventListener('change', async () => {
+  const id = myCharSelect.value;
+  if (!id) return;
+  myCharSelect.disabled = true;
+  showLoadMessage('読み込み中…');
+  try {
+    const character = await fetchCharacterById(id);
+    setCharacter({ ...character, sourceId: id }, `「${character.name}」を読み込みました。`);
+  } catch (err) {
+    console.error(err);
+    showLoadMessage(err instanceof LoadError ? err.message : 'キャラクターを読み込めませんでした。', true);
+  } finally {
+    myCharSelect.disabled = false;
+  }
+});
+
 // 共有リンク / ID
 const shareForm = document.getElementById('share_form');
 const shareInput = document.getElementById('share_input');
@@ -606,7 +695,7 @@ shareForm.addEventListener('submit', async (e) => {
   showLoadMessage('読み込み中…');
   try {
     const character = await fetchCharacterById(ref.id);
-    setCharacter(character, `「${character.name}」を読み込みました。`);
+    setCharacter({ ...character, sourceId: ref.id }, `「${character.name}」を読み込みました。`);
     shareInput.value = '';
   } catch (err) {
     console.error(err);
@@ -635,6 +724,7 @@ loadJsonFile.addEventListener('change', async (e) => {
 
 loadState();
 render();
+renderMyCharacterOptions();
 </script>
 </body>
 </html>
