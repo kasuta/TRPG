@@ -204,7 +204,7 @@
 - [x] T3 シノビガミ: ドラッグでの出し入れとフォルダの並べ替え（`moveLayoutItem`、`findDropTarget` の拡張、`.drop-into`）← T2
 - [x] T4 マギロギ: T1〜T3と同じ処理を移す ← T3
 - [x] T5 `CLAUDE.md` とこの計画書を更新する ← T4
-- [ ] T6 `main` にマージして push する（実行前に確認を取る）← T5
+- [x] T6 `main` にマージして push する（実行前に確認を取る）← T5（2026-09-26 に `d0e0edb` まで push。本番での確認はユーザーが行う）
 
 ### 結果（ローカルでの確認まで。2026-09-26）
 - コミット（`feature/my-character-folders`）:
