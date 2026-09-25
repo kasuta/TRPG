@@ -746,8 +746,17 @@ const renderListItems = (items) => {
     renderListItems(items);
   };
 
-  let myCharactersCache = [];
+  let myLayoutItems = []; // サーバーで並び順を適用したツリー(/api/my-layout の items。フォルダを含む)
+  let myCharactersCache = []; // myLayoutItems を並び順どおりに平らにしたキャラの一覧
   let gameFilter = localStorage.getItem('characterListFilter') || 'all';
+
+  /** レイアウトのツリーを、並び順どおりのキャラの一覧にする(フォルダの中身も含める) */
+  const flattenLayoutItems = (items) => items.flatMap(item => item.type === 'folder' ? item.items : [item]);
+
+  /** レイアウトのツリーからキャラを1体取り除く */
+  const removeFromLayoutItems = (items, id) => items
+    .filter(item => item.type === 'folder' || item.id !== id)
+    .map(item => item.type === 'folder' ? { ...item, items: item.items.filter(c => c.id !== id) } : item);
 
   const applyGameFilter = () => {
     const filtered = gameFilter === 'all' ? myCharactersCache : myCharactersCache.filter(c => c.game === gameFilter);
@@ -762,7 +771,8 @@ const renderListItems = (items) => {
         headers: { Authorization: `Bearer ${getAuthToken()}` },
       });
       if (!res.ok) throw new Error('削除に失敗しました');
-      myCharactersCache = myCharactersCache.filter(c => c.id !== id);
+      myLayoutItems = removeFromLayoutItems(myLayoutItems, id);
+      myCharactersCache = flattenLayoutItems(myLayoutItems);
       applyGameFilter();
       if (currentCharacterId === id) {
         currentCharacterId = null;
@@ -784,11 +794,12 @@ const renderListItems = (items) => {
     if (listEl) listEl.innerHTML = '<p class="history-empty">読み込み中...</p>';
 
     try {
-      const res = await fetch(`${API_BASE}/api/my-characters`, {
+      const res = await fetch(`${API_BASE}/api/my-layout`, {
         headers: { Authorization: `Bearer ${getAuthToken()}` },
       });
       if (!res.ok) throw new Error('取得に失敗しました');
-      myCharactersCache = await res.json();
+      myLayoutItems = (await res.json()).items;
+      myCharactersCache = flattenLayoutItems(myLayoutItems);
       applyGameFilter();
     } catch (err) {
       console.error(err);
