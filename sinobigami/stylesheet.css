@@ -2087,6 +2087,34 @@ textarea {
 	padding-left: 8px;
 	border-left: 2px solid var(--border);
 }
+.history-folder-rename,
+.history-folder-delete {
+	flex-shrink: 0;
+	border: none;
+	background: transparent;
+	color: var(--muted);
+	cursor: pointer;
+	padding: 4px;
+	display: flex;
+}
+.history-folder-rename:hover,
+.history-folder-delete:hover { color: var(--accent); }
+.history-folder-delete[aria-disabled="true"] { opacity: 0.35; cursor: not-allowed; }
+.history-folder-delete[aria-disabled="true"]:hover { color: var(--muted); }
+.history-folder-rename svg,
+.history-folder-delete svg { width: 15px; height: 15px; }
+.history-folder.is-editing { cursor: default; }
+.history-folder-input {
+	flex: 1;
+	min-width: 0;
+	padding: 3px 6px;
+	border: 1px solid var(--accent);
+	border-radius: 4px;
+	font: inherit;
+	font-weight: 400;
+	background: var(--surface);
+	color: inherit;
+}
 .history-folder-empty {
 	margin: 2px 0;
 	font-size: 0.75rem;
@@ -2216,6 +2244,28 @@ textarea {
 	font-size: 0.85rem;
 	color: var(--muted);
 }
+
+.history-list-title-row {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 8px;
+}
+.history-new-folder-btn {
+	display: inline-flex;
+	align-items: center;
+	gap: 4px;
+	padding: 3px 8px;
+	border: 1px solid var(--border);
+	border-radius: 6px;
+	background: var(--surface);
+	color: var(--muted);
+	font-size: 0.75rem;
+	cursor: pointer;
+}
+.history-new-folder-btn:hover:not(:disabled) { color: var(--accent); border-color: var(--accent); }
+.history-new-folder-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+.history-new-folder-btn svg { width: 14px; height: 14px; }
 
 .game-filter-tabs {
 	display: flex;
