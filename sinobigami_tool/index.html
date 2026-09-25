@@ -150,6 +150,22 @@
       background-image: repeating-linear-gradient(135deg, var(--lost-hatch) 0 4px, transparent 4px 8px);
     }
     .skill-cell.is-lost.is-acquired::after { border-style: dashed; border-color: var(--muted); }
+    /* 目標値の色分け(朱の単色で、5=薄い → 12以上=濃い。dataviz の validate_palette.js --ordinal で検証済み) */
+    .skill-value { display: block; font-size: 0.95rem; font-weight: 700; line-height: 1.1; margin-top: 2px; }
+    .heat-5  { background-color: #fa9a83; }
+    .heat-6  { background-color: #e58770; }
+    .heat-7  { background-color: #cf745e; }
+    .heat-8  { background-color: #bb614c; color: #fff; }
+    .heat-9  { background-color: #a64f3a; color: #fff; }
+    .heat-10 { background-color: #923d29; color: #fff; }
+    .heat-11 { background-color: #7e2a17; color: #fff; }
+    .heat-12 { background-color: #6a1702; color: #fff; }
+    .skill-cell.heat-none .skill-value { color: var(--muted); }
+    /* 濃い色のマスでは、習得特技の枠を白にする */
+    .skill-cell.is-acquired:is(.heat-8, .heat-9, .heat-10, .heat-11, .heat-12)::after { border-color: #fff; }
+    .heat-legend { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 8px; font-size: 0.8rem; }
+    .heat-legend-label { color: var(--muted); margin-right: 4px; }
+    .heat-swatch { display: inline-flex; align-items: center; justify-content: center; min-width: 34px; height: 24px; padding: 0 4px; border-radius: 4px; font-weight: 700; }
     .table-legend { display: flex; flex-wrap: wrap; gap: 4px 14px; margin-top: 8px; font-size: 0.75rem; color: var(--muted); }
     .legend-acquired { display: inline-block; width: 14px; height: 14px; border: 2px solid var(--ink); border-radius: 3px; vertical-align: -3px; margin-right: 4px; }
     .legend-lost { display: inline-block; width: 14px; height: 14px; border: 1px solid var(--border); vertical-align: -3px; margin-right: 4px; background-image: repeating-linear-gradient(135deg, var(--lost-hatch) 0 4px, transparent 4px 8px); }
@@ -186,7 +202,12 @@
 
     <section class="card mode-panel" id="panel_diagnosis" data-mode="diagnosis" role="tabpanel">
       <h2>判定値診断</h2>
-      <p class="load-note">特技表の各マスに、その特技が指定特技になったときの一番低い目標値を表示します。</p>
+      <p class="load-note">特技表の各マスに、その特技が指定特技になったときの一番低い目標値を表示します。色が濃いほど判定が厳しい特技です。「使用不可」にした分野の習得特技は、計算に使いません。</p>
+      <div class="heat-legend" aria-label="目標値の色">
+        <span class="heat-legend-label">目標値</span>
+        <span class="heat-swatch heat-5">5</span><span class="heat-swatch heat-6">6</span><span class="heat-swatch heat-7">7</span><span class="heat-swatch heat-8">8</span>
+        <span class="heat-swatch heat-9">9</span><span class="heat-swatch heat-10">10</span><span class="heat-swatch heat-11">11</span><span class="heat-swatch heat-12">12以上</span>
+      </div>
     </section>
 
     <section class="card mode-panel" id="panel_session" data-mode="session" role="tabpanel" hidden>
@@ -290,6 +311,33 @@ function parseSkillId(id) {
   return { row: parseInt(m[1], 10), col: parseInt(m[2], 10) };
 }
 
+/** 使える習得特技(使用不可の分野を除く) */
+function usableSkillIds() {
+  if (!state.character) return [];
+  const lost = new Set(state.lostColumns);
+  return state.character.skills.filter(id => !lost.has(parseSkillId(id).col));
+}
+
+/** 習得特技 fromId で、指定特技 toId を判定するときの目標値(5 + 距離) */
+function targetNumber(fromId, toId) {
+  const from = parseSkillId(fromId);
+  const to = parseSkillId(toId);
+  return 5 + calcSkillDistance(from.row, from.col, to.row, to.col, state.character.gaps);
+}
+
+/**
+ * 指定特技 toId を、使える習得特技それぞれで判定するときの目標値を、低い順に返す。
+ * [{ from: 習得特技ID, target }]。使える特技が無ければ空配列。
+ */
+function targetsFor(toId) {
+  return usableSkillIds()
+    .map(from => ({ from, target: targetNumber(from, toId) }))
+    .sort((a, b) => a.target - b.target);
+}
+
+/** 目標値の色の段階(5〜12。12以上はまとめる) */
+const heatClass = (target) => `heat-${Math.min(Math.max(target, 5), 12)}`;
+
 // ==========================================
 // 状態(ブラウザに保存し、リロード後に復元する)
 // ==========================================
@@ -379,7 +427,22 @@ function renderCharSummary() {
     <span class="load-note">習得特技 ${c.skills.length}個</span>`;
 }
 
-/** 特技表を描く。マスの中身は、モードごとの関数(cellExtra)で足す */
+/**
+ * 判定値診断: マスに一番低い目標値を表示して色を塗る。{ classes, html, title } を返す
+ */
+function diagnosisCell(skillId) {
+  const name = SKILL_ID_MAP[skillId];
+  if (!state.character) return { classes: [], html: '', title: name };
+  const [best] = targetsFor(skillId);
+  if (!best) return { classes: ['heat-none'], html: '<span class="skill-value">−</span>', title: `${name}: 判定に使える特技がありません` };
+  return {
+    classes: [heatClass(best.target)],
+    html: `<span class="skill-value">${best.target}</span>`,
+    title: `${name}: 目標値 ${best.target}(${SKILL_ID_MAP[best.from]}で判定)`,
+  };
+}
+
+/** 特技表を描く。マスの中身は、モードごとの関数(diagnosisCell など)で足す */
 function renderSkillTable() {
   const c = state.character;
   const acquired = new Set(c ? c.skills : []);
@@ -405,10 +468,11 @@ function renderSkillTable() {
     row.forEach((skillName, ci) => {
       const col = ci + 1;
       const skillId = `skill_r${rowNum}_c${col}`;
-      const classes = ['skill-cell'];
+      const extra = state.mode === 'diagnosis' ? diagnosisCell(skillId) : { classes: [], html: '', title: skillName };
+      const classes = ['skill-cell', ...extra.classes];
       if (acquired.has(skillId)) classes.push('is-acquired');
       if (lost.has(col)) classes.push('is-lost');
-      html += `<td class="${classes.join(' ')}" data-skill-id="${skillId}"><span class="skill-name">${skillName}</span></td>`;
+      html += `<td class="${classes.join(' ')}" data-skill-id="${skillId}" title="${escapeHTML(extra.title)}"><span class="skill-name">${skillName}</span>${extra.html}</td>`;
       if (ci < 5) html += `<td class="gap-col${gaps[`gap${col}`] ? ' gap-on' : ''}"></td>`;
     });
     html += '</tr>';
