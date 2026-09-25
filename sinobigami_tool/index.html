@@ -3,344 +3,212 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>シノビガミ キャラクター閲覧ツール</title>
+  <title>シノビガミ 判定ツール</title>
   <style>
+    @import url("https://fonts.googleapis.com/css2?family=Zen+Kaku+Gothic+New:wght@400;700&family=Shippori+Mincho:wght@700&display=swap");
+
+    /* 配色はキャラシ(sinobigami/stylesheet.css の light テーマ)に合わせる */
     :root {
-      --bg: #1a1a2e;
-      --surface: #16213e;
-      --card: #0f3460;
-      --accent: #e94560;
-      --text: #eee;
-      --text-muted: #aaa;
-      --skill-on: #e94560;
-      --skill-off: #222;
-      --border: #333;
-      --gap-on: rgba(233, 69, 96, 0.25);
+      color-scheme: light;
+      --ink: #211815;
+      --muted: #6b5d52;
+      --bg-top: #f4ede0;
+      --bg-bottom: #e8ddc9;
+      --panel: #fffaf2;
+      --surface: #fffdf8;
+      --surface-alt: #f6f1e6;
+      --border: #d8c9ae;
+      --accent: #8c4433;
+      --accent-strong: #5c2c22;
+      --shadow: rgba(33, 24, 21, 0.12);
+      --gap-on: rgba(140, 68, 51, 0.35);
+      --lost-hatch: rgba(33, 24, 21, 0.10);
     }
 
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body {
-      font-family: 'Segoe UI', 'Yu Gothic UI', 'Meiryo', sans-serif;
-      background: var(--bg);
-      color: var(--text);
+      font-family: 'Zen Kaku Gothic New', 'Yu Gothic UI', 'Meiryo', sans-serif;
+      background: linear-gradient(180deg, var(--bg-top), var(--bg-bottom)) fixed;
+      color: var(--ink);
       min-height: 100vh;
-      padding: 20px;
+      padding: 20px 16px 40px;
+      line-height: 1.5;
     }
+    .page { max-width: 1040px; margin: 0 auto; display: flex; flex-direction: column; gap: 16px; }
+
+    header { display: flex; align-items: baseline; justify-content: space-between; flex-wrap: wrap; gap: 8px; }
     h1 {
-      text-align: center;
-      margin-bottom: 24px;
-      font-size: 1.6em;
-      color: var(--accent);
+      font-family: 'Shippori Mincho', serif;
+      font-size: 1.6rem;
+      color: var(--accent-strong);
+      letter-spacing: 0.08em;
     }
+    header a { color: var(--muted); font-size: 0.85rem; }
 
-    /* ── ファイル読み込みエリア ── */
-    .load-area {
-      display: flex;
-      justify-content: center;
-      gap: 12px;
-      margin-bottom: 30px;
-      flex-wrap: wrap;
-    }
-    .load-btn {
-      display: inline-flex;
-      align-items: center;
-      gap: 8px;
-      padding: 10px 24px;
-      background: var(--accent);
-      color: #fff;
-      border: none;
-      border-radius: 6px;
-      font-size: 1em;
-      cursor: pointer;
-      transition: opacity .2s;
-    }
-    .load-btn:hover { opacity: .85; }
-    .clear-btn {
-      padding: 10px 20px;
-      background: transparent;
-      color: var(--text-muted);
+    .card {
+      background: var(--panel);
       border: 1px solid var(--border);
-      border-radius: 6px;
-      font-size: 1em;
-      cursor: pointer;
-      transition: background .2s;
-    }
-    .clear-btn:hover { background: rgba(255,255,255,.05); }
-    #load_file { display: none; }
-
-    /* ── キャラクターカード ── */
-    .characters { display: flex; flex-direction: column; gap: 28px; max-width: 960px; margin: 0 auto; }
-    .char-card {
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: 10px;
-      padding: 20px;
-      animation: fadeIn .3s;
-    }
-    @keyframes fadeIn { from { opacity:0; transform:translateY(8px) } to { opacity:1; transform:translateY(0) } }
-
-    .char-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 16px;
-      flex-wrap: wrap;
-      gap: 8px;
-    }
-    .char-name {
-      font-size: 1.35em;
-      font-weight: bold;
-      color: #fff;
-    }
-    .char-meta {
-      font-size: .85em;
-      color: var(--text-muted);
-    }
-    .char-meta span + span::before { content: ' / '; }
-    .remove-char-btn {
-      background: none;
-      border: 1px solid var(--border);
-      color: var(--text-muted);
-      border-radius: 4px;
-      padding: 4px 10px;
-      cursor: pointer;
-      font-size: .8em;
-    }
-    .remove-char-btn:hover { border-color: var(--accent); color: var(--accent); }
-
-    /* ── 特技テーブル ── */
-    .skill-section h3 {
-      font-size: 1em;
-      color: var(--accent);
-      margin-bottom: 10px;
-    }
-    .skill-table {
-      width: 100%;
-      border-collapse: collapse;
-      font-size: .82em;
-      table-layout: fixed;
-    }
-    .skill-table th,
-    .skill-table td {
-      border: 1px solid var(--border);
-      text-align: center;
-      padding: 4px 2px;
-    }
-    .skill-table thead th {
-      background: var(--card);
-      color: var(--accent);
-      font-weight: bold;
-      padding: 6px 2px;
-    }
-    .skill-table .num-col { width: 30px; color: var(--text-muted); }
-    .skill-table .gap-col {
-      width: 6px;
-      padding: 0;
-      border: none;
-      background: transparent;
-    }
-    .skill-table .gap-col.gap-on {
-      background: var(--gap-on);
-    }
-    .skill-table td.skill-cell {
-      background: var(--skill-off);
-      cursor: default;
-      transition: background .15s;
-    }
-    .skill-table td.skill-on {
-      background: var(--skill-on);
-      color: #fff;
-      font-weight: bold;
-    }
-
-    /* ── 習得スキル一覧 ── */
-    .acquired-skills {
-      margin-top: 14px;
-    }
-    .acquired-skills h3 {
-      font-size: 1em;
-      color: var(--accent);
-      margin-bottom: 8px;
-    }
-    .skill-tags {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 6px;
-    }
-    .skill-tag {
-      background: var(--accent);
-      color: #fff;
-      padding: 3px 10px;
       border-radius: 12px;
-      font-size: .82em;
+      box-shadow: 0 2px 10px var(--shadow);
+      padding: 14px 16px;
     }
-    .no-data {
-      color: var(--text-muted);
-      text-align: center;
-      margin-top: 60px;
-      font-size: 1.1em;
+    .card h2 {
+      font-size: 0.95rem;
+      padding-left: 8px;
+      border-left: 4px solid var(--accent);
+      margin-bottom: 10px;
     }
 
-    /* ── マスター特技表 ── */
-    .master-section {
-      max-width: 960px;
-      margin: 0 auto 30px;
+    button {
+      font: inherit;
+      cursor: pointer;
+      border-radius: 6px;
+      border: 1px solid var(--accent);
+      background: var(--accent);
+      color: #fff;
+      padding: 5px 12px;
+      font-size: 0.85rem;
+    }
+    button:hover:not(:disabled) { background: var(--accent-strong); }
+    button:disabled { opacity: 0.5; cursor: not-allowed; }
+    button.btn-outline { background: var(--surface); color: var(--accent); }
+    button.btn-outline:hover:not(:disabled) { background: var(--surface-alt); }
+    input[type="text"], select {
+      font: inherit;
+      font-size: 0.9rem;
+      padding: 5px 8px;
+      border: 1px solid var(--border);
+      border-radius: 6px;
       background: var(--surface);
+      color: var(--ink);
+      min-width: 0;
+    }
+
+    /* ── キャラクターの読み込み ── */
+    .load-sources { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px; }
+    .load-source { display: flex; flex-direction: column; gap: 6px; }
+    .load-source-label { font-size: 0.78rem; color: var(--muted); font-weight: 700; }
+    .load-source-row { display: flex; gap: 6px; }
+    .load-source-row > input, .load-source-row > select { flex: 1; }
+    .load-note { font-size: 0.78rem; color: var(--muted); }
+    .load-message { margin-top: 8px; font-size: 0.85rem; min-height: 1.3em; }
+    .load-message.is-error { color: #b3261e; }
+
+    /* ── 読み込んだキャラクター ── */
+    .char-summary { display: flex; align-items: baseline; flex-wrap: wrap; gap: 6px 14px; }
+    .char-summary-name { font-family: 'Shippori Mincho', serif; font-size: 1.3rem; font-weight: 700; }
+    .char-summary-meta { display: flex; flex-wrap: wrap; gap: 6px; font-size: 0.8rem; }
+    .char-summary-meta span { background: var(--surface-alt); border: 1px solid var(--border); border-radius: 4px; padding: 0 6px; }
+    .char-summary-empty { color: var(--muted); font-size: 0.9rem; }
+
+    /* ── モードのタブ ── */
+    .mode-tabs { display: flex; gap: 4px; border-bottom: 2px solid var(--accent); }
+    .mode-tab {
+      background: var(--surface-alt);
+      color: var(--muted);
       border: 1px solid var(--border);
-      border-radius: 10px;
-      padding: 20px;
+      border-bottom: none;
+      border-radius: 8px 8px 0 0;
+      padding: 8px 18px;
+      font-weight: 700;
     }
-    .master-section h2 {
-      font-size: 1.1em;
-      color: var(--accent);
-      margin-bottom: 6px;
-    }
-    .master-section .master-hint {
-      font-size: .82em;
-      color: var(--text-muted);
-      margin-bottom: 12px;
-    }
-    .master-table {
-      width: 100%;
-      border-collapse: collapse;
-      font-size: .85em;
-      table-layout: fixed;
-      user-select: none;
-    }
-    .master-table th,
-    .master-table td {
-      border: 1px solid var(--border);
-      text-align: center;
-      padding: 5px 2px;
-    }
-    .master-table thead th {
-      background: var(--card);
-      color: var(--accent);
-      font-weight: bold;
-      padding: 7px 2px;
-    }
-    .master-table .num-col { width: 30px; color: var(--text-muted); }
-    .master-table .gap-col {
-      width: 6px;
-      padding: 0;
-      border: none;
+    .mode-tab:hover:not(:disabled) { background: var(--surface); }
+    .mode-tab.is-active { background: var(--accent); border-color: var(--accent); color: #fff; }
+    .mode-panel[hidden] { display: none; }
+
+    /* ── 特技表 ── */
+    .skill-table-wrap { overflow-x: auto; }
+    .skill-table { border-collapse: collapse; width: 100%; min-width: 620px; table-layout: fixed; font-size: 0.8rem; }
+    .skill-table th, .skill-table td { border: 1px solid var(--border); text-align: center; }
+    .skill-table .num-col { width: 30px; background: var(--surface-alt); color: var(--muted); font-weight: 700; }
+    .skill-table .gap-col { width: 12px; background: var(--surface); border-top: none; border-bottom: none; }
+    .skill-table .gap-col.gap-on { background: var(--gap-on); }
+    .area-head { background: var(--accent-strong); color: #fff; padding: 4px 2px; vertical-align: top; }
+    .area-head-name { display: block; font-weight: 700; }
+    .lost-toggle {
+      margin-top: 3px;
+      font-size: 0.68rem;
+      padding: 1px 6px;
+      border-color: rgba(255, 255, 255, 0.6);
       background: transparent;
     }
-    .master-table td.m-skill {
-      background: var(--skill-off);
-      cursor: pointer;
-      transition: background .15s, box-shadow .15s;
+    .lost-toggle:hover:not(:disabled) { background: rgba(255, 255, 255, 0.15); }
+    .lost-toggle[aria-pressed="true"] { background: #fff; color: var(--accent-strong); border-color: #fff; }
+    .area-head.is-lost { background: var(--muted); }
+    .skill-cell { background: var(--surface); padding: 4px 2px; height: 44px; position: relative; }
+    .skill-name { display: block; line-height: 1.2; }
+    .skill-cell.is-acquired .skill-name { font-weight: 700; }
+    .skill-cell.is-acquired::after {
+      content: '';
+      position: absolute;
+      inset: 2px;
+      border: 2px solid var(--ink);
+      border-radius: 4px;
+      pointer-events: none;
     }
-    .master-table td.m-skill:hover {
-      background: #333;
-      box-shadow: inset 0 0 0 2px var(--accent);
+    .skill-cell.is-lost {
+      background-image: repeating-linear-gradient(135deg, var(--lost-hatch) 0 4px, transparent 4px 8px);
     }
-    .master-table td.m-skill.m-selected {
-      background: var(--accent);
-      color: #fff;
-      font-weight: bold;
-      box-shadow: 0 0 8px var(--accent);
-    }
-
-    /* ── 距離結果エリア ── */
-    .distance-results {
-      max-width: 960px;
-      margin: 0 auto 30px;
-      display: none;
-    }
-    .distance-results.visible { display: block; }
-    .distance-results h2 {
-      font-size: 1.1em;
-      color: var(--accent);
-      margin-bottom: 14px;
-      text-align: center;
-    }
-    .dist-cards {
-      display: flex;
-      flex-direction: column;
-      gap: 14px;
-    }
-    .dist-card {
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: 8px;
-      padding: 16px;
-    }
-    .dist-card-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 10px;
-      flex-wrap: wrap;
-      gap: 6px;
-    }
-    .dist-card-name {
-      font-size: 1.15em;
-      font-weight: bold;
-      color: #fff;
-    }
-    .dist-card-min {
-      background: var(--accent);
-      color: #fff;
-      padding: 4px 14px;
-      border-radius: 16px;
-      font-size: .95em;
-      font-weight: bold;
-    }
-    .dist-detail-table {
-      width: 100%;
-      border-collapse: collapse;
-      font-size: .82em;
-    }
-    .dist-detail-table th,
-    .dist-detail-table td {
-      border: 1px solid var(--border);
-      padding: 5px 8px;
-      text-align: center;
-    }
-    .dist-detail-table thead th {
-      background: var(--card);
-      color: var(--accent);
-    }
-    .dist-detail-table td.dist-min-cell {
-      background: rgba(233, 69, 96, 0.2);
-      font-weight: bold;
-      color: var(--accent);
-    }
-    .dist-no-skills {
-      color: var(--text-muted);
-      font-size: .9em;
-    }
+    .skill-cell.is-lost.is-acquired::after { border-style: dashed; border-color: var(--muted); }
+    .table-legend { display: flex; flex-wrap: wrap; gap: 4px 14px; margin-top: 8px; font-size: 0.75rem; color: var(--muted); }
+    .legend-acquired { display: inline-block; width: 14px; height: 14px; border: 2px solid var(--ink); border-radius: 3px; vertical-align: -3px; margin-right: 4px; }
+    .legend-lost { display: inline-block; width: 14px; height: 14px; border: 1px solid var(--border); vertical-align: -3px; margin-right: 4px; background-image: repeating-linear-gradient(135deg, var(--lost-hatch) 0 4px, transparent 4px 8px); }
   </style>
 </head>
 <body>
+  <div class="page">
+    <header>
+      <h1>シノビガミ 判定ツール</h1>
+      <a href="../sinobigami/index.html">キャラシ作成サイトへ</a>
+    </header>
 
-  <h1>シノビガミ キャラクター閲覧ツール</h1>
+    <section class="card" aria-labelledby="load_heading">
+      <h2 id="load_heading">キャラクターを読み込む</h2>
+      <div class="load-sources">
+        <div class="load-source">
+          <span class="load-source-label">JSONファイル</span>
+          <div class="load-source-row">
+            <button type="button" class="btn-outline" id="load_json_btn">ファイルを選ぶ</button>
+            <input type="file" id="load_json_file" accept=".json,application/json" hidden />
+          </div>
+          <span class="load-note">キャラシの「データを保存 (.json)」で保存したファイル</span>
+        </div>
+      </div>
+      <p class="load-message" id="load_message" role="status"></p>
+    </section>
 
-  <div class="load-area">
-    <input type="file" id="load_file" accept=".json" multiple />
-    <button class="load-btn" id="load_btn">JSONファイルを読み込む</button>
-    <button class="clear-btn" id="clear_btn">すべてクリア</button>
-  </div>
+    <section class="card char-summary" id="char_summary" aria-live="polite"></section>
 
-  <div class="master-section" id="master_section">
-    <h2>特技表（クリックで達成値を計算）</h2>
-    <p class="master-hint">特技をクリックすると、各キャラクターの習得特技ごとの達成値を表示します</p>
-    <div id="master_table_wrap"></div>
-  </div>
+    <nav class="mode-tabs" role="tablist">
+      <button type="button" class="mode-tab" role="tab" data-mode="diagnosis" id="tab_diagnosis">判定値診断</button>
+      <button type="button" class="mode-tab" role="tab" data-mode="session" id="tab_session">セッション</button>
+    </nav>
 
-  <div class="distance-results" id="distance_results">
-    <h2 id="dist_title"></h2>
-    <div class="dist-cards" id="dist_cards"></div>
-  </div>
+    <section class="card mode-panel" id="panel_diagnosis" data-mode="diagnosis" role="tabpanel">
+      <h2>判定値診断</h2>
+      <p class="load-note">特技表の各マスに、その特技が指定特技になったときの一番低い目標値を表示します。</p>
+    </section>
 
-  <div class="characters" id="characters">
-    <p class="no-data" id="no_data">JSONファイルを読み込んでキャラクターを表示します</p>
+    <section class="card mode-panel" id="panel_session" data-mode="session" role="tabpanel" hidden>
+      <h2>セッション</h2>
+      <p class="load-note">登録したボタンを押すと、その指定特技で判定するときの目標値を表示します。</p>
+    </section>
+
+    <section class="card" aria-labelledby="table_heading">
+      <h2 id="table_heading">特技表</h2>
+      <div class="skill-table-wrap">
+        <table class="skill-table" id="skill_table"></table>
+      </div>
+      <div class="table-legend">
+        <span><span class="legend-acquired"></span>習得特技</span>
+        <span><span class="legend-lost"></span>使えない分野(見出しのボタンで切り替え)</span>
+      </div>
+    </section>
   </div>
 
 <script>
 // ==========================================
-// 特技テーブル定義（sinobigami/index.html 準拠）
+// 特技表の定義(sinobigami/index.html 準拠)
 // ==========================================
 const AREA_NAMES = ['器術', '体術', '忍術', '謀術', '戦術', '妖術'];
 
@@ -359,7 +227,7 @@ const SKILL_TABLE = [
   ['掘削術','怪力','第六感','経済力','人脈','呪術'],
 ];
 
-// skill_r{row}_c{col} → 特技名 マッピング生成
+/** skill_r{row}_c{col} → 特技名 */
 const SKILL_ID_MAP = {};
 SKILL_TABLE.forEach((row, ri) => {
   row.forEach((name, ci) => {
@@ -367,82 +235,14 @@ SKILL_TABLE.forEach((row, ri) => {
   });
 });
 
-// ギャップID
-const GAP_IDS = ['gap1','gap2','gap3','gap4','gap5','gap6'];
+const GAP_IDS = ['gap1', 'gap2', 'gap3', 'gap4', 'gap5', 'gap6'];
 
 // ==========================================
-// マスター特技表の描画
-// ==========================================
-const masterTableWrap = document.getElementById('master_table_wrap');
-const distResultsEl = document.getElementById('distance_results');
-const distTitleEl = document.getElementById('dist_title');
-const distCardsEl = document.getElementById('dist_cards');
-
-let selectedSkill = null; // { row, col, id, name }
-
-/**
- * 特技一覧テーブルの thead/tbody を生成する共通ヘルパー
- * cellClass: 特技セルの基本クラス名
- * onClass: 習得済み(idSet内)のときに付与するクラス名
- * idSet: 習得済み特技IDのSet（省略時はどのセルも「習得済み」扱いにしない）
- * gaps: ギャップ状態オブジェクト（省略時はギャップ列を常に非アクティブ表示にする）
- */
-function buildSkillTableInner({ cellClass, onClass = null, idSet = null, gaps = null }) {
-  let html = '<thead><tr><th class="num-col"></th>';
-  AREA_NAMES.forEach((a, ai) => {
-    html += `<th>${a}</th>`;
-    if (ai < 5) {
-      const gapOn = gaps && gaps[`gap${ai + 1}`] ? ' gap-on' : '';
-      html += `<th class="gap-col${gapOn}"></th>`;
-    }
-  });
-  html += '</tr></thead><tbody>';
-  SKILL_TABLE.forEach((row, ri) => {
-    const rowNum = ri + 2;
-    html += `<tr><td class="num-col">${rowNum}</td>`;
-    row.forEach((skillName, ci) => {
-      const skillId = `skill_r${rowNum}_c${ci + 1}`;
-      const on = (idSet && onClass && idSet.has(skillId)) ? ` ${onClass}` : '';
-      html += `<td class="${cellClass}${on}" data-skill-id="${skillId}" data-row="${rowNum}" data-col="${ci + 1}">${skillName}</td>`;
-      if (ci < 5) {
-        const gapOn = gaps && gaps[`gap${ci + 1}`] ? ' gap-on' : '';
-        html += `<td class="gap-col${gapOn}"></td>`;
-      }
-    });
-    html += '</tr>';
-  });
-  html += '</tbody>';
-  return html;
-}
-
-function buildMasterTable() {
-  masterTableWrap.innerHTML = `<table class="master-table">${buildSkillTableInner({ cellClass: 'm-skill' })}</table>`;
-
-  // クリックイベント
-  masterTableWrap.querySelectorAll('.m-skill').forEach(td => {
-    td.addEventListener('click', () => {
-      const skillId = td.dataset.skillId;
-      const row = parseInt(td.dataset.row, 10);
-      const col = parseInt(td.dataset.col, 10);
-      const name = td.textContent;
-
-      // 選択状態の切り替え
-      masterTableWrap.querySelectorAll('.m-selected').forEach(el => el.classList.remove('m-selected'));
-      td.classList.add('m-selected');
-      selectedSkill = { row, col, id: skillId, name };
-
-      updateDistanceResults();
-    });
-  });
-}
-buildMasterTable();
-
-// ==========================================
-// 距離計算ロジック
+// 距離と目標値の計算
 // ==========================================
 
 /**
- * 2つの分野列間の最短距離を計算（ギャップ考慮、円環）
+ * 2つの分野列間の最短距離を計算(ギャップ考慮、円環)
  * col1, col2: 1〜6
  * gaps: { gap1: bool, ..., gap6: bool }
  * gap_i は col_i と col_(i%6)+1 の間にある
@@ -478,15 +278,9 @@ function calcColumnDistance(col1, col2, gaps) {
   return Math.min(tryPath(col1, col2, 1), tryPath(col1, col2, -1));
 }
 
-/**
- * 2つの特技間の距離を計算
- * skill_r{row}_c{col} 形式のIDから (row, col) を取得し、
- * 距離 = 分野間距離 + 行の差 で算出
- */
+/** 2つの特技間の距離(分野間距離 + 行の差) */
 function calcSkillDistance(row1, col1, row2, col2, gaps) {
-  const hDist = calcColumnDistance(col1, col2, gaps);
-  const vDist = Math.abs(row1 - row2);
-  return hDist + vDist;
+  return calcColumnDistance(col1, col2, gaps) + Math.abs(row1 - row2);
 }
 
 /** skill ID から (row, col) を解析 */
@@ -496,221 +290,192 @@ function parseSkillId(id) {
   return { row: parseInt(m[1], 10), col: parseInt(m[2], 10) };
 }
 
-/** 距離結果を更新 */
-function updateDistanceResults() {
-  if (!selectedSkill || characters.length === 0) {
-    distResultsEl.classList.remove('visible');
-    return;
-  }
+// ==========================================
+// 状態(ブラウザに保存し、リロード後に復元する)
+// ==========================================
+const STATE_KEY = 'sinobigamiToolState';
 
-  distResultsEl.classList.add('visible');
-  distTitleEl.textContent = `「${selectedSkill.name}」の達成値`;
+/**
+ * character: 読み込んだキャラ({ name, meta[], skills[], gaps{} }。計算に要る部分だけ)
+ * lostColumns: 使えない分野の列番号(1〜6)
+ * mode: 'diagnosis' | 'session'
+ */
+const state = { character: null, lostColumns: [], mode: 'diagnosis' };
 
-  let html = '';
-  characters.forEach((charData) => {
-    if (charData.acquiredSkillIds.length === 0) {
-      html += `
-        <div class="dist-card">
-          <div class="dist-card-header">
-            <span class="dist-card-name">${escapeHTML(charData.name)}</span>
-          </div>
-          <p class="dist-no-skills">習得特技なし</p>
-        </div>`;
-      return;
-    }
+function loadState() {
+  try {
+    const saved = JSON.parse(localStorage.getItem(STATE_KEY) || 'null');
+    if (!saved || typeof saved !== 'object') return;
+    if (saved.character && Array.isArray(saved.character.skills)) state.character = saved.character;
+    if (Array.isArray(saved.lostColumns)) state.lostColumns = saved.lostColumns.filter(c => c >= 1 && c <= 6);
+    if (saved.mode === 'diagnosis' || saved.mode === 'session') state.mode = saved.mode;
+  } catch {}
+}
 
-    // 各習得特技への達成値を計算（達成値 = 5 + 距離）
-    const results = [];
-    charData.acquiredSkillIds.forEach(sid => {
-      const parsed = parseSkillId(sid);
-      if (!parsed) return;
-      const dist = calcSkillDistance(selectedSkill.row, selectedSkill.col, parsed.row, parsed.col, charData.gaps);
-      const target = 5 + dist;
-      const skillName = SKILL_ID_MAP[sid] || sid;
-      results.push({ name: skillName, dist, target, id: sid });
-    });
-
-    // 達成値の低い順（＝使いやすい順）にソート
-    results.sort((a, b) => a.target - b.target);
-    const minTarget = results.length > 0 ? results[0].target : '—';
-
-    let tableRows = '';
-    results.forEach(d => {
-      const minClass = (d.target === minTarget) ? ' dist-min-cell' : '';
-      tableRows += `<tr><td>${escapeHTML(d.name)}</td><td class="${minClass}">${d.target}</td></tr>`;
-    });
-
-    html += `
-      <div class="dist-card">
-        <div class="dist-card-header">
-          <span class="dist-card-name">${escapeHTML(charData.name)}</span>
-          <span class="dist-card-min">最低達成値: ${minTarget}</span>
-        </div>
-        <table class="dist-detail-table">
-          <thead><tr><th>習得特技</th><th>達成値</th></tr></thead>
-          <tbody>${tableRows}</tbody>
-        </table>
-      </div>`;
-  });
-
-  distCardsEl.innerHTML = html;
+function saveState() {
+  try {
+    localStorage.setItem(STATE_KEY, JSON.stringify(state));
+  } catch {}
 }
 
 // ==========================================
-// キャラクター管理
+// キャラクターデータの変換
 // ==========================================
-const characters = [];
-const charactersEl = document.getElementById('characters');
-const loadFileEl = document.getElementById('load_file');
-const loadBtn = document.getElementById('load_btn');
-const clearBtn = document.getElementById('clear_btn');
 
-/** JSONデータからキャラ情報を抽出 */
-function parseCharData(data) {
-  const name = (data.inputs && data.inputs.name) || '名前なし';
-  const school = (data.inputs && data.inputs.school) || '';
-  const subSchool = (data.inputs && data.inputs.sub_school) || '';
-  const rank = (data.inputs && data.inputs.rank) || '';
-  const belief = (data.inputs && data.inputs.belief) || '';
-
-  // 習得特技IDリスト
-  const acquiredSkillIds = [];
-  if (data.checkboxes) {
-    for (const [id, checked] of Object.entries(data.checkboxes)) {
-      if (checked && id.startsWith('skill_r')) {
-        acquiredSkillIds.push(id);
-      }
-    }
-  }
-
-  // 習得特技名リスト
-  const acquiredSkills = acquiredSkillIds
-    .map(id => SKILL_ID_MAP[id])
-    .filter(Boolean);
-
-  // ギャップ状態
+/** 読み込んだデータを、ツールで使う形({ name, meta, skills, gaps })にする */
+function toCharacter({ inputs = {}, checkedIds = [] }) {
+  const meta = [inputs.school, inputs.sub_school, inputs.rank, inputs.belief].filter(Boolean);
+  const checked = new Set(checkedIds);
   const gaps = {};
-  GAP_IDS.forEach(gid => {
-    gaps[gid] = !!(data.checkboxes && data.checkboxes[gid]);
-  });
-
-  return { name, school, subSchool, rank, belief, acquiredSkillIds, acquiredSkills, gaps };
+  GAP_IDS.forEach(gid => { gaps[gid] = checked.has(gid); });
+  return {
+    name: inputs.name || '(名前未設定)',
+    meta,
+    skills: checkedIds.filter(id => SKILL_ID_MAP[id]),
+    gaps,
+  };
 }
 
-/** 特技テーブルHTMLを生成 */
-function buildSkillTableHTML(acquiredSkillIds, gaps) {
-  // gap1=器術↔体術(col1-2), gap2=体術↔忍術(col2-3), gap3=忍術↔謀術(col3-4),
-  // gap4=謀術↔戦術(col4-5), gap5=戦術↔妖術(col5-6), gap6=妖術↔器術
-  // gap6 は表では直接可視化しにくいため省略
-  const idSet = new Set(acquiredSkillIds);
-  return `<table class="skill-table">${buildSkillTableInner({ cellClass: 'skill-cell', onClass: 'skill-on', idSet, gaps })}</table>`;
+/** キャラシの「データを保存 (.json)」(buildSaveData の形式)から変換する */
+function characterFromSaveData(data) {
+  if (!data || typeof data !== 'object' || !data.checkboxes) throw new Error('キャラシのデータではありません');
+  const checkedIds = Object.entries(data.checkboxes).filter(([, on]) => on).map(([id]) => id);
+  return toCharacter({ inputs: data.inputs || {}, checkedIds });
 }
 
-/** キャラクターカードHTMLを生成 */
-function buildCharCardHTML(charData, index) {
-  const metaParts = [];
-  if (charData.school) metaParts.push(`<span>${charData.school}</span>`);
-  if (charData.subSchool) metaParts.push(`<span>${charData.subSchool}</span>`);
-  if (charData.rank) metaParts.push(`<span>${charData.rank}</span>`);
-  if (charData.belief) metaParts.push(`<span>${charData.belief}</span>`);
-
-  return `
-    <div class="char-card" data-index="${index}">
-      <div class="char-header">
-        <div>
-          <span class="char-name">${escapeHTML(charData.name)}</span>
-          <div class="char-meta">${metaParts.join('')}</div>
-        </div>
-        <button class="remove-char-btn" data-index="${index}">✕ 削除</button>
-      </div>
-      <div class="skill-section">
-        <h3>特技表</h3>
-        ${buildSkillTableHTML(charData.acquiredSkillIds, charData.gaps)}
-      </div>
-      <div class="acquired-skills">
-        <h3>習得特技一覧（${charData.acquiredSkills.length}個）</h3>
-        <div class="skill-tags">
-          ${charData.acquiredSkills.length
-            ? charData.acquiredSkills.map(s => `<span class="skill-tag">${escapeHTML(s)}</span>`).join('')
-            : '<span style="color:var(--text-muted)">なし</span>'}
-        </div>
-      </div>
-    </div>`;
+/** 読み込んだキャラを設定して、画面を描き直す */
+function setCharacter(character, message) {
+  state.character = character;
+  saveState();
+  render();
+  showLoadMessage(message);
 }
 
-/** HTMLエスケープ */
+// ==========================================
+// 描画
+// ==========================================
+const skillTableEl = document.getElementById('skill_table');
+const charSummaryEl = document.getElementById('char_summary');
+const loadMessageEl = document.getElementById('load_message');
+
 function escapeHTML(str) {
-  return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 }
 
-/** 表示を再描画 */
-function render() {
-  if (characters.length === 0) {
-    charactersEl.innerHTML = '<p class="no-data">JSONファイルを読み込んでキャラクターを表示します</p>';
+function showLoadMessage(message, isError = false) {
+  loadMessageEl.textContent = message || '';
+  loadMessageEl.classList.toggle('is-error', isError);
+}
+
+function renderCharSummary() {
+  const c = state.character;
+  if (!c) {
+    charSummaryEl.innerHTML = '<p class="char-summary-empty">キャラクターが読み込まれていません。上の方法で1人読み込んでください。</p>';
     return;
   }
-  charactersEl.innerHTML = characters.map((c, i) => buildCharCardHTML(c, i)).join('');
-  // 削除ボタンのイベント
-  charactersEl.querySelectorAll('.remove-char-btn').forEach(btn => {
-    btn.addEventListener('click', () => {
-      const idx = parseInt(btn.dataset.index, 10);
-      characters.splice(idx, 1);
-      render();
-      updateDistanceResults();
+  charSummaryEl.innerHTML = `
+    <span class="char-summary-name">${escapeHTML(c.name)}</span>
+    <span class="char-summary-meta">${c.meta.map(m => `<span>${escapeHTML(m)}</span>`).join('')}</span>
+    <span class="load-note">習得特技 ${c.skills.length}個</span>`;
+}
+
+/** 特技表を描く。マスの中身は、モードごとの関数(cellExtra)で足す */
+function renderSkillTable() {
+  const c = state.character;
+  const acquired = new Set(c ? c.skills : []);
+  const gaps = c ? c.gaps : {};
+  const lost = new Set(state.lostColumns);
+
+  let html = '<thead><tr><th class="num-col"></th>';
+  AREA_NAMES.forEach((area, ai) => {
+    const col = ai + 1;
+    const isLost = lost.has(col);
+    html += `<th class="area-head${isLost ? ' is-lost' : ''}" scope="col">
+        <span class="area-head-name">${area}</span>
+        <button type="button" class="lost-toggle" data-col="${col}" aria-pressed="${isLost}"
+          title="生命力を失ってこの分野の特技が使えないときに押す">${isLost ? '使用不可' : '使用可'}</button>
+      </th>`;
+    if (ai < 5) html += `<th class="gap-col${gaps[`gap${col}`] ? ' gap-on' : ''}"></th>`;
+  });
+  html += '</tr></thead><tbody>';
+
+  SKILL_TABLE.forEach((row, ri) => {
+    const rowNum = ri + 2;
+    html += `<tr><th class="num-col" scope="row">${rowNum}</th>`;
+    row.forEach((skillName, ci) => {
+      const col = ci + 1;
+      const skillId = `skill_r${rowNum}_c${col}`;
+      const classes = ['skill-cell'];
+      if (acquired.has(skillId)) classes.push('is-acquired');
+      if (lost.has(col)) classes.push('is-lost');
+      html += `<td class="${classes.join(' ')}" data-skill-id="${skillId}"><span class="skill-name">${skillName}</span></td>`;
+      if (ci < 5) html += `<td class="gap-col${gaps[`gap${col}`] ? ' gap-on' : ''}"></td>`;
     });
+    html += '</tr>';
+  });
+  html += '</tbody>';
+  skillTableEl.innerHTML = html;
+}
+
+function renderMode() {
+  document.querySelectorAll('.mode-tab').forEach(tab => {
+    const active = tab.dataset.mode === state.mode;
+    tab.classList.toggle('is-active', active);
+    tab.setAttribute('aria-selected', String(active));
+  });
+  document.querySelectorAll('.mode-panel').forEach(panel => {
+    panel.hidden = panel.dataset.mode !== state.mode;
   });
 }
 
-/** JSONファイルを読み込み */
-function loadJSON(file) {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      try {
-        const data = JSON.parse(e.target.result);
-        resolve(data);
-      } catch (err) {
-        reject(err);
-      }
-    };
-    reader.onerror = reject;
-    reader.readAsText(file);
-  });
+function render() {
+  renderCharSummary();
+  renderMode();
+  renderSkillTable();
 }
 
-// ── イベントリスナー ──
-loadBtn.addEventListener('click', () => loadFileEl.click());
-
-loadFileEl.addEventListener('change', async (e) => {
-  const files = Array.from(e.target.files);
-  if (!files.length) return;
-
-  let loadedCount = 0;
-  for (const file of files) {
-    try {
-      const data = await loadJSON(file);
-      const charData = parseCharData(data);
-      characters.push(charData);
-      loadedCount++;
-    } catch (err) {
-      console.error(`読み込み失敗: ${file.name}`, err);
-      alert(`「${file.name}」の読み込みに失敗しました。`);
-    }
-  }
-
-  if (loadedCount > 0) {
+// ==========================================
+// イベント
+// ==========================================
+document.querySelectorAll('.mode-tab').forEach(tab => {
+  tab.addEventListener('click', () => {
+    state.mode = tab.dataset.mode;
+    saveState();
     render();
-    updateDistanceResults();
-  }
-  e.target.value = ''; // 同じファイルの再読み込みを許可
+  });
 });
 
-clearBtn.addEventListener('click', () => {
-  characters.length = 0;
+// 分野の「使用可/使用不可」を切り替える(両モード共通)
+skillTableEl.addEventListener('click', (e) => {
+  const toggle = e.target.closest('.lost-toggle');
+  if (!toggle) return;
+  const col = Number(toggle.dataset.col);
+  state.lostColumns = state.lostColumns.includes(col)
+    ? state.lostColumns.filter(c => c !== col)
+    : [...state.lostColumns, col].sort();
+  saveState();
   render();
-  updateDistanceResults();
 });
 
+// JSONファイル
+const loadJsonBtn = document.getElementById('load_json_btn');
+const loadJsonFile = document.getElementById('load_json_file');
+loadJsonBtn.addEventListener('click', () => loadJsonFile.click());
+loadJsonFile.addEventListener('change', async (e) => {
+  const file = e.target.files[0];
+  e.target.value = ''; // 同じファイルをもう一度選べるようにする
+  if (!file) return;
+  try {
+    const character = characterFromSaveData(JSON.parse(await file.text()));
+    setCharacter(character, `「${character.name}」を読み込みました(${file.name})。`);
+  } catch (err) {
+    console.error(err);
+    showLoadMessage(`「${file.name}」を読み込めませんでした。キャラシで保存したJSONファイルか確認してください。`, true);
+  }
+});
+
+loadState();
+render();
 </script>
 </body>
 </html>
