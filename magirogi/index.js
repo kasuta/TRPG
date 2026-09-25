@@ -723,8 +723,9 @@ const renderListItems = (items) => {
     const deleteBtn = h.deletable
       ? `<button type="button" class="history-item-delete" data-delete-id="${h.id}" data-delete-type="${h.deleteType || 'local'}" title="削除">${TRASH_ICON}</button>`
       : '';
+    const dragAttrs = h.draggable ? ' draggable="true"' : '';
     return `
-      <div class="history-item" data-id="${h.id}" data-game="${h.game || ''}">
+      <div class="history-item${h.draggable ? ' is-draggable' : ''}" data-id="${h.id}" data-game="${h.game || ''}"${dragAttrs}>
         <div class="history-item-info">
           <div class="history-item-name">${badge}${escapeHTML(h.name || '(名前未設定)')}</div>
           <div class="history-item-date">${dateStr}</div>
@@ -748,6 +749,7 @@ const renderListItems = (items) => {
 
   let myLayoutItems = []; // サーバーで並び順を適用したツリー(/api/my-layout の items。フォルダを含む)
   let myCharactersCache = []; // myLayoutItems を並び順どおりに平らにしたキャラの一覧
+  let myLayoutSavedItems = []; // サーバーに保存済みのツリー(並び順の保存に失敗したときに戻す先)
   let gameFilter = localStorage.getItem('characterListFilter') || 'all';
 
   /** レイアウトのツリーを、並び順どおりのキャラの一覧にする(フォルダの中身も含める) */
@@ -758,9 +760,83 @@ const renderListItems = (items) => {
     .filter(item => item.type === 'folder' || item.id !== id)
     .map(item => item.type === 'folder' ? { ...item, items: item.items.filter(c => c.id !== id) } : item);
 
+  /** ドラッグで並べ替えられる環境か(PCのマウス操作のみ。タッチ端末では並べ替えない) */
+  const canReorderByDrag = () => window.matchMedia('(hover: hover) and (pointer: fine)').matches;
+
+  /** 絞り込みタブで表示するキャラか */
+  const matchesGameFilter = (c) => gameFilter === 'all' || c.game === gameFilter;
+
   const applyGameFilter = () => {
-    const filtered = gameFilter === 'all' ? myCharactersCache : myCharactersCache.filter(c => c.game === gameFilter);
-    renderListItems(filtered.map(c => ({ ...c, deletable: true, deleteType: 'server' })));
+    const draggable = canReorderByDrag();
+    // フォルダ内のキャラは、フォルダのUI(機能B)ができるまで並べ替えの対象にしない
+    const rootIds = new Set(myLayoutItems.filter(item => item.type !== 'folder').map(item => item.id));
+    renderListItems(myCharactersCache.filter(matchesGameFilter).map(c => ({
+      ...c, deletable: true, deleteType: 'server', draggable: draggable && rootIds.has(c.id),
+    })));
+  };
+
+  /** ツリーを、保存用のIDだけの形(PUT /api/my-layout の本文)にする */
+  const toLayoutPayload = (items) => ({
+    v: 1,
+    items: items.map(item => item.type === 'folder'
+      ? { type: 'folder', id: item.id, name: item.name, items: item.items.map(c => c.id) }
+      : { type: 'character', id: item.id }),
+  });
+
+  /**
+   * 並び順をサーバーに保存する。保存中に並べ替えられたら、終わってから最新の状態をもう一度送る。
+   * 失敗したら、最後に保存できた並び順に戻して知らせる。
+   */
+  let isSavingMyLayout = false;
+  let pendingMyLayout = null;
+  const saveMyLayout = async () => {
+    pendingMyLayout = myLayoutItems;
+    if (isSavingMyLayout) return;
+    isSavingMyLayout = true;
+    while (pendingMyLayout) {
+      const items = pendingMyLayout;
+      pendingMyLayout = null;
+      try {
+        const res = await fetch(`${API_BASE}/api/my-layout`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${getAuthToken()}` },
+          body: JSON.stringify(toLayoutPayload(items)),
+        });
+        if (!res.ok) throw new Error('並び順の保存に失敗しました');
+        myLayoutSavedItems = items;
+      } catch (err) {
+        console.error(err);
+        pendingMyLayout = null;
+        myLayoutItems = myLayoutSavedItems;
+        myCharactersCache = flattenLayoutItems(myLayoutItems);
+        applyGameFilter();
+        showToast('並び順の保存に失敗したため、元の順に戻しました。');
+      }
+    }
+    isSavingMyLayout = false;
+  };
+
+  /**
+   * キャラ(dragId)を、別のキャラ(targetId)の前または後ろへ移動して保存する。
+   * 絞り込み中は表示中のキャラだけを並べ替え、元の位置(スロット)に書き戻すので、隠れたキャラの位置は変わらない。
+   */
+  const moveMyCharacter = (dragId, targetId, placeBefore) => {
+    if (dragId === targetId) return;
+    const isVisibleRootChar = (item) => item.type !== 'folder' && matchesGameFilter(item);
+    const visible = myLayoutItems.filter(isVisibleRootChar);
+    const dragged = visible.find(c => c.id === dragId);
+    if (!dragged || !visible.some(c => c.id === targetId)) return;
+
+    const reordered = visible.filter(c => c.id !== dragId);
+    const targetIndex = reordered.findIndex(c => c.id === targetId);
+    reordered.splice(placeBefore ? targetIndex : targetIndex + 1, 0, dragged);
+    if (reordered.every((c, i) => c === visible[i])) return;
+
+    let next = 0;
+    myLayoutItems = myLayoutItems.map(item => isVisibleRootChar(item) ? reordered[next++] : item);
+    myCharactersCache = flattenLayoutItems(myLayoutItems);
+    applyGameFilter();
+    saveMyLayout();
   };
 
   /** サーバー上のキャラクターを削除する */
@@ -772,6 +848,7 @@ const renderListItems = (items) => {
       });
       if (!res.ok) throw new Error('削除に失敗しました');
       myLayoutItems = removeFromLayoutItems(myLayoutItems, id);
+      myLayoutSavedItems = removeFromLayoutItems(myLayoutSavedItems, id);
       myCharactersCache = flattenLayoutItems(myLayoutItems);
       applyGameFilter();
       if (currentCharacterId === id) {
@@ -799,6 +876,7 @@ const renderListItems = (items) => {
       });
       if (!res.ok) throw new Error('取得に失敗しました');
       myLayoutItems = (await res.json()).items;
+      myLayoutSavedItems = myLayoutItems;
       myCharactersCache = flattenLayoutItems(myLayoutItems);
       applyGameFilter();
     } catch (err) {
@@ -985,6 +1063,64 @@ const renderListItems = (items) => {
         window.location.hash = `id=${item.dataset.id}`;
         window.location.reload();
       }
+    });
+
+    // ドラッグで並べ替える(ログイン中の一覧・PCのみ。行に draggable が付いているときだけ動く)
+    let draggingCharacterId = null;
+
+    /** マウス位置から、落とす先の行と「前に置くか」を求める(行の間や一覧の下の余白では、最寄りの行を使う) */
+    const findDropTarget = (e) => {
+      const rows = [...historyListEl.querySelectorAll('.history-item[draggable="true"]')];
+      if (rows.length === 0) return null;
+      const row = e.target.closest('.history-item[draggable="true"]')
+        || rows.find(r => e.clientY < r.getBoundingClientRect().bottom)
+        || rows[rows.length - 1];
+      const rect = row.getBoundingClientRect();
+      return { row, placeBefore: e.clientY < rect.top + rect.height / 2 };
+    };
+
+    const clearDropIndicator = () => {
+      historyListEl.querySelectorAll('.drop-before, .drop-after').forEach(el => el.classList.remove('drop-before', 'drop-after'));
+    };
+
+    historyListEl.addEventListener('dragstart', (e) => {
+      const row = e.target.closest('.history-item[draggable="true"]');
+      if (!row) return;
+      draggingCharacterId = row.dataset.id;
+      e.dataTransfer.effectAllowed = 'move';
+      e.dataTransfer.setData('text/plain', row.dataset.id);
+      row.classList.add('is-dragging');
+    });
+
+    historyListEl.addEventListener('dragover', (e) => {
+      if (!draggingCharacterId) return;
+      e.preventDefault();
+      e.dataTransfer.dropEffect = 'move';
+      const target = findDropTarget(e);
+      clearDropIndicator();
+      if (!target || target.row.dataset.id === draggingCharacterId) return;
+      target.row.classList.add(target.placeBefore ? 'drop-before' : 'drop-after');
+    });
+
+    historyListEl.addEventListener('dragleave', (e) => {
+      if (!historyListEl.contains(e.relatedTarget)) clearDropIndicator();
+    });
+
+    historyListEl.addEventListener('drop', (e) => {
+      if (!draggingCharacterId) return;
+      e.preventDefault();
+      const target = findDropTarget(e);
+      const dragId = draggingCharacterId;
+      // 並べ替えで一覧を描き直すと元の行が消え、dragend がここまで届かないので、先に状態を戻す
+      draggingCharacterId = null;
+      clearDropIndicator();
+      if (target) moveMyCharacter(dragId, target.row.dataset.id, target.placeBefore);
+    });
+
+    historyListEl.addEventListener('dragend', () => {
+      draggingCharacterId = null;
+      clearDropIndicator();
+      historyListEl.querySelectorAll('.is-dragging').forEach(el => el.classList.remove('is-dragging'));
     });
   }
 

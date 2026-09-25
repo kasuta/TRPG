@@ -1484,6 +1484,23 @@ textarea {
 
 .history-item:hover { background: var(--surface-alt); }
 
+/* ドラッグで並べ替えられる行(ログイン中の一覧・PCのみ) */
+.history-item.is-draggable { position: relative; cursor: grab; }
+.history-item.is-dragging { opacity: 0.4; }
+.history-item.drop-before::before,
+.history-item.drop-after::after {
+	content: '';
+	position: absolute;
+	left: 4px;
+	right: 4px;
+	height: 3px;
+	border-radius: 2px;
+	background: var(--accent);
+	pointer-events: none;
+}
+.history-item.drop-before::before { top: -5px; }
+.history-item.drop-after::after { bottom: -5px; }
+
 .history-item-info { min-width: 0; }
 
 .history-item-name {
