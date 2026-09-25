@@ -37,8 +37,8 @@
       --accent-text: #8c4433;
       --shadow: rgba(33, 24, 21, 0.12);
       --gap-on: rgba(140, 68, 51, 0.35);
-      --lost-hatch: rgba(33, 24, 21, 0.10);
-      --area-lost-bg: #6b5d52;
+      --skill-head-bg: #211815;
+      --selected-bg: #211815;
       --line-strong: #211815;
       --target-line: #5c2c22;
       --error: #b3261e;
@@ -87,8 +87,7 @@
       --accent-text: #e2543c;
       --shadow: rgba(0, 0, 0, 0.45);
       --gap-on: rgba(199, 58, 42, 0.45);
-      --lost-hatch: rgba(255, 255, 255, 0.10);
-      --area-lost-bg: #5a4a3e;
+      --selected-bg: #efe4d6;
       --line-strong: #efe4d6;
       --target-line: #e2543c;
       --error: #f28b82;
@@ -178,6 +177,12 @@
     .load-source-row > input, .load-source-row > select { flex: 1; }
     .load-note { font-size: 0.78rem; color: var(--muted); }
     .load-message { margin-top: 8px; font-size: 0.85rem; min-height: 1.3em; }
+    .account-row { display: flex; align-items: center; justify-content: space-between; gap: 6px; font-size: 0.85rem; }
+    .account-name { font-weight: 700; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .account-logout { padding: 2px 10px; font-size: 0.78rem; }
+    .login-form { display: flex; flex-direction: column; gap: 6px; }
+    .login-form[hidden], .account-row[hidden] { display: none; }
+    .load-note a { color: var(--accent-text); }
     .load-message.is-error { color: var(--error); }
 
     /* ── 読み込んだキャラクター ── */
@@ -223,11 +228,14 @@
     .skill-table-wrap { overflow-x: auto; }
     .skill-table { border-collapse: collapse; width: 100%; min-width: 620px; table-layout: fixed; font-size: 0.8rem; }
     .skill-table th, .skill-table td { border: 1px solid var(--border); text-align: center; }
+    /* 見出しとギャップの色は、キャラシの特技表(sinobigami/stylesheet.css の .skill-head / .gap-col)に合わせる */
     .skill-table .num-col { width: 30px; background: var(--surface-alt); color: var(--muted); font-weight: 700; }
-    .skill-table .gap-col { width: 12px; background: var(--surface); border-top: none; border-bottom: none; }
-    .skill-table .gap-col.gap-on { background: var(--gap-on); }
-    .area-head { background: var(--accent-strong); color: #fff; padding: 4px 2px; vertical-align: top; }
-    .area-head-name { display: block; font-weight: 700; }
+    .skill-table thead .num-col { background: var(--skill-head-bg); }
+    .skill-table .gap-col { width: 12px; background: var(--surface-alt); border-top: none; border-bottom: none; }
+    .skill-table thead .gap-col { background: var(--skill-head-bg); }
+    .skill-table .gap-col.gap-on { background: var(--selected-bg); }
+    .area-head { background: var(--skill-head-bg); color: #fff; padding: 5px 2px; vertical-align: top; }
+    .area-head-name { display: block; font-weight: 700; letter-spacing: 0.2em; }
     /* 使用可=白い札、使用不可=黒い札(目標値の色と紛れないよう、色味を持たせない) */
     .lost-toggle {
       margin-top: 3px;
@@ -239,9 +247,9 @@
       border: 1px solid #fffdf8;
     }
     .lost-toggle:hover:not(:disabled) { background: #e8ddc9; }
-    .lost-toggle[aria-pressed="true"] { background: #211815; color: #fff; border-color: rgba(255, 255, 255, 0.7); }
-    .lost-toggle[aria-pressed="true"]:hover:not(:disabled) { background: #3b322c; }
-    .area-head.is-lost { background: var(--area-lost-bg); }
+    /* 使用不可は、キャラシの特技表のダメージのチェックと同じく朱にする */
+    .lost-toggle[aria-pressed="true"] { background: var(--accent); color: #fff; border-color: var(--accent); }
+    .lost-toggle[aria-pressed="true"]:hover:not(:disabled) { background: var(--accent-strong); }
     .skill-cell { background: var(--surface); padding: 4px 2px; height: 44px; position: relative; }
     .skill-name { display: block; line-height: 1.2; }
     .skill-cell.is-acquired .skill-name { font-weight: 700; }
@@ -253,10 +261,6 @@
       border-radius: 4px;
       pointer-events: none;
     }
-    .skill-cell.is-lost {
-      background-image: repeating-linear-gradient(135deg, var(--lost-hatch) 0 4px, transparent 4px 8px);
-    }
-    .skill-cell.is-lost.is-acquired::after { border-style: dashed; border-color: var(--muted); }
     /* 目標値の色分け(朱の単色で、5=薄い → 12以上=濃い。dataviz の validate_palette.js --ordinal で検証済み) */
     .skill-value { display: block; font-size: 0.95rem; font-weight: 700; line-height: 1.1; margin-top: 2px; }
     /* 色はテーマごとの変数(--heat-*)。文字と習得特技の枠は、その段で読める色(--heat-text-*)にする */
@@ -334,7 +338,6 @@
     .session-footer { display: flex; justify-content: flex-end; margin-top: 12px; }
     .table-legend { display: flex; flex-wrap: wrap; gap: 4px 14px; margin-top: 8px; font-size: 0.75rem; color: var(--muted); }
     .legend-acquired { display: inline-block; width: 14px; height: 14px; border: 2px solid var(--line-strong); border-radius: 3px; vertical-align: -3px; margin-right: 4px; }
-    .legend-lost { display: inline-block; width: 14px; height: 14px; border: 1px solid var(--border); vertical-align: -3px; margin-right: 4px; background-image: repeating-linear-gradient(135deg, var(--lost-hatch) 0 4px, transparent 4px 8px); }
   </style>
 </head>
 <body>
@@ -352,10 +355,22 @@
       <div class="load-sources">
         <div class="load-source">
           <label class="load-source-label" for="my_char_select">マイキャラ</label>
+          <div class="account-row" id="account_row" hidden>
+            <span class="account-name" id="account_name"></span>
+            <button type="button" class="btn-outline account-logout" id="logout_btn">ログアウト</button>
+          </div>
           <div class="load-source-row" id="my_char_row" hidden>
             <select id="my_char_select"></select>
           </div>
-          <span class="load-note" id="my_char_note">読み込み中…</span>
+          <form class="login-form" id="login_form" hidden>
+            <input type="text" id="login_username" placeholder="ユーザー名" autocomplete="username" aria-label="ユーザー名" required />
+            <div class="load-source-row">
+              <input type="password" id="login_password" placeholder="パスワード" autocomplete="current-password" aria-label="パスワード" required />
+              <button type="submit" id="login_btn">ログイン</button>
+            </div>
+            <span class="load-note">アカウントの登録は<a href="../sinobigami/index.html">キャラシ</a>で行えます</span>
+          </form>
+          <span class="load-note" id="my_char_note" role="status"></span>
         </div>
         <form class="load-source" id="share_form">
           <label class="load-source-label" for="share_input">共有リンク / ID</label>
@@ -363,7 +378,6 @@
             <input type="text" id="share_input" placeholder="https://…/sinobigami/index.html#id=… または ID" autocomplete="off" />
             <button type="submit" id="share_load_btn">読み込む</button>
           </div>
-          <span class="load-note">ほかのプレイヤーのキャラも、キャラシの共有リンクから読み込めます</span>
         </form>
         <div class="load-source">
           <span class="load-source-label">JSONファイル</span>
@@ -371,7 +385,6 @@
             <button type="button" class="btn-outline" id="load_json_btn">ファイルを選ぶ</button>
             <input type="file" id="load_json_file" accept=".json,application/json" hidden />
           </div>
-          <span class="load-note">キャラシの「データを保存 (.json)」で保存したファイル</span>
         </div>
       </div>
       <p class="load-message" id="load_message" role="status"></p>
@@ -438,7 +451,7 @@
       </div>
       <div class="table-legend">
         <span><span class="legend-acquired"></span>習得特技</span>
-        <span><span class="legend-lost"></span>使えない分野(見出しのボタンで切り替え)</span>
+        <span>見出しのボタン: ✓ 使用可 / ✕ 使用不可(生命力を失った分野。押して切り替え)</span>
       </div>
     </section>
   </div>
@@ -472,47 +485,28 @@ SKILL_TABLE.forEach((row, ri) => {
   });
 });
 
-const GAP_IDS = ['gap1', 'gap2', 'gap3', 'gap4', 'gap5', 'gap6'];
+// 分野の間のギャップ(器術|体術 〜 戦術|妖術 の5つ。器術と妖術の間には無い)
+const GAP_IDS = ['gap1', 'gap2', 'gap3', 'gap4', 'gap5'];
 
 // ==========================================
 // 距離と目標値の計算
 // ==========================================
 
 /**
- * 2つの分野列間の最短距離を計算(ギャップ考慮、円環)
+ * 2つの分野列間の距離を計算(ギャップ考慮)。
+ * 特技表の端はつながっていない(器術と妖術は隣ではない)ので、左右に並んだ列の間を数えるだけ。
  * col1, col2: 1〜6
- * gaps: { gap1: bool, ..., gap6: bool }
- * gap_i は col_i と col_(i%6)+1 の間にある
+ * gaps: { gap1: bool, ..., gap5: bool }。gap_i は col_i と col_(i+1) の間にある
  *   塗りつぶし(true)  → ギャップ0マス + 移動1マス = 1マス
  *   塗りつぶしなし(false) → ギャップ1マス + 移動1マス = 2マス
  */
 function calcColumnDistance(col1, col2, gaps) {
-  if (col1 === col2) return 0;
-
-  function tryPath(from, to, direction) {
-    let steps = 0;
-    let current = from;
-    while (current !== to) {
-      let next, gapIdx;
-      if (direction === 1) {
-        // 時計回り: current → (current%6)+1
-        next = (current % 6) + 1;
-        gapIdx = current;
-      } else {
-        // 反時計回り: current → ((current-2+6)%6)+1
-        next = ((current - 2 + 6) % 6) + 1;
-        gapIdx = next;
-      }
-      // 隣の分野への移動で1マス消費
-      steps++;
-      // 塗りつぶしなし → ギャップでさらに1マス追加
-      if (!gaps[`gap${gapIdx}`]) steps++;
-      current = next;
-    }
-    return steps;
+  const [left, right] = col1 < col2 ? [col1, col2] : [col2, col1];
+  let steps = 0;
+  for (let gapIdx = left; gapIdx < right; gapIdx++) {
+    steps += gaps[`gap${gapIdx}`] ? 1 : 2;
   }
-
-  return Math.min(tryPath(col1, col2, 1), tryPath(col1, col2, -1));
+  return steps;
 }
 
 /** 2つの特技間の距離(分野間距離 + 行の差) */
@@ -561,7 +555,7 @@ const heatClass = (target) => `heat-${Math.min(Math.max(target, 5), 12)}`;
 const STATE_KEY = 'sinobigamiToolState';
 
 /**
- * characters: 読み込んだキャラ([{ key, name, meta[], skills[], gaps{}, sourceId?, lostColumns[] }]。計算に要る部分だけ)
+ * characters: 読み込んだキャラ([{ key, name, schools[], skills[], gaps{}, sourceId?, lostColumns[] }]。計算に要る部分だけ)
  *   lostColumns は使えない分野の列番号(1〜6)で、生命力はキャラごとなのでキャラごとに持つ
  * activeCharKey: 表示・計算に使っているキャラ
  * mode: 'diagnosis' | 'session'
@@ -613,13 +607,14 @@ function saveState() {
 
 /** 読み込んだデータを、ツールで使う形({ name, meta, skills, gaps })にする */
 function toCharacter({ inputs = {}, checkedIds = [] }) {
-  const meta = [inputs.school, inputs.sub_school, inputs.rank, inputs.belief].filter(Boolean);
+  // 流派(上位流派と流派)だけを表示に使う
+  const schools = [inputs.school, inputs.sub_school].filter(Boolean);
   const checked = new Set(checkedIds);
   const gaps = {};
   GAP_IDS.forEach(gid => { gaps[gid] = checked.has(gid); });
   return {
     name: inputs.name || '(名前未設定)',
-    meta,
+    schools,
     skills: checkedIds.filter(id => SKILL_ID_MAP[id]),
     gaps,
   };
@@ -683,11 +678,56 @@ async function fetchCharacterById(id) {
   return characterFromCompact(compact);
 }
 
-/** キャラシと共通のログイン情報(キャラシでログインすると、ここでも使える) */
+/** キャラシと共通のログイン情報(どちらでログイン・ログアウトしても、もう一方に反映される) */
 const AUTH_TOKEN_KEY = 'sinobigami_auth_token';
+const AUTH_USER_KEY = 'sinobigami_auth_username';
 const getAuthToken = () => {
   try { return localStorage.getItem(AUTH_TOKEN_KEY); } catch { return null; }
 };
+const getAuthUsername = () => {
+  try { return localStorage.getItem(AUTH_USER_KEY); } catch { return null; }
+};
+const setAuth = (token, username) => {
+  try {
+    localStorage.setItem(AUTH_TOKEN_KEY, token);
+    localStorage.setItem(AUTH_USER_KEY, username);
+  } catch {}
+};
+const clearAuth = () => {
+  try {
+    localStorage.removeItem(AUTH_TOKEN_KEY);
+    localStorage.removeItem(AUTH_USER_KEY);
+  } catch {}
+};
+
+/** ログインする(POST /api/login)。失敗したら、サーバーのメッセージ付きの LoadError を投げる */
+async function login(username, password) {
+  let res;
+  try {
+    res = await fetch(`${API_BASE}/api/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username, password }),
+    });
+  } catch {
+    throw new LoadError('サーバーに接続できませんでした。通信状態を確認してください。');
+  }
+  const json = await res.json().catch(() => ({}));
+  if (!res.ok || !json.token) throw new LoadError(json.error || 'ログインに失敗しました。');
+  setAuth(json.token, json.username || username);
+}
+
+/** ログアウトする(POST /api/logout。通信に失敗しても、このブラウザのログイン情報は消す) */
+async function logout() {
+  const token = getAuthToken();
+  clearAuth();
+  if (!token) return;
+  try {
+    await fetch(`${API_BASE}/api/logout`, { method: 'POST', headers: { Authorization: `Bearer ${token}` } });
+  } catch (err) {
+    console.error(err);
+  }
+}
 
 /**
  * ログイン中のユーザーのキャラ一覧(GET /api/my-layout のツリー)を取得する。
@@ -697,7 +737,11 @@ async function fetchMyLayout() {
   const token = getAuthToken();
   if (!token) return null;
   const res = await fetch(`${API_BASE}/api/my-layout`, { headers: { Authorization: `Bearer ${token}` } });
-  if (res.status === 401) return null;
+  if (res.status === 401) {
+    // ログインの有効期限切れ。キャラシと共通の情報なので、キャラシでもログアウト状態になる
+    clearAuth();
+    return null;
+  }
   if (!res.ok) throw new Error(`マイキャラの取得に失敗しました(${res.status})`);
   return (await res.json()).items;
 }
@@ -758,13 +802,11 @@ function renderCharSummary() {
         <button type="button" class="char-remove" data-char-key="${ch.key}" title="一覧から外す" aria-label="「${escapeHTML(ch.name)}」を一覧から外す">×</button>
       </span>`;
   }).join('');
-  const lostNames = c.lostColumns.map(col => AREA_NAMES[col - 1]);
   charSummaryEl.innerHTML = `
     <div class="char-tabs" aria-label="読み込んだキャラクター(押すと切り替え)">${tabs}</div>
     <div class="char-detail">
       <span class="char-summary-name">${escapeHTML(c.name)}</span>
-      <span class="char-summary-meta">${c.meta.map(m => `<span>${escapeHTML(m)}</span>`).join('')}</span>
-      <span class="load-note">習得特技 ${c.skills.length}個${lostNames.length ? ` / 使用不可: ${lostNames.join('・')}` : ''}</span>
+      <span class="char-summary-meta">${(c.schools || []).map(m => `<span>${escapeHTML(m)}</span>`).join('')}</span>
     </div>`;
 }
 
@@ -865,7 +907,7 @@ function renderSkillTable() {
   AREA_NAMES.forEach((area, ai) => {
     const col = ai + 1;
     const isLost = lost.has(col);
-    html += `<th class="area-head${isLost ? ' is-lost' : ''}" scope="col">
+    html += `<th class="area-head" scope="col">
         <span class="area-head-name">${area}</span>
         <button type="button" class="lost-toggle" data-col="${col}" aria-pressed="${isLost}"
           title="生命力を失ってこの分野の特技が使えないときに押す"${c ? '' : ' disabled'}>${isLost ? '✕ 使用不可' : '✓ 使用可'}</button>
@@ -883,7 +925,6 @@ function renderSkillTable() {
       const extra = state.mode === 'diagnosis' ? diagnosisCell(skillId) : sessionCell(skillId);
       const classes = ['skill-cell', ...extra.classes];
       if (acquired.has(skillId)) classes.push('is-acquired');
-      if (lost.has(col)) classes.push('is-lost');
       html += `<td class="${classes.join(' ')}" data-skill-id="${skillId}" title="${escapeHTML(extra.title)}"><span class="skill-name">${skillName}</span>${extra.html}</td>`;
       if (ci < 5) html += `<td class="gap-col${gaps[`gap${col}`] ? ' gap-on' : ''}"></td>`;
     });
@@ -1045,7 +1086,17 @@ skillTableEl.addEventListener('click', (e) => {
 const myCharRow = document.getElementById('my_char_row');
 const myCharSelect = document.getElementById('my_char_select');
 const myCharNote = document.getElementById('my_char_note');
-const LOGIN_NOTE = 'キャラシでログインすると、自分のキャラクターから選べます。';
+const accountRow = document.getElementById('account_row');
+const accountName = document.getElementById('account_name');
+const loginForm = document.getElementById('login_form');
+
+/** ログイン中ならアカウント名とログアウト、未ログインならログイン欄を出す */
+function renderAccount(loggedIn) {
+  accountRow.hidden = !loggedIn;
+  loginForm.hidden = loggedIn;
+  const username = getAuthUsername();
+  accountName.textContent = username ? `${username} でログイン中` : 'ログイン中';
+}
 
 async function renderMyCharacterOptions() {
   let items;
@@ -1053,13 +1104,15 @@ async function renderMyCharacterOptions() {
     items = await fetchMyLayout();
   } catch (err) {
     console.error(err);
+    renderAccount(true);
     myCharRow.hidden = true;
     myCharNote.textContent = 'マイキャラを取得できませんでした。再読み込みしてください。';
     return;
   }
+  renderAccount(!!items);
   if (!items) {
     myCharRow.hidden = true;
-    myCharNote.innerHTML = `${LOGIN_NOTE}(<a href="../sinobigami/index.html">キャラシへ</a>)`;
+    myCharNote.textContent = '';
     return;
   }
   const isSinobigami = (c) => c.game === 'sinobigami';
@@ -1077,8 +1130,39 @@ async function renderMyCharacterOptions() {
   myCharSelect.innerHTML = `<option value="">キャラクターを選ぶ</option>${html}`;
   syncMyCharSelect();
   myCharRow.hidden = false;
-  myCharNote.textContent = '選ぶとすぐに読み込みます(フォルダはキャラシと同じです)';
+  myCharNote.textContent = '';
 }
+
+loginForm.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const username = document.getElementById('login_username').value.trim();
+  const password = document.getElementById('login_password').value;
+  const loginBtn = document.getElementById('login_btn');
+  loginBtn.disabled = true;
+  myCharNote.textContent = 'ログイン中…';
+  try {
+    await login(username, password);
+    document.getElementById('login_password').value = '';
+    myCharNote.textContent = '';
+    await renderMyCharacterOptions();
+  } catch (err) {
+    console.error(err);
+    myCharNote.textContent = err instanceof LoadError ? err.message : 'ログインに失敗しました。';
+  } finally {
+    loginBtn.disabled = false;
+  }
+});
+
+document.getElementById('logout_btn').addEventListener('click', async () => {
+  await logout();
+  myCharSelect.innerHTML = '';
+  await renderMyCharacterOptions();
+});
+
+// 別のタブのキャラシでログイン・ログアウトしたら、こちらも合わせる
+window.addEventListener('storage', (e) => {
+  if (e.key === AUTH_TOKEN_KEY || e.key === null) renderMyCharacterOptions();
+});
 
 myCharSelect.addEventListener('change', async () => {
   const id = myCharSelect.value;
