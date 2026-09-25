@@ -1892,48 +1892,68 @@ if (historyListEl) {
   });
 
   // ドラッグで並べ替え・フォルダへの出し入れをする(ログイン中の一覧・PCのみ。行に draggable が付いているときだけ動く)
-  let dragging = null; // { kind: 'character'|'folder', id }
+  let dragging = null; // { kind: 'character'|'folder', id, grabOffset, height }
+
+  /** キャラを動かしているとき、フォルダ行の高さのこの割合以上に被ったらフォルダの中へ入れる */
+  const FOLDER_DROP_OVERLAP = 0.5;
 
   /**
-   * マウス位置から、落とす先(moveLayoutItem の drop)と、示し方を求める。落とせない場所なら null。
-   * フォルダ行: 閉じていれば 上25%=前 / 中央=中の末尾 / 下25%=後、開いていれば 上25%=前 / 残り=中の先頭。
-   * キャラ行: 上半分=前 / 下半分=後。行の間はその下の行、開いたフォルダの中の余白はそのフォルダの末尾、一覧の下の余白は末尾。
+   * 落とす先(moveLayoutItem の drop)と、示し方を求める。落とせない場所なら null。
+   * マウスの位置ではなく、動かしている行(掴んだ位置から計算した上端〜下端)で判定する。
+   * - キャラ: フォルダ行に FOLDER_DROP_OVERLAP 以上被ったら、そのフォルダの中(閉じていれば末尾、開いていれば先頭)。
+   * - それ以外は、動かしている行の中心がある行の前後(上半分=前 / 下半分=後)。
+   *   開いた空のフォルダの余白ならその中、一覧の下の余白ならルートの末尾。フォルダはフォルダの中に入れない。
    */
   const resolveDrop = (e) => {
     if (!dragging) return null;
-    let row = e.target.closest('.history-item, .history-folder');
-    if (!row) {
-      const container = e.target.closest('.history-folder-children');
-      const candidates = [...(container || historyListEl).querySelectorAll('.history-item, .history-folder')];
-      row = candidates.find(r => e.clientY < r.getBoundingClientRect().bottom) || null;
-      if (!row && container) {
-        if (dragging.kind === 'folder') return null;
-        const folderId = container.dataset.folderId;
-        return { drop: { into: folderId, position: 'end' }, into: historyListEl.querySelector(`.history-folder[data-folder-id="${folderId}"]`) };
+    const top = e.clientY - dragging.grabOffset;
+    const bottom = top + dragging.height;
+    const centerY = (top + bottom) / 2;
+
+    if (dragging.kind === 'character') {
+      let best = null;
+      let bestOverlap = 0;
+      historyListEl.querySelectorAll('.history-folder:not(.is-editing)').forEach(folderRow => {
+        const rect = folderRow.getBoundingClientRect();
+        const overlap = Math.min(bottom, rect.bottom) - Math.max(top, rect.top);
+        if (overlap >= rect.height * FOLDER_DROP_OVERLAP && overlap > bestOverlap) {
+          best = folderRow;
+          bestOverlap = overlap;
+        }
+      });
+      if (best) {
+        const position = best.classList.contains('is-open') ? 'start' : 'end';
+        return { drop: { into: best.dataset.folderId, position }, into: best };
       }
-      if (!row) return { drop: { rootEnd: true }, atEnd: true };
+
+      // 開いた空のフォルダ(「キャラクターがいません」)の余白
+      for (const placeholder of historyListEl.querySelectorAll('.history-folder-empty')) {
+        const container = placeholder.closest('.history-folder-children');
+        const rect = container.getBoundingClientRect();
+        if (centerY >= rect.top && centerY <= rect.bottom) {
+          const folderId = container.dataset.folderId;
+          return { drop: { into: folderId, position: 'end' }, into: historyListEl.querySelector(`.history-folder[data-folder-id="${folderId}"]`) };
+        }
+      }
     }
+
+    // 動かしている行自身(フォルダなら、その中の行も)と、名前の編集中のフォルダは対象にしない
+    const rows = [...historyListEl.querySelectorAll('.history-item, .history-folder')].filter(r =>
+      !r.classList.contains('is-dragging')
+      && !r.classList.contains('is-editing')
+      && !(dragging.kind === 'folder' && r.dataset.parentFolder === dragging.id));
+    const row = rows.find(r => centerY < r.getBoundingClientRect().bottom);
+    if (!row) return { drop: { rootEnd: true }, atEnd: true };
 
     const rect = row.getBoundingClientRect();
-    const ratio = (e.clientY - rect.top) / rect.height;
+    const before = centerY < rect.top + rect.height / 2;
+    const place = before ? 'before' : 'after';
     if (row.classList.contains('history-folder')) {
-      const ref = { kind: 'folder', id: row.dataset.folderId };
-      if (row.classList.contains('is-editing')) return null;
-      if (dragging.kind === 'folder') {
-        if (ref.id === dragging.id) return null;
-        return { drop: { ref, place: ratio < 0.5 ? 'before' : 'after' }, row, before: ratio < 0.5 };
-      }
-      if (ratio < 0.25) return { drop: { ref, place: 'before' }, row, before: true };
-      if (row.classList.contains('is-open')) return { drop: { into: ref.id, position: 'start' }, into: row };
-      if (ratio > 0.75) return { drop: { ref, place: 'after' }, row, before: false };
-      return { drop: { into: ref.id, position: 'end' }, into: row };
+      return { drop: { ref: { kind: 'folder', id: row.dataset.folderId }, place }, row, before };
     }
-
     // フォルダはフォルダの中に入れられない
     if (dragging.kind === 'folder' && row.dataset.parentFolder) return null;
-    if (dragging.kind === 'character' && row.dataset.id === dragging.id) return null;
-    const before = ratio < 0.5;
-    return { drop: { ref: { kind: 'character', id: row.dataset.id }, place: before ? 'before' : 'after' }, row, before };
+    return { drop: { ref: { kind: 'character', id: row.dataset.id }, place }, row, before };
   };
 
   const clearDropIndicator = () => {
@@ -1945,9 +1965,12 @@ if (historyListEl) {
   historyListEl.addEventListener('dragstart', (e) => {
     const row = e.target.closest('[draggable="true"]');
     if (!row) return;
+    // 掴んだ位置と行の高さを記録し、ドラッグ中は動かしている行の位置で判定する
+    const rect = row.getBoundingClientRect();
+    const geometry = { grabOffset: e.clientY - rect.top, height: rect.height };
     dragging = row.classList.contains('history-folder')
-      ? { kind: 'folder', id: row.dataset.folderId }
-      : { kind: 'character', id: row.dataset.id };
+      ? { kind: 'folder', id: row.dataset.folderId, ...geometry }
+      : { kind: 'character', id: row.dataset.id, ...geometry };
     e.dataTransfer.effectAllowed = 'move';
     e.dataTransfer.setData('text/plain', dragging.id);
     row.classList.add('is-dragging');
