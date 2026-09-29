@@ -963,9 +963,16 @@ A1（API のレイアウト v2 の検証と保存）は実装済み（`sinobigam
   - テストは 72 → 81 件で、すべて通過。この PC には Node.js が無かったので、winget で LTS（v24.19.0）を入れた。
 - [x] A2 `GET ?v=2` の切り替え、v1 の返り値（平らにする）、v1 の `PUT` の互換と 409 ← A1（`1b8d6db`）
 - [x] A3 一覧の要約に `furigana` / `tags` / `kind` を足す ← P1（`59453be`。テストは 88 件で、すべて通過）
-- [ ] A4 〔運用〕本番への反映（バックアップ → デプロイ → スモークテスト）と開発ログへの記録 ← A2, A3
+- [x] A4 〔運用〕本番への反映（バックアップ → デプロイ → スモークテスト）と開発ログへの記録 ← A2, A3
   - `main` へのマージと push は済み（`59453be`。2026-09-29）。
-  - この PC の wrangler は未ログイン。`wrangler login` → `npm run db:backup` → `npx wrangler deploy` は、ユーザーが実行する。
+  - `wrangler login` → `npm run db:backup` → `npx wrangler deploy` は、ユーザーが実行した。この PC の wrangler は未ログインだった。
+    - バックアップ: `20260929-153022`（users 12 / characters 72 / character_layouts 2 / 画像 45枚）
+    - Worker: `5623ed90-cbb9-41c4-8621-a666990ed735`
+  - スモークテスト（認証なし）
+    - `GET /api/my-layout`（`?v=2` の有無とも）・`PUT /api/my-layout`・`GET /api/my-characters` は401。
+    - 存在しないIDの `/api/load` は404。
+    - localhost のオリジンは許可されていない。
+  - 開発ログ: `sinobigami-api` の `bbd26b6`。
   - 公開前に、ローカルの新しい API と今のフロント（v1）で互換を確かめた。
     - 並べ替えとフォルダへの出し入れは、今までどおり動く。
     - 種別の合わないフォルダへの移動は 400 になり、元に戻る。
