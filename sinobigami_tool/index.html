@@ -773,13 +773,13 @@ async function logout() {
 }
 
 /**
- * ログイン中のユーザーのキャラ一覧(GET /api/my-layout のツリー)を取得する。
+ * ログイン中のユーザーのキャラ一覧(GET /api/my-layout?v=2 のツリー。フォルダは2段まで、種別つき)を取得する。
  * 未ログイン・ログイン切れなら null。
  */
 async function fetchMyLayout() {
   const token = getAuthToken();
   if (!token) return null;
-  const res = await fetch(`${API_BASE}/api/my-layout`, { headers: { Authorization: `Bearer ${token}` } });
+  const res = await fetch(`${API_BASE}/api/my-layout?v=2`, { headers: { Authorization: `Bearer ${token}` } });
   if (res.status === 401) {
     // ログインの有効期限切れ。キャラシと共通の情報なので、キャラシでもログアウト状態になる
     clearAuth();
@@ -1211,12 +1211,19 @@ async function renderMyCharacterOptions() {
     myCharNote.textContent = '';
     return;
   }
-  const isSinobigami = (c) => c.game === 'sinobigami';
+  const isSinobigami = (c) => c.type !== 'folder' && c.game === 'sinobigami';
   const option = (c) => `<option value="${escapeHTML(c.id)}">${escapeHTML(c.name)}</option>`;
+  // optgroup は入れ子にできないので、サブフォルダは「親 / 子」の見出しにする。マギロギ用のフォルダは出さない
+  const folderGroups = (folder, label) => {
+    if (folder.kind === 'magirogi') return '';
+    const chars = folder.items.filter(isSinobigami);
+    const own = chars.length ? `<optgroup label="${escapeHTML(label)}">${chars.map(option).join('')}</optgroup>` : '';
+    const subs = folder.items.filter(child => child.type === 'folder').map(sub => folderGroups(sub, `${label} / ${sub.name}`)).join('');
+    return own + subs;
+  };
   const html = items.map(item => {
     if (item.type !== 'folder') return isSinobigami(item) ? option(item) : '';
-    const chars = item.items.filter(isSinobigami);
-    return chars.length ? `<optgroup label="${escapeHTML(item.name)}">${chars.map(option).join('')}</optgroup>` : '';
+    return folderGroups(item, item.name);
   }).join('');
   if (!html) {
     myCharRow.hidden = true;
