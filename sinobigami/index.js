@@ -1194,16 +1194,11 @@ document.addEventListener('DOMContentLoaded', () => {
       // 新規作成時と同様に空の行を1つ残す
       if (document.querySelectorAll('.ougi-textarea[name^="ougi_name_"]').length === 0) addOugiRow();
     }
+    // 忍法はテキスト入力中でも表に入れる(テキスト入力の欄は、この関数の最後に表から作り直す)
     if (data.ninpo) {
-      if (ninpoInputMode === 'text') {
-        clearNinpoTextRows();
-        data.ninpo.filter(row => !isEmptyNinpoRow(row)).forEach(row => addNinpoTextRow(row));
-        renumberNinpoTextRows();
-      } else {
-        clearNinpoGridRows();
-        data.ninpo.filter(row => !isEmptyNinpoRow(row)).forEach(row => addNinpoRow(row, { skipResize: true }));
-        resizeNinpoGridRows();
-      }
+      clearNinpoGridRows();
+      data.ninpo.filter(row => !isEmptyNinpoRow(row)).forEach(row => addNinpoRow(row, { skipResize: true }));
+      resizeNinpoGridRows();
     }
     if (data.haikei) {
       while (document.querySelectorAll('.haikei-textarea[name^="haikei_name_"]').length > 0) removeHaikeiRow();
