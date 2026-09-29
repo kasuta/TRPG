@@ -57,7 +57,7 @@ The Worker source now lives in its own repo: `https://github.com/kasuta/sinobiga
   - Layouts saved before v2 are read as general folders (no DB migration). Without `?v=2`, `GET` still returns the old v1 shape (no kinds, subfolder characters flattened into the parent) and a v1 `PUT` keeps the stored kinds, or returns 409 if subfolders exist — this keeps old cached pages from wiping subfolders.
   - Character summaries (also from `/api/my-characters`) are `id, name, furigana, tags, game, kind, updatedAt, createdAt`. `kind` (`shinobi`/`enemy`) is only present for Shinobigami characters. `tags` are cleaned up server-side (strings, trimmed, 1–20 chars, unique, max 5).
   - The server builds the order (it has tests; this repo doesn't). Plan and decisions: `docs/plan-2026-09-features.md`.
-- **Planned (2026-09-29, not implemented yet)**: name/tag/区分 search in the logged-in list. Decisions (Q22–Q43), requirements, non-requirements and tasks are in `docs/plan-2026-09-features.md` under 「第2期」; update this file as each part ships.
+- **第2期 (2026-09-29)**: フォルダの種別と2段、シノビ/エネミーの区分、タグ、一覧の検索. Decisions (Q22–Q43), requirements, non-requirements, the implementation plan and results are in `docs/plan-2026-09-features.md` under 「第2期」.
 - Rate limiting is **not** enabled on the API yet (on hold because of unclear pricing), so don't assume 429 handling exists server-side.
 
 ## Client-side architecture (per app: magirogi/index.js, sinobigami/index.js)
@@ -79,6 +79,7 @@ Each `index.js` is a single large script (1500–2000 lines) organized around th
     - Otherwise the dragged row's center decides before/after the row it falls on. The item then joins that row's parent, and the same rules apply (null = not droppable).
     - An open empty folder's placeholder = into; empty space below the list = root end.
   - `moveLayoutItem` removes and re-inserts one item (re-checking the rules), so other items (including ones hidden by the game filter) keep their relative order.
+  - Search (logged-in list only, `#list_search`): the name field matches name or furigana as a substring after `normalizeSearchText` (NFKC, lower case, katakana → hiragana). Tag chips (`#list_search_tags`, ordered by use via `tagUsage`) must all match (AND). The 区分 select filters Shinobigami characters by `kind`; it is hidden and ignored on the マギロギ tab (`activeKindFilter`). Conditions live in memory only (`listSearch`) and combine with the game tab (`matchesListSearch`). While searching (`isListSearchActive`), `renderMyLayoutList` shows only folders that contain a match, forced open without touching the remembered open state. Dragging, folder editing buttons, folder creation and open/close toggling are disabled.
 
 When making changes, prefer following the existing pattern in the file you're editing (e.g. naming a new row-adder like the existing `addSpellRow`/`addRelationRow`) rather than introducing new abstractions — these files are not modularized and mixing styles increases the maintenance burden between the two parallel apps.
 
