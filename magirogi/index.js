@@ -1042,10 +1042,9 @@ const renderListItems = (items) => {
       ? `<input type="text" class="history-folder-input" maxlength="${MAX_FOLDER_NAME_LENGTH}" placeholder="フォルダ名(Enterで確定 / Escで取消)" aria-label="フォルダ名" />
           <select class="history-folder-kind" aria-label="フォルダの種別">${kindOptions.map(k => `<option value="${k}"${k === selectedKind ? ' selected' : ''}>${FOLDER_KIND_LABEL[k]}</option>`).join('')}</select>`
       : `<span class="history-folder-name">${escapeHTML(folder.name)}</span>`;
-    // シノビガミ用・マギロギ用には、ゲームのバッジと同じ配色の印を付ける(一般は印なし)
-    const kindBadge = !editing && kind !== GENERAL_FOLDER_KIND
-      ? `<span class="history-item-game-badge badge-${kind} history-folder-kind-badge">${FOLDER_KIND_LABEL[kind]}</span>`
-      : '';
+    // 種別はフォルダの絵の色で示す(シノビガミ=橙、マギロギ=青、一般=黒。色は CSS の .kind-*)。編集中は選んでいる種別の色
+    const iconKind = editing && FOLDER_KIND_LABEL[selectedKind] ? selectedKind : kind;
+    const iconTitle = iconKind === GENERAL_FOLDER_KIND ? '一般フォルダ' : `${FOLDER_KIND_LABEL[iconKind]}用フォルダ`;
     const full = countLayoutFolders(myLayoutItems) >= MAX_FOLDERS;
     const addSubBtn = canAddSub
       ? `<button type="button" class="history-folder-add-sub" title="${full ? `フォルダはサブフォルダも含めて${MAX_FOLDERS}個までです` : 'サブフォルダを作成'}" aria-disabled="${full}">${LIST_FOLDER_PLUS_ICON}</button>`
@@ -1057,10 +1056,10 @@ const renderListItems = (items) => {
     const parentAttr = parentId ? ` data-parent-folder="${parentId}"` : '';
     const canDrag = draggable && !editing;
     return `
-        <div class="history-folder${isOpen ? ' is-open' : ''}${editing ? ' is-editing' : ''}${canDrag ? ' is-draggable' : ''}" data-folder-id="${folder.id}" data-depth="${depth}"${parentAttr} role="button" tabindex="0" aria-expanded="${isOpen}"${canDrag ? ' draggable="true"' : ''}>
+        <div class="history-folder kind-${iconKind}${isOpen ? ' is-open' : ''}${editing ? ' is-editing' : ''}${canDrag ? ' is-draggable' : ''}" data-folder-id="${folder.id}" data-depth="${depth}"${parentAttr} role="button" tabindex="0" aria-expanded="${isOpen}"${canDrag ? ' draggable="true"' : ''}>
           <span class="history-folder-caret">${LIST_CARET_ICON}</span>
-          <span class="history-folder-icon">${LIST_FOLDER_ICON}</span>
-          ${kindBadge}${nameHTML}
+          <span class="history-folder-icon" title="${iconTitle}" role="img" aria-label="${iconTitle}">${LIST_FOLDER_ICON}</span>
+          ${nameHTML}
           <span class="history-folder-count">${count}</span>${actions}
         </div>`;
   };
@@ -1640,6 +1639,12 @@ const renderListItems = (items) => {
     // フォルダ名の入力欄と種別の選択: Enterで確定(名前が空なら何もしない)、Escで取り消し、
     // 行から離れたら確定(名前が空なら取り消し)。同じ行の入力欄と種別の選択の間の移動は、編集を続ける
     const FOLDER_EDIT_FIELDS = '.history-folder-input, .history-folder-kind';
+    // 種別を選び直したら、フォルダの絵の色をすぐに変える
+    historyListEl.addEventListener('change', (e) => {
+      if (!e.target.matches('.history-folder-kind')) return;
+      const row = e.target.closest('.history-folder');
+      Object.keys(FOLDER_KIND_LABEL).forEach(k => row.classList.toggle(`kind-${k}`, k === e.target.value));
+    });
     historyListEl.addEventListener('keydown', (e) => {
       // 日本語入力の変換確定のEnterは無視する(keyCode 229 は変換中を示す古いブラウザ向け)
       if (!e.target.matches(FOLDER_EDIT_FIELDS) || e.isComposing || e.keyCode === 229) return;

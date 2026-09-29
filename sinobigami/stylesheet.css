@@ -2113,7 +2113,16 @@ textarea {
 .history-folder-icon { flex-shrink: 0; display: flex; }
 .history-folder-caret svg { width: 14px; height: 14px; color: var(--muted); transition: transform 0.15s; }
 .history-folder.is-open .history-folder-caret svg { transform: rotate(90deg); }
-.history-folder-icon svg { width: 17px; height: 17px; color: var(--accent); }
+/*
+ * フォルダの絵は、種別ごとの色で中まで塗る(シノビガミ=橙、マギロギ=青、一般=黒)。枠は同じ色の濃い色。
+ * ダークモード3は背景が黒いので、一般フォルダだけ枠を明るくして見えるようにする。
+ */
+.history-folder-icon svg { width: 18px; height: 18px; }
+.history-folder-icon svg path { fill: var(--folder-fill); stroke: var(--folder-stroke); stroke-width: 1.6; }
+.history-folder.kind-sinobigami { --folder-fill: #f39a3c; --folder-stroke: #b35d12; }
+.history-folder.kind-magirogi { --folder-fill: #4f8fd6; --folder-stroke: #245f9e; }
+.history-folder.kind-general { --folder-fill: #3a3330; --folder-stroke: #1c1715; }
+[data-theme="dark-full"] .history-folder.kind-general { --folder-stroke: #c9bcaf; }
 .history-folder-name {
 	flex: 1;
 	min-width: 0;
@@ -2194,8 +2203,6 @@ textarea {
 	background: var(--surface);
 	color: inherit;
 }
-/* フォルダの種別(シノビガミ用・マギロギ用)の印 */
-.history-folder-kind-badge { flex-shrink: 0; margin-right: 0; }
 /* PC では、フォルダ行のボタンはマウスを乗せたときとフォーカス中だけ出して、名前の幅を空ける(タッチ端末では常に出す) */
 @media (hover: hover) and (pointer: fine) {
 	.history-folder:not(:hover):not(:focus-within) .history-folder-add-sub,
