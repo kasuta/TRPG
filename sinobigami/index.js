@@ -1432,31 +1432,72 @@ const MAX_FOLDERS = 100;
 const MAX_FOLDER_NAME_LENGTH = 30;
 const LIST_PENCIL_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/></svg>';
 
-/** 名前を編集中のフォルダ({ id, isNew, draft })。isNew は作成中でまだツリーに無いもの */
+const LIST_FOLDER_PLUS_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><path d="M12 11v4M10 13h4"/></svg>';
+
+/**
+ * 名前を編集中のフォルダ({ id, isNew, parentId, draft, draftKind })。
+ * isNew は作成中でまだツリーに無いもの、parentId はサブフォルダを作るときの親(1段目なら null)。
+ */
 let editingFolder = null;
 let isRenderingMyLayout = false;
 
+/** 新しいフォルダのID */
+const newFolderId = () => `f${crypto.randomUUID().replaceAll('-', '').slice(0, 12)}`;
+
+/** ツリーの中の folderId のフォルダを、fn(フォルダ) の結果に置き換える */
+const updateLayoutFolder = (items, folderId, fn) => items.map(item => {
+  if (item.type !== 'folder') return item;
+  if (item.id === folderId) return fn(item);
+  return { ...item, items: updateLayoutFolder(item.items, folderId, fn) };
+});
+
+/** ツリーからフォルダを取り除く */
+const removeLayoutFolder = (items, folderId) => items
+  .filter(item => item.type !== 'folder' || item.id !== folderId)
+  .map(item => item.type === 'folder' ? { ...item, items: removeLayoutFolder(item.items, folderId) } : item);
+
+/** フォルダに選べる種別(中のキャラ・サブフォルダと、親に合うもの)。parent は親フォルダ(1段目なら null) */
+const allowedFolderKinds = (folder, parent) => Object.keys(FOLDER_KIND_LABEL).filter(kind => {
+  if (parent && !canParentHoldFolderKind(parent, kind)) return false;
+  if (kind === GENERAL_FOLDER_KIND) return true;
+  return folder.items.every(child => child.type === 'folder' ? folderKind(child) === kind : child.game === kind);
+});
+
+/** 新しいフォルダの種別の初期値(親が一般以外なら親と同じ。それ以外は絞り込みタブのゲーム、「すべて」なら一般) */
+const defaultFolderKind = (parent) => {
+  if (parent && folderKind(parent) !== GENERAL_FOLDER_KIND) return folderKind(parent);
+  return FOLDER_KIND_LABEL[gameFilter] ? gameFilter : GENERAL_FOLDER_KIND;
+};
+
 /**
- * フォルダ1行分のHTML。count は絞り込み後のキャラの数(サブフォルダの中も含む)。depth は段(1か2)、parentId は親フォルダのID。
- * editing なら名前を入力欄にする(編集中はドラッグしない)
+ * フォルダ1行分のHTML。count は絞り込み後のキャラの数(サブフォルダの中も含む)。
+ * opts: depth(段。1か2) / parentId(親フォルダのID) / editing(名前を入力欄にする。編集中はドラッグしない) /
+ *       kindOptions・selectedKind(編集中の種別の選択肢と選択) / draggable / canAddSub(サブフォルダ作成ボタンを出す)
  */
-const buildFolderHTML = (folder, count, isOpen, editing, draggable, depth = 1, parentId = null) => {
+const buildFolderHTML = (folder, count, isOpen, opts = {}) => {
+  const { depth = 1, parentId = null, editing = false, kindOptions = [], selectedKind = GENERAL_FOLDER_KIND, draggable = false, canAddSub = false } = opts;
   const isEmpty = folder.items.length === 0;
   const kind = folderKind(folder);
   const nameHTML = editing
-    ? `<input type="text" class="history-folder-input" maxlength="${MAX_FOLDER_NAME_LENGTH}" placeholder="フォルダ名(Enterで確定 / Escで取消)" aria-label="フォルダ名" />`
+    ? `<input type="text" class="history-folder-input" maxlength="${MAX_FOLDER_NAME_LENGTH}" placeholder="フォルダ名(Enterで確定 / Escで取消)" aria-label="フォルダ名" />
+        <select class="history-folder-kind" aria-label="フォルダの種別">${kindOptions.map(k => `<option value="${k}"${k === selectedKind ? ' selected' : ''}>${FOLDER_KIND_LABEL[k]}</option>`).join('')}</select>`
     : `<span class="history-folder-name">${escapeHTML(folder.name)}</span>`;
   // シノビガミ用・マギロギ用には、ゲームのバッジと同じ配色の印を付ける(一般は印なし)
   const kindBadge = !editing && kind !== GENERAL_FOLDER_KIND
     ? `<span class="history-item-game-badge badge-${kind} history-folder-kind-badge">${FOLDER_KIND_LABEL[kind]}</span>`
     : '';
+  const full = countLayoutFolders(myLayoutItems) >= MAX_FOLDERS;
+  const addSubBtn = canAddSub
+    ? `<button type="button" class="history-folder-add-sub" title="${full ? `フォルダはサブフォルダも含めて${MAX_FOLDERS}個までです` : 'サブフォルダを作成'}" aria-disabled="${full}">${LIST_FOLDER_PLUS_ICON}</button>`
+    : '';
   // 中身があるフォルダの削除ボタンは、理由をツールチップで示すため disabled ではなく aria-disabled にする
-  const actions = editing ? '' : `
-        <button type="button" class="history-folder-rename" title="名前を変更">${LIST_PENCIL_ICON}</button>
+  const actions = editing ? '' : `${addSubBtn}
+        <button type="button" class="history-folder-rename" title="名前・種別を変更">${LIST_PENCIL_ICON}</button>
         <button type="button" class="history-folder-delete" title="${isEmpty ? 'フォルダを削除' : '中にキャラクターやサブフォルダがいるフォルダは削除できません'}" aria-disabled="${!isEmpty}">${LIST_TRASH_ICON}</button>`;
   const parentAttr = parentId ? ` data-parent-folder="${parentId}"` : '';
+  const canDrag = draggable && !editing;
   return `
-      <div class="history-folder${isOpen ? ' is-open' : ''}${editing ? ' is-editing' : ''}${draggable && !editing ? ' is-draggable' : ''}" data-folder-id="${folder.id}" data-depth="${depth}"${parentAttr} role="button" tabindex="0" aria-expanded="${isOpen}"${draggable && !editing ? ' draggable="true"' : ''}>
+      <div class="history-folder${isOpen ? ' is-open' : ''}${editing ? ' is-editing' : ''}${canDrag ? ' is-draggable' : ''}" data-folder-id="${folder.id}" data-depth="${depth}"${parentAttr} role="button" tabindex="0" aria-expanded="${isOpen}"${canDrag ? ' draggable="true"' : ''}>
         <span class="history-folder-caret">${LIST_CARET_ICON}</span>
         <span class="history-folder-icon">${LIST_FOLDER_ICON}</span>
         ${kindBadge}${nameHTML}
@@ -1468,25 +1509,38 @@ const buildFolderHTML = (folder, count, isOpen, editing, draggable, depth = 1, p
 const renderMyLayoutList = () => {
   const listEl = document.getElementById('history_list');
   if (!listEl) return;
-  // 描き直しで入力中の名前が消えないよう、下書きとして控える
+  // 描き直しで入力中の名前と種別が消えないよう、下書きとして控える
   const currentInput = listEl.querySelector('.history-folder-input');
   if (editingFolder && currentInput) editingFolder.draft = currentInput.value;
+  const currentKind = listEl.querySelector('.history-folder-kind');
+  if (editingFolder && currentKind) editingFolder.draftKind = currentKind.value;
 
   const draggable = canReorderByDrag();
   const openIds = getOpenFolderIds();
   const charRow = (c, folderId) => buildListItemHTML({ ...c, deletable: true, deleteType: 'server', folderId, draggable });
-  const newFolderRow = (parentId, depth) => editingFolder && editingFolder.isNew && editingFolder.parentId === parentId
-    ? buildFolderHTML({ id: editingFolder.id, name: '', items: [] }, 0, false, true, false, depth, parentId)
-    : '';
+  // 作成中のフォルダの行(parent の中。1段目なら parent は null)
+  const newFolderRow = (parent, depth) => {
+    if (!editingFolder || !editingFolder.isNew || editingFolder.parentId !== (parent ? parent.id : null)) return '';
+    const kindOptions = allowedFolderKinds({ items: [] }, parent);
+    return buildFolderHTML({ id: editingFolder.id, name: '', items: [] }, 0, false, {
+      depth, parentId: parent ? parent.id : null, editing: true, kindOptions,
+      selectedKind: kindOptions.includes(editingFolder.draftKind) ? editingFolder.draftKind : kindOptions[0],
+    });
+  };
 
-  const renderFolder = (folder, depth, parentId) => {
+  const renderFolder = (folder, depth, parent) => {
     const count = flattenLayoutItems(folder.items).filter(matchesGameFilter).length;
     const isOpen = openIds.has(folder.id);
     const editing = !!editingFolder && !editingFolder.isNew && editingFolder.id === folder.id;
-    const row = buildFolderHTML(folder, count, isOpen, editing, draggable, depth, parentId);
+    const kindOptions = editing ? allowedFolderKinds(folder, parent) : [];
+    const draftKind = editing ? editingFolder.draftKind : null;
+    const row = buildFolderHTML(folder, count, isOpen, {
+      depth, parentId: parent ? parent.id : null, editing, draggable, canAddSub: depth === 1,
+      kindOptions, selectedKind: kindOptions.includes(draftKind) ? draftKind : folderKind(folder),
+    });
     if (!isOpen) return row;
-    const children = newFolderRow(folder.id, depth + 1) + folder.items.map(child => {
-      if (child.type === 'folder') return folderMatchesGameFilter(child) ? renderFolder(child, depth + 1, folder.id) : '';
+    const children = newFolderRow(folder, depth + 1) + folder.items.map(child => {
+      if (child.type === 'folder') return folderMatchesGameFilter(child) ? renderFolder(child, depth + 1, folder) : '';
       return matchesGameFilter(child) ? charRow(child, folder.id) : '';
     }).join('');
     return row + `<div class="history-folder-children" data-folder-id="${folder.id}">${children || '<p class="history-folder-empty">キャラクターがいません</p>'}</div>`;
@@ -1520,51 +1574,74 @@ const renderMyLayoutList = () => {
 const startNewFolder = () => {
   if (editingFolder) return document.querySelector('#history_list .history-folder-input')?.focus();
   if (countLayoutFolders(myLayoutItems) >= MAX_FOLDERS) return;
-  editingFolder = { id: `f${crypto.randomUUID().replaceAll('-', '').slice(0, 12)}`, isNew: true, parentId: null, draft: null };
+  editingFolder = { id: newFolderId(), isNew: true, parentId: null, draft: null, draftKind: defaultFolderKind(null) };
   renderMyLayoutList();
   const listEl = document.getElementById('history_list');
   if (listEl) listEl.scrollTop = 0;
 };
+/** 1段目のフォルダの中に、サブフォルダを作り始める(親を開き、中の先頭に入力欄を出す) */
+const startNewSubfolder = (parentId) => {
+  if (editingFolder) return document.querySelector('#history_list .history-folder-input')?.focus();
+  if (countLayoutFolders(myLayoutItems) >= MAX_FOLDERS) {
+    showToast(`フォルダはサブフォルダも含めて${MAX_FOLDERS}個までです。`);
+    return;
+  }
+  const found = findLayoutFolder(myLayoutItems, parentId);
+  if (!found || found.parent) return;
+  setFolderOpen(parentId, true);
+  editingFolder = { id: newFolderId(), isNew: true, parentId, draft: null, draftKind: defaultFolderKind(found.folder) };
+  renderMyLayoutList();
+};
 const startRenameFolder = (folderId) => {
   if (editingFolder) finishFolderEdit(true);
-  editingFolder = { id: folderId, isNew: false, draft: null };
+  editingFolder = { id: folderId, isNew: false, parentId: null, draft: null, draftKind: null };
   renderMyLayoutList();
 };
 
 /**
- * 名前の編集を終える。commit なら入力した名前で作成・変更して保存する。
+ * 名前(と種別)の編集を終える。commit なら入力した名前・選んだ種別で作成・変更して保存する。
  * 名前が空のとき(Escや、空のまま入力欄から離れたとき)は取り消す。
  */
 const finishFolderEdit = (commit) => {
   const editing = editingFolder;
   if (!editing) return;
-  const input = document.querySelector('#history_list .history-folder-input');
+  const row = document.querySelector('#history_list .history-folder.is-editing');
+  const input = row && row.querySelector('.history-folder-input');
+  const select = row && row.querySelector('.history-folder-kind');
   const name = (input ? input.value : (editing.draft || '')).trim();
+  const selectedKind = select ? select.value : editing.draftKind;
   editingFolder = null;
 
   const valid = commit && name && [...name].length <= MAX_FOLDER_NAME_LENGTH;
-  if (valid && editing.isNew) {
-    myLayoutItems = [{ type: 'folder', id: editing.id, name, items: [] }, ...myLayoutItems];
-  } else if (valid) {
-    const folder = myLayoutItems.find(item => item.type === 'folder' && item.id === editing.id);
-    if (!folder || folder.name === name) return renderMyLayoutList();
-    myLayoutItems = myLayoutItems.map(item => item === folder ? { ...item, name } : item);
+  if (!valid) return renderMyLayoutList();
+  if (editing.isNew) {
+    const parent = editing.parentId ? findLayoutFolder(myLayoutItems, editing.parentId) : null;
+    if (editing.parentId && !parent) return renderMyLayoutList();
+    const kinds = allowedFolderKinds({ items: [] }, parent && parent.folder);
+    const created = { type: 'folder', id: editing.id, name, kind: kinds.includes(selectedKind) ? selectedKind : kinds[0], items: [] };
+    myLayoutItems = parent
+      ? updateLayoutFolder(myLayoutItems, editing.parentId, f => ({ ...f, items: [created, ...f.items] }))
+      : [created, ...myLayoutItems];
   } else {
-    return renderMyLayoutList();
+    const found = findLayoutFolder(myLayoutItems, editing.id);
+    if (!found) return renderMyLayoutList();
+    const kind = allowedFolderKinds(found.folder, found.parent).includes(selectedKind) ? selectedKind : folderKind(found.folder);
+    if (found.folder.name === name && folderKind(found.folder) === kind) return renderMyLayoutList();
+    myLayoutItems = updateLayoutFolder(myLayoutItems, editing.id, f => ({ ...f, name, kind }));
   }
   renderMyLayoutList();
   saveMyLayout();
 };
 
-/** 空のフォルダを削除する(中にキャラがいるときは知らせて何もしない) */
+/** 空のフォルダを削除する(中にキャラやサブフォルダがいるときは知らせて何もしない) */
 const deleteFolder = (folderId) => {
-  const folder = myLayoutItems.find(item => item.type === 'folder' && item.id === folderId);
-  if (!folder) return;
-  if (folder.items.length > 0) {
-    showToast('中にキャラクターがいるフォルダは削除できません。先にキャラクターを外に出してください。');
+  const found = findLayoutFolder(myLayoutItems, folderId);
+  if (!found) return;
+  if (found.folder.items.length > 0) {
+    showToast('中にキャラクターやサブフォルダがいるフォルダは削除できません。先に外に出してください。');
     return;
   }
-  myLayoutItems = myLayoutItems.filter(item => item !== folder);
+  myLayoutItems = removeLayoutFolder(myLayoutItems, folderId);
   setFolderOpen(folderId, false);
   renderMyLayoutList();
   saveMyLayout();
@@ -1924,7 +2001,8 @@ if (historyListEl) {
     }
     const folderRow = e.target.closest('.history-folder');
     if (folderRow) {
-      if (e.target.closest('.history-folder-rename')) startRenameFolder(folderRow.dataset.folderId);
+      if (e.target.closest('.history-folder-add-sub')) startNewSubfolder(folderRow.dataset.folderId);
+      else if (e.target.closest('.history-folder-rename')) startRenameFolder(folderRow.dataset.folderId);
       else if (e.target.closest('.history-folder-delete')) deleteFolder(folderRow.dataset.folderId);
       else if (!folderRow.classList.contains('is-editing')) toggleFolder(folderRow.dataset.folderId);
       return;
@@ -1942,20 +2020,25 @@ if (historyListEl) {
     }
   });
 
-  // フォルダ名の入力欄: Enterで確定(空なら何もしない)、Escで取り消し、入力欄から離れたら確定(空なら取り消し)
+  // フォルダ名の入力欄と種別の選択: Enterで確定(名前が空なら何もしない)、Escで取り消し、
+  // 行から離れたら確定(名前が空なら取り消し)。同じ行の入力欄と種別の選択の間の移動は、編集を続ける
+  const FOLDER_EDIT_FIELDS = '.history-folder-input, .history-folder-kind';
   historyListEl.addEventListener('keydown', (e) => {
     // 日本語入力の変換確定のEnterは無視する(keyCode 229 は変換中を示す古いブラウザ向け)
-    if (!e.target.matches('.history-folder-input') || e.isComposing || e.keyCode === 229) return;
+    if (!e.target.matches(FOLDER_EDIT_FIELDS) || e.isComposing || e.keyCode === 229) return;
     if (e.key === 'Enter') {
       e.preventDefault();
-      if (e.target.value.trim()) finishFolderEdit(true);
+      const input = e.target.closest('.history-folder').querySelector('.history-folder-input');
+      if (input && input.value.trim()) finishFolderEdit(true);
     } else if (e.key === 'Escape') {
       e.preventDefault();
       finishFolderEdit(false);
     }
   });
   historyListEl.addEventListener('focusout', (e) => {
-    if (!e.target.matches('.history-folder-input') || isRenderingMyLayout) return;
+    if (!e.target.matches(FOLDER_EDIT_FIELDS) || isRenderingMyLayout) return;
+    const row = e.target.closest('.history-folder');
+    if (row && e.relatedTarget && row.contains(e.relatedTarget)) return;
     finishFolderEdit(true);
   });
 
