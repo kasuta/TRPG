@@ -561,7 +561,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const n = spellCount;
     const rowHTML = `
       <div class="spell-row" data-row="${n}">
-        <textarea name="spell_name_${n}" class="spell-textarea" rows="1" data-row="${n}"></textarea>
+        <div class="spell-name-cell">
+          <textarea name="spell_name_${n}" class="spell-textarea" rows="1" data-row="${n}"></textarea>
+        </div>
         <select name="spell_type_${n}">
           <option value="召喚">召喚</option>
           <option value="呪文">呪文</option>
@@ -580,7 +582,6 @@ document.addEventListener('DOMContentLoaded', () => {
         </div>
       </div>
       <div class="spell-phrase-block" data-row="${n}">
-        <span class="spell-phrase-arrow" aria-hidden="true">↳</span>
         <div class="spell-phrase-table">
           <div class="spell-phrase-label">呪句</div>
           <input type="text" name="spell_phrase_${n}" class="spell-phrase-input" data-row="${n}" placeholder="呪句を入力" />
