@@ -71,6 +71,18 @@
         <button type="button" class="game-filter-tab" data-filter="sinobigami">シノビガミ</button>
         <button type="button" class="game-filter-tab" data-filter="magirogi">マギロギ</button>
       </div>
+      <div class="list-search" id="list_search" style="display:none;">
+        <div class="list-search-row">
+          <input type="search" id="list_search_name" placeholder="名前・ふりがなで検索" aria-label="名前・ふりがなで検索" autocomplete="off" />
+          <select id="list_search_kind" aria-label="シノビガミの区分で絞り込む">
+            <option value="all">区分: すべて</option>
+            <option value="shinobi">シノビ</option>
+            <option value="enemy">エネミー</option>
+          </select>
+          <button type="button" id="list_search_clear" class="list-search-clear" title="検索の条件をすべて消す">クリア</button>
+        </div>
+        <div class="list-search-tags" id="list_search_tags"></div>
+      </div>
     </div>
     <div class="history-list" id="history_list"></div>
   </aside>

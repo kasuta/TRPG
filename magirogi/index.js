@@ -856,6 +856,8 @@ const renderListItems = (items) => {
     if (tabs) tabs.style.display = 'none';
     const newFolderBtn = document.getElementById('new_folder_btn');
     if (newFolderBtn) newFolderBtn.style.display = 'none';
+    const search = document.getElementById('list_search');
+    if (search) search.style.display = 'none';
     editingFolder = null;
     const items = getHistory()
       .sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt))
@@ -977,12 +979,63 @@ const renderListItems = (items) => {
   };
 
   /**
+   * 一覧の検索条件(名前・ふりがな、タグ、シノビガミの区分)。ブラウザには記憶しない。
+   * ゲームの絞り込みタブと組み合わせる(すべて AND)。検索中は、一致するキャラを含むフォルダだけを開いて表示し、
+   * ドラッグとフォルダの編集はしない。
+   */
+  const listSearch = { text: '', tags: new Set(), kind: 'all' };
+
+  /** 検索用に文字を揃える(NFKC で全角/半角をまとめ、小文字にし、カタカナをひらがなにする) */
+  const normalizeSearchText = (value) => String(value || '')
+    .normalize('NFKC')
+    .toLowerCase()
+    .replace(/[ァ-ヶ]/g, ch => String.fromCharCode(ch.charCodeAt(0) - 0x60));
+
+  /** 区分の絞り込み(マギロギのタブでは区分が無いので効かせない) */
+  const activeKindFilter = () => (gameFilter === 'magirogi' ? 'all' : listSearch.kind);
+  const isListSearchActive = () => !!listSearch.text.trim() || listSearch.tags.size > 0 || activeKindFilter() !== 'all';
+
+  /** 検索条件に合うキャラか(名前かふりがなの部分一致・選んだタグをすべて持つ・区分) */
+  const matchesListSearch = (c) => {
+    const query = normalizeSearchText(listSearch.text.trim());
+    if (query && !normalizeSearchText(c.name).includes(query) && !normalizeSearchText(c.furigana).includes(query)) return false;
+    const tags = Array.isArray(c.tags) ? c.tags : [];
+    for (const tag of listSearch.tags) {
+      if (!tags.includes(tag)) return false;
+    }
+    const kind = activeKindFilter();
+    if (kind !== 'all' && (c.game !== 'sinobigami' || (c.kind || 'shinobi') !== kind)) return false;
+    return true;
+  };
+
+  /** 検索欄の表示を条件に合わせる(タグのチップ・区分の選択の表示・クリアボタン) */
+  const renderListSearch = () => {
+    const kindSelect = document.getElementById('list_search_kind');
+    if (kindSelect) {
+      kindSelect.hidden = gameFilter === 'magirogi';
+      kindSelect.value = listSearch.kind;
+    }
+    const clearBtn = document.getElementById('list_search_clear');
+    if (clearBtn) clearBtn.disabled = !isListSearchActive();
+    const tagsEl = document.getElementById('list_search_tags');
+    if (!tagsEl) return;
+    // 使っているタグ(多い順、同じ数なら名前順)。選んだまま使われなくなったタグも出す
+    const tags = tagUsage(myCharactersCache).map(([tag]) => tag);
+    listSearch.tags.forEach(tag => { if (!tags.includes(tag)) tags.push(tag); });
+    tagsEl.hidden = tags.length === 0;
+    tagsEl.innerHTML = tags.map(tag =>
+      `<button type="button" class="list-search-tag${listSearch.tags.has(tag) ? ' is-active' : ''}" data-tag="${encodeURIComponent(tag)}" aria-pressed="${listSearch.tags.has(tag)}">${escapeHTML(tag)}</button>`
+    ).join('');
+  };
+
+  /**
    * フォルダ1行分のHTML。count は絞り込み後のキャラの数(サブフォルダの中も含む)。
    * opts: depth(段。1か2) / parentId(親フォルダのID) / editing(名前を入力欄にする。編集中はドラッグしない) /
-   *       kindOptions・selectedKind(編集中の種別の選択肢と選択) / draggable / canAddSub(サブフォルダ作成ボタンを出す)
+   *       kindOptions・selectedKind(編集中の種別の選択肢と選択) / draggable / canAddSub(サブフォルダ作成ボタンを出す) /
+   *       readOnly(検索中。編集のボタンを出さない)
    */
   const buildFolderHTML = (folder, count, isOpen, opts = {}) => {
-    const { depth = 1, parentId = null, editing = false, kindOptions = [], selectedKind = GENERAL_FOLDER_KIND, draggable = false, canAddSub = false } = opts;
+    const { depth = 1, parentId = null, editing = false, kindOptions = [], selectedKind = GENERAL_FOLDER_KIND, draggable = false, canAddSub = false, readOnly = false } = opts;
     const isEmpty = folder.items.length === 0;
     const kind = folderKind(folder);
     const nameHTML = editing
@@ -998,7 +1051,7 @@ const renderListItems = (items) => {
       ? `<button type="button" class="history-folder-add-sub" title="${full ? `フォルダはサブフォルダも含めて${MAX_FOLDERS}個までです` : 'サブフォルダを作成'}" aria-disabled="${full}">${LIST_FOLDER_PLUS_ICON}</button>`
       : '';
     // 中身があるフォルダの削除ボタンは、理由をツールチップで示すため disabled ではなく aria-disabled にする
-    const actions = editing ? '' : `${addSubBtn}
+    const actions = editing || readOnly ? '' : `${addSubBtn}
           <button type="button" class="history-folder-rename" title="名前・種別を変更">${LIST_PENCIL_ICON}</button>
           <button type="button" class="history-folder-delete" title="${isEmpty ? 'フォルダを削除' : '中にキャラクターやサブフォルダがいるフォルダは削除できません'}" aria-disabled="${!isEmpty}">${LIST_TRASH_ICON}</button>`;
     const parentAttr = parentId ? ` data-parent-folder="${parentId}"` : '';
@@ -1022,7 +1075,10 @@ const renderListItems = (items) => {
     const currentKind = listEl.querySelector('.history-folder-kind');
     if (editingFolder && currentKind) editingFolder.draftKind = currentKind.value;
 
-    const draggable = canReorderByDrag();
+    // 検索中は、一致するキャラを含むフォルダだけを開いて表示し、ドラッグとフォルダの編集はしない(開閉の記憶は変えない)
+    const searching = isListSearchActive();
+    const isVisibleCharacter = (c) => matchesGameFilter(c) && matchesListSearch(c);
+    const draggable = canReorderByDrag() && !searching;
     const openIds = getOpenFolderIds();
     const charRow = (c, folderId) => buildListItemHTML({ ...c, deletable: true, deleteType: 'server', folderId, draggable });
     // 作成中のフォルダの行(parent の中。1段目なら parent は null)
@@ -1036,36 +1092,39 @@ const renderListItems = (items) => {
     };
 
     const renderFolder = (folder, depth, parent) => {
-      const count = flattenLayoutItems(folder.items).filter(matchesGameFilter).length;
-      const isOpen = openIds.has(folder.id);
-      const editing = !!editingFolder && !editingFolder.isNew && editingFolder.id === folder.id;
+      const count = flattenLayoutItems(folder.items).filter(isVisibleCharacter).length;
+      if (searching && count === 0) return '';
+      const isOpen = searching || openIds.has(folder.id);
+      const editing = !searching && !!editingFolder && !editingFolder.isNew && editingFolder.id === folder.id;
       const kindOptions = editing ? allowedFolderKinds(folder, parent) : [];
       const draftKind = editing ? editingFolder.draftKind : null;
       const row = buildFolderHTML(folder, count, isOpen, {
-        depth, parentId: parent ? parent.id : null, editing, draggable, canAddSub: depth === 1,
+        depth, parentId: parent ? parent.id : null, editing, draggable, canAddSub: depth === 1, readOnly: searching,
         kindOptions, selectedKind: kindOptions.includes(draftKind) ? draftKind : folderKind(folder),
       });
       if (!isOpen) return row;
-      const children = newFolderRow(folder, depth + 1) + folder.items.map(child => {
+      const children = (searching ? '' : newFolderRow(folder, depth + 1)) + folder.items.map(child => {
         if (child.type === 'folder') return folderMatchesGameFilter(child) ? renderFolder(child, depth + 1, folder) : '';
-        return matchesGameFilter(child) ? charRow(child, folder.id) : '';
+        return isVisibleCharacter(child) ? charRow(child, folder.id) : '';
       }).join('');
       return row + `<div class="history-folder-children" data-folder-id="${folder.id}">${children || '<p class="history-folder-empty">キャラクターがいません</p>'}</div>`;
     };
-    const html = newFolderRow(null, 1) + myLayoutItems.map(item => {
+    const html = (searching ? '' : newFolderRow(null, 1)) + myLayoutItems.map(item => {
       if (item.type === 'folder') return folderMatchesGameFilter(item) ? renderFolder(item, 1, null) : '';
-      return matchesGameFilter(item) ? charRow(item, null) : '';
+      return isVisibleCharacter(item) ? charRow(item, null) : '';
     }).join('');
+    const emptyMessage = searching ? '条件に合うキャラクターがいません' : 'データがありません';
     // 入力欄を描き直しで取り除くときの focusout は、編集の終了として扱わない
     isRenderingMyLayout = true;
-    listEl.innerHTML = html || '<p class="history-empty">データがありません</p>';
+    listEl.innerHTML = html || `<p class="history-empty">${emptyMessage}</p>`;
     isRenderingMyLayout = false;
+    renderListSearch();
 
     const newFolderBtn = document.getElementById('new_folder_btn');
     if (newFolderBtn) {
       const full = countLayoutFolders(myLayoutItems) >= MAX_FOLDERS;
-      newFolderBtn.disabled = full;
-      newFolderBtn.title = full ? `フォルダはサブフォルダも含めて${MAX_FOLDERS}個までです` : '';
+      newFolderBtn.disabled = full || searching;
+      newFolderBtn.title = full ? `フォルダはサブフォルダも含めて${MAX_FOLDERS}個までです` : (searching ? '検索中はフォルダを作れません' : '');
     }
 
     const input = listEl.querySelector('.history-folder-input');
@@ -1154,8 +1213,9 @@ const renderListItems = (items) => {
     saveMyLayout();
   };
 
-  /** フォルダを開閉する */
+  /** フォルダを開閉する(検索中は、一致を含むフォルダをすべて開いて見せるので開閉しない) */
   const toggleFolder = (folderId) => {
+    if (isListSearchActive()) return;
     setFolderOpen(folderId, !getOpenFolderIds().has(folderId));
     renderMyLayoutList();
   };
@@ -1313,6 +1373,8 @@ const renderListItems = (items) => {
     if (tabs) tabs.style.display = '';
     const newFolderBtn = document.getElementById('new_folder_btn');
     if (newFolderBtn) newFolderBtn.style.display = '';
+    const search = document.getElementById('list_search');
+    if (search) search.style.display = '';
     const listEl = document.getElementById('history_list');
     if (listEl) listEl.innerHTML = '<p class="history-empty">読み込み中...</p>';
 
@@ -1466,6 +1528,42 @@ const renderListItems = (items) => {
       localStorage.setItem('characterListFilter', gameFilter);
       gameFilterTabs.querySelectorAll('.game-filter-tab').forEach(b => b.classList.toggle('is-active', b === btn));
       applyGameFilter();
+    });
+  }
+
+  // 一覧の検索(名前・ふりがな、タグ、区分)。条件を変えるたびに描き直す
+  const listSearchName = document.getElementById('list_search_name');
+  if (listSearchName) {
+    listSearchName.addEventListener('input', () => {
+      listSearch.text = listSearchName.value;
+      renderMyLayoutList();
+    });
+  }
+  const listSearchKind = document.getElementById('list_search_kind');
+  if (listSearchKind) {
+    listSearchKind.addEventListener('change', () => {
+      listSearch.kind = listSearchKind.value;
+      renderMyLayoutList();
+    });
+  }
+  const listSearchTags = document.getElementById('list_search_tags');
+  if (listSearchTags) {
+    listSearchTags.addEventListener('click', (e) => {
+      const btn = e.target.closest('.list-search-tag');
+      if (!btn) return;
+      const tag = decodeURIComponent(btn.dataset.tag);
+      if (listSearch.tags.has(tag)) listSearch.tags.delete(tag); else listSearch.tags.add(tag);
+      renderMyLayoutList();
+    });
+  }
+  const listSearchClear = document.getElementById('list_search_clear');
+  if (listSearchClear) {
+    listSearchClear.addEventListener('click', () => {
+      listSearch.text = '';
+      listSearch.tags.clear();
+      listSearch.kind = 'all';
+      if (listSearchName) listSearchName.value = '';
+      renderMyLayoutList();
     });
   }
 
