@@ -635,6 +635,322 @@ A・B・C は完了した。次は文末の「第2期」（D〜H）の「タス�
 - タグのチップの並び順（使っている数が多い順、同じ数なら名前順）
 - 検索条件をブラウザに記憶しない
 
+### 実装計画（2026-09-29 承認。A2〜H3）
+
+#### Context
+第2期の要件（Q22〜Q43）は、`docs/plan-2026-09-features.md` の「第2期」で決まっている。対象は次の5つ。
+- D: フォルダの種別
+- E: 2段のフォルダ
+- F: シノビ/エネミーの区分
+- G: タグ
+- H: 名前・タグの検索
+
+A1（API のレイアウト v2 の検証と保存）は実装済み（`sinobigami-api` の `911e126`、`feature/layout-v2`）。
+
+ユーザーの要望で、残りの作業（A2〜H3）の実装方法を先に決めてから進める。承認後は、まずこの内容を計画書の「第2期」に「実装計画」として写してコミットし、そのうえでタスクを上から実行する。
+
+運用作業は、毎回実行前に確認を取る。
+- 本番への反映（バックアップ・デプロイ）
+- `main` へのマージ
+- push
+
+#### 共通の進め方
+- 1タスク＝1コミット。コミットメッセージは日本語で、ユーザーから見た変化を書く。末尾に Co-Authored-By を付ける。
+- 両アプリ（`sinobigami/index.js`・`magirogi/index.js`）には、同じ処理を今の書き方で入れる。
+  - シノビガミで作って確かめてから、マギロギへ移す。
+  - マギロギはブロックの中にあるので、字下げが1段深い。
+- ローカルでの確認は、次の環境で行う。
+  - **API**: `sinobigami-api` で `.dev.vars`（`EXTRA_ALLOWED_ORIGINS=http://localhost:8420`）を作り、`npm run db:migrate:local` → `npm run dev`（8787）。
+  - **フロント**: TRPG に `.claude/launch.json` を作り、`static-server`（`python -m http.server 8420`）を登録して `preview_start` で開く。`.claude/` はコミットしない。
+  - **ブラウザ**: 内蔵ブラウザで操作し、`read_page`・`javascript_tool` で状態を確かめる。
+  - **ドラッグ**: 今までどおり、合成したドラッグイベントで確かめる。
+- Node は `C:\Program Files\nodejs` にある。Bash では PATH に足して使う。
+
+---
+
+#### API（`sinobigami-api`、`feature/layout-v2`）
+
+##### A2: `GET ?v=2` と、v1 の `PUT` の互換（`src/index.js`・`test/layout.spec.js`）
+- **`GET /api/my-layout`**
+  - `url.searchParams.get("v") === "2"` なら、`{ v: 2, items: buildLayoutTree(...) }` をそのまま返す。
+  - それ以外は、今の `toLegacyLayoutTree` の v1 の形を返す。
+- **`PUT` の本文が v1 のとき**（`body.v` が無い、または 1）
+  1. 保存済みのレイアウトを読む（`parseStoredLayout`）。
+  2. 保存済みのレイアウトにサブフォルダがあれば、409 `{ error: "一覧の形式が新しくなっています。ページを再読み込みしてください" }` を返す。
+  3. サブフォルダが無ければ、フォルダIDごとに保存済みの `kind` を引き継ぐ。無ければ一般にする。
+  - 実装: `normalizeLayout` の結果に `sourceVersion` を持たせるか、呼び出し側で `body.v` を見て、`inheritFolderKinds(layout, stored)` を通す。
+  - 引き継いだ種別と違うゲームのキャラが入っていれば、`filterLayoutCharacters` が400を返す（古いフロントは元に戻して通知する）。
+- **テストを足すもの**
+  - `?v=2` の形（種別・サブフォルダ・フォルダの中のキャラに `type`）
+  - 保存済みの v1 が `?v=2` では一般になること（移行の確認）
+  - v1 の `PUT` での種別の引き継ぎ
+  - サブフォルダがあるときの v1 の `PUT` が 409 で、保存済みのものが変わらないこと
+- `AGENTS.md` の契約の説明も更新する。
+
+##### A3: 一覧の要約に `furigana` / `tags` / `kind` を足す（`toCharacterSummary`）
+- **`furigana`**: `i.fu` が文字列なら、その値。無ければ `""`。
+- **`tags`**: `tg` を次のように整える。
+  - 配列でなければ `[]`。
+  - 文字列だけを取り出し、前後の空白を除く。
+  - 1〜20文字（`[...s].length`）のものだけを残す。
+  - 重複を除き、先頭から5個まで。
+- **`kind`**: `game === "sinobigami"` のときだけ付ける。
+  - `i.kd` が既知の値（`CHARACTER_KINDS = ["shinobi", "enemy"]`）ならその値、それ以外は `"shinobi"`。
+- `/api/my-characters` にも、同じ要約が返る。
+- テスト: `index.spec.js` か `layout.spec.js` に、要約のキーと、不正なタグの取り除きを足す。
+
+##### A4 〔運用〕本番への反映
+1. `feature/layout-v2` を `main` にマージして push する。
+2. `npm run db:backup`。wrangler のログインがこの PC に無ければ、`npx wrangler login` をユーザーに行ってもらう。
+3. `npx wrangler deploy`。D1 のマイグレーションは無い。
+4. スモークテスト: `curl` で、次がすべて 401 になることを確かめる。
+   - `GET /api/my-layout`
+   - `GET /api/my-layout?v=2`
+   - `PUT /api/my-layout`
+5. `docs/development-log.md` の先頭に記録してコミット・push する。
+
+前回、自動モードで Claude からの実行が拒否されたため、2〜3 はユーザーに実行してもらう前提で案内する。
+
+---
+
+#### F. エネミー（TRPG、`feature/enemy-kind`。シノビガミだけ）
+
+##### F1: 区分の入力欄と生命力の見出し
+- **`sinobigami/index.html`**: 基本情報の先頭（名前の上）に、次の行を足す。
+  ```html
+  <label for="char_kind">区分</label>
+  <select id="char_kind" name="char_kind">
+    <option value="shinobi">シノビ</option>
+    <option value="enemy">エネミー</option>
+  </select>
+  ```
+  「追加生命力」のラベルに `id="life_extra_label"` を付ける。
+- **`sinobigami/index.js`**
+  - 定数の表を作り、区分を後から足しやすくする: `CHARACTER_KINDS = { shinobi: { label: 'シノビ', lifeLabel: '追加生命力' }, enemy: { label: 'エネミー', lifeLabel: '生命力' } }`。
+  - `getCharacterKind()`（不明な値はシノビ）を作る。
+  - `applyCharacterKindUI()` でラベルの文字を変える。呼ぶのは次のとき。
+    - `change`
+    - `applyLoadedData` の最後
+    - `resetCharacterForm` の最後
+  - `INPUT_KEY_MAP` に `char_kind: 'kd'` を足す。
+  - 保存・JSON・共有は、今の仕組み（`select` を集める `buildSaveData`）にそのまま乗る。
+    - 古いデータは `kd` が無いので、`applyLoadedData` が `selectedIndex = 0`（シノビ）にする。
+  - 画像出力（`buildPreviewHTML` の「追加生命力」の見出しと `dt`）を、`lifeLabel` に変える。
+
+##### F2: CCFOLIA の出力を区分で分ける
+- 「4. ココフォリア用コピー」の `statusArr` を分ける。
+  - エネミーのとき: `[{ label: '生命力', value: life, max: life }, { label: '忍具', value: ninguTotal, max: 6 }]`
+  - シノビのとき: 今のまま。
+- コマンド・`params`・名前・`externalUrl` は、シノビと同じ。
+- 確かめ方: クリップボードに書く JSON を `javascript_tool` で横取りして確かめる。
+
+##### F3: 一覧のエネミーのバッジ（両アプリ。A4 の後）
+- `buildListItemHTML` で、`h.kind === 'enemy'` なら、ゲームのバッジの後ろに `<span class="history-item-kind-badge">エネミー</span>` を足す。
+- CSS を両アプリの `stylesheet.css` に足し、4つのテーマで読めることを確かめる。
+
+##### F4 〔運用〕`main` にマージして push する
+
+---
+
+#### D・E. フォルダの種別と2段（`feature/folder-kind-nesting`）
+
+##### D1: v2 の読み込みと、2段の描画・種別での絞り込み（シノビガミ）
+- **読み込み**: `renderMyCharacters` は `/api/my-layout?v=2` を使う。フォルダの中のキャラにも `type:'character'` が付く。
+- **ツリーの補助関数**（今の `flattenLayoutItems` / `removeFromLayoutItems` を、再帰に書き換える）
+  - `flattenLayoutItems(items)`: 再帰で、キャラだけを並び順どおりに返す。
+  - `removeFromLayoutItems(items, id)`: 再帰で、キャラを1体取り除く。
+  - `findLayoutFolder(items, id)`: `{ folder, parent }` を返す。
+  - `countLayoutFolders(items)`: フォルダの数を、サブフォルダも含めて数える。
+  - `FOLDER_KINDS = { general: '一般', sinobigami: 'シノビガミ', magirogi: 'マギロギ' }`
+  - `folderMatchesGameFilter(f)`: `f.kind === 'general' || gameFilter === 'all' || f.kind === gameFilter`
+  - `canFolderHoldCharacter(f, c)`: `f.kind === 'general' || f.kind === c.game`
+  - `canFolderHoldFolder(parent, f)`
+    - 親が1段目であること
+    - `f` がサブフォルダを持たないこと
+    - `parent.kind === 'general' || parent.kind === f.kind`
+- **描画**（`renderMyLayoutList` と `buildFolderHTML`）
+  - `renderFolder(folder, depth)` で再帰に描く。
+    - 子の要素（`.history-folder-children`）を入れ子にする。
+    - 行に `data-depth` を付ける。
+    - キャラの行の `data-parent-folder` は、直接の親にする。
+  - 数は、絞り込み後のキャラの数（サブフォルダの中も含める）。
+  - シノビガミ用・マギロギ用のフォルダの行には、`history-item-game-badge badge-<kind>` の小さな印を付ける。一般は印なし。
+- **CSS**: 2段目の字下げを足す。
+
+##### D2: 作成・変更・削除（シノビガミ）
+- **`editingFolder`** を `{ id, isNew, parentId, draft, draftKind }` に広げる。
+  - 編集中の行には、名前の入力欄の横に、種別の `<select class="history-folder-kind">` を出す。
+  - `select` に出す種別は、次の3つを満たすものだけ。
+    - 中のキャラ全員が入れられる
+    - 中のサブフォルダの種別と合う
+    - 親の種別と合う
+  - フォーカスの扱い
+    - 同じ行の入力欄と `select` の間でフォーカスが移っても、編集を終えない（`focusout` の `relatedTarget` を見る）。
+    - `select` での Enter も確定、Esc は取り消し。
+- **初期値**
+  - 1段目のフォルダ: 絞り込みが「すべて」なら一般、それ以外はそのゲーム。
+  - サブフォルダ: 親が一般でなければ親の種別。一般なら、1段目と同じ決め方。
+- **サブフォルダの作成**
+  - 1段目の行に「サブフォルダ作成」ボタン（`.history-folder-add-sub`）を付ける。
+  - 押すと親を開き、子の先頭に入力欄を出す。
+  - `finishFolderEdit` は、`parentId` があれば親の `items` の先頭へ入れる。
+- **削除**: `deleteFolder` は、`items` が空のとき（サブフォルダも無いとき）だけ削除する。ツールチップと通知の文言も「キャラクターやサブフォルダがいる…」に変える。
+- **上限**: 作成ボタン（1段目とサブの両方）の上限は `countLayoutFolders >= MAX_FOLDERS`。
+
+##### D3: 2段のドロップと v2 での保存（シノビガミ）
+- **`resolveDrop`**: 重なりの考え方（`FOLDER_DROP_OVERLAP`）は、今のまま使う。
+  - **キャラを動かすとき**
+    - 中へ入れる先の候補は、`canFolderHoldCharacter` を満たすフォルダ行だけ。1段目・2段目の両方が対象。
+    - 開いた空のフォルダの余白も、同じ条件で中へ入れる。
+  - **フォルダを動かすとき**
+    - サブフォルダを持たないフォルダだけが、別の1段目のフォルダ（`canFolderHoldFolder`）の中へ入れられる。
+    - 自分自身と、自分の子孫の行は対象から外す（`.history-folder-children[data-folder-id=動かしているID]` の中を除く）。
+  - **前後に置くとき**: 落とした先の行の親（`data-parent-folder`）に入ることになるので、同じ条件で確かめる。
+    - キャラ: 親が、そのキャラを入れられるフォルダであること。
+    - フォルダ: 親が無いか、1段目で `canFolderHoldFolder` を満たすこと。3段目になる位置には置けない。
+  - 置けない場所では `null` を返す（ブラウザが禁止のカーソルを出す）。
+- **`moveLayoutItem`**
+  - 再帰で取り除いてから、次の3通りで差し込む。
+    - `rootEnd`（一覧の末尾）
+    - `into`（どの段のフォルダでも。先頭か末尾）
+    - `ref`（その行が入っている配列を再帰で探し、前後に入れる）
+  - 念のため、同じ規則で確かめ直す。
+- **保存**: `toLayoutPayload` は v2 の形にする（再帰。`kind` を付ける。フォルダの中はキャラIDか、サブフォルダのオブジェクト）。
+  - `saveMyLayout` は今のまま（失敗したら元に戻す）。
+  - 409 が返ったら（別のタブが古いなど）、今と同じ「元に戻す」で扱う。
+
+##### D4: マギロギへ D1〜D3 を移す（`magirogi/index.js`・`stylesheet.css`）
+
+##### D5: 判定ツール（`sinobigami_tool/index.html` の `fetchMyLayout` / `renderMyCharacterOptions`）
+- `?v=2` を取得する。
+- マギロギ用のフォルダは出さない。
+- `optgroup` は入れ子にできないので、次のようにする。
+  - 1段目の直下のキャラ: `optgroup label="親"`
+  - サブフォルダ: `optgroup label="親 / 子"`
+
+##### D6: `CLAUDE.md`（一覧・ドロップ・ツールの説明）と計画書を更新する。〔運用〕push する
+
+---
+
+#### G. タグ（`feature/tags`）
+
+##### G1: シノビガミのタグ入力と、一覧での表示
+- **HTML**（ふりがなの次の行）
+  ```html
+  <label for="tag_input">タグ</label>
+  <div class="tag-editor">
+    <span id="tag_chips"></span>
+    <input id="tag_input" type="text" list="tag_suggestions" maxlength="20" autocomplete="off"
+           placeholder="Enterで追加(5個まで・共有リンクでも見えます)">
+    <datalist id="tag_suggestions"></datalist>
+  </div>
+  ```
+- **JS**
+  - `characterTags` の配列、`MAX_TAGS = 5`、`MAX_TAG_LENGTH = 20` を持つ。
+  - `normalizeTags(list)` で、前後の空白を除き、1〜20文字のものだけを残し、完全一致の重複を除き、先頭から5個までにする。
+  - `renderTagChips()` で、チップと × を描く。
+  - `addTag`: Enter のときと、フォーカスが外れたときに足す。変換中（`isComposing`）は無視する。6個目は通知して足さない。
+  - `removeTag`: × で外す。
+  - 候補（`datalist`）: ログイン中なら、`myCharactersCache` のタグを使う。空なら、入力欄にフォーカスしたときに `/api/my-layout?v=2` を1回だけ取得する。
+- **保存と読み込み**
+  - `buildSaveData`: `tag_input` を除き、`data.tags = [...characterTags]` を足す。
+    - あわせて、`#history_panel` の中の入力も除く。H の検索の `select` が保存に混ざらないように、先に直しておく。
+  - `applyLoadedData`: `characterTags = normalizeTags(data.tags || [])` にする。
+  - `resetCharacterForm`: `[]` に戻す。
+  - `compactifyForShare`: `tags` → `tg`（空なら付けない）。
+  - `expandFromShare`: `tg` → `tags`。
+  - 追加だけの変更なので、データのバージョン（`v`）は上げない。
+- **一覧**: `buildListItemHTML` で、`h.tags` があれば名前の下に小さなチップを並べる。エスケープする。
+
+##### G2: マギロギへ G1 を移す（基本情報の、名前の次あたり）
+
+##### G3: `CLAUDE.md` と計画書を更新する。〔運用〕push する
+
+---
+
+#### H. 検索（`feature/search`）
+
+##### H1: シノビガミの検索欄と絞り込み表示
+- **HTML**（パネルの `game_filter_tabs` の下。ログイン中だけ表示する）
+  - `<input type="search" id="list_search_name" placeholder="名前・ふりがなで検索">`
+  - `<select id="list_search_kind">`（区分: すべて / シノビ / エネミー。マギロギのタブでは隠す）
+  - `<div id="list_search_tags">`（タグのチップ）
+  - 「条件をクリア」ボタン
+- **状態**: メモリの `listSearch = { text: '', tags: new Set(), kind: 'all' }`。記憶しない。
+- **関数**
+  - `normalizeSearchText(s)`: NFKC → 小文字 → カタカナをひらがなに（`[\u30a1-\u30f6]` を −0x60）。
+  - `matchesListSearch(c)`
+    - 名前か、ふりがなに部分一致する。
+    - 選んだタグをすべて持つ。
+    - 区分を選んでいるときは、シノビガミのキャラで、`(c.kind || 'shinobi')` が一致する。
+  - `isListSearchActive()`
+- **表示**: `renderMyLayoutList` では、`matchesGameFilter(c) && matchesListSearch(c)` で絞る。検索中は次のようにする。
+  - 見えるキャラが0のフォルダは出さない。
+  - 残ったフォルダは、強制的に開いて表示する。開閉の記憶は変えない。
+  - ドラッグをしない。
+  - フォルダの作成・名前の変更・サブフォルダ作成・削除のボタンを出さない。
+  - 一致が0件なら「条件に合うキャラクターがいません」と出す。
+- **タグのチップ**
+  - `myCharactersCache` のタグを、使っている数が多い順、同じ数なら名前順（`localeCompare(…, 'ja')`）に並べる。
+  - 押すと選択が切り替わる。タグが無ければ、欄ごと隠す。
+- ゲストのとき（`renderGuestHistory`）は、検索欄を隠す。
+
+##### H2: マギロギへ H1 を移す
+
+##### H3: `CLAUDE.md` と計画書を更新する。〔運用〕push する
+
+---
+
+#### 重要なファイル
+- `sinobigami-api/src/index.js`
+  - `normalizeLayout` / `filterLayoutCharacters` / `buildLayoutTree` / `toLegacyLayoutTree` / `toCharacterSummary`
+  - `/api/my-layout` の処理
+- `sinobigami-api/test/layout.spec.js`、`sinobigami-api/AGENTS.md`、`sinobigami-api/docs/development-log.md`
+- `sinobigami/index.js`
+  - 一覧: `buildListItemHTML` / `renderMyLayoutList` / `buildFolderHTML` / `finishFolderEdit` / `deleteFolder` / `moveLayoutItem` / `toLayoutPayload` / `renderMyCharacters` / `resolveDrop`
+  - 保存と共有: `buildSaveData` / `applyLoadedData` / `resetCharacterForm` / `INPUT_KEY_MAP` / `compactifyForShare` / `expandFromShare`
+  - 出力: ココフォリア用コピー / `buildPreviewHTML`
+- `sinobigami/index.html`・`stylesheet.css`（基本情報・生命力・一覧パネル）
+- `magirogi/` の同じ3ファイル
+- `sinobigami_tool/index.html`（`fetchMyLayout` / `renderMyCharacterOptions`）
+- `CLAUDE.md`、`docs/plan-2026-09-features.md`
+
+#### 検証
+- **API**: 各タスクで `npx vitest run` が、すべて通ること。
+- **API の互換**: ローカル API で、今の `main` のフロント（v1）を開き、一覧の表示・並べ替え・フォルダの出し入れが今までどおり動くことを確かめる。サブフォルダを作った後は、409 になって元に戻ることも確かめる。
+- **F**
+  - 区分を切り替えたときのラベル
+  - 保存 → 再読み込み、JSON、共有リンクで区分が残ること
+  - 古いキャラがシノビになること
+  - CCFOLIA の JSON（エネミーは「生命力」と「忍具」だけ）
+  - 画像出力の見出し
+  - 一覧のバッジ
+- **D・E**
+  - 種別ごとの表示（3つのタブ）
+  - 作成・種別の変更・選べない種別が出ないこと
+  - サブフォルダの作成・削除（中身があるときの拒否）
+  - ドラッグの各組み合わせ
+    - 種別の合わないフォルダには入らない
+    - 3段目にならない
+    - サブフォルダを持つフォルダは入らない
+    - 隠れたキャラの相対順が保たれる
+  - 失敗したときに元に戻ること
+  - 100個の上限
+  - スマホ幅の表示
+  - 判定ツールの選択肢
+- **G**
+  - 5個・20文字の上限、重複、変換中の Enter
+  - 保存・共有・JSON での往復
+  - 候補の表示、一覧のチップ
+  - 両アプリで同じキャラのタグが見えること
+- **H**
+  - ひらがなとカタカナ、全角と半角、大文字と小文字の一致
+  - ふりがなでの一致
+  - タグの AND、区分での絞り込み、タブとの組み合わせ
+  - フォルダの自動展開と、条件を消したときの開閉の記憶への戻り
+  - 検索中にドラッグと編集ができないこと
+- **全体**: コンソールにエラーが無いこと。4つのテーマで見た目を確かめること。本番での確認は、公開のたびにユーザーが行う。
+
 ### タスク（上から順に実行。`←` の後は先に終わっている必要があるタスク。1タスク＝1コミット。〔運用〕は運用作業で、実行前に確認を取る）
 **準備**
 - [x] P0 `sinobigami-api` を Documents にクローンする（2026-09-29）
