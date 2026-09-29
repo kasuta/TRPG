@@ -2275,8 +2275,12 @@ GWT　戦国変調表`;
       const ninguTotal = ['ningu_hyorogan', 'ningu_jintsumaru', 'ningu_tonkofu', 'ningu_other']
         .reduce((sum, key) => sum + parseNinguCount(getFieldValue(key)), 0);
 
-      // シノビガミ用ステータス配列
-      const statusArr = [
+      // シノビガミ用ステータス配列(エネミーは分野ごとの生命力を持たないので、生命力と忍具だけ)
+      const life = Number(getFieldValue('life_extra', '0'));
+      const statusArr = getCharacterKind() === 'enemy' ? [
+        { label: '生命力', value: life, max: life },
+        { label: '忍具', value: ninguTotal, max: 6 }
+      ] : [
         { label: '器術', value: Number(getFieldValue('kijutsu', '1')), max: Number(getFieldValue('kijutsu', '1')) },
         { label: '体術', value: Number(getFieldValue('taijutsu', '1')), max: Number(getFieldValue('taijutsu', '1')) },
         { label: '忍術', value: Number(getFieldValue('ninjutsu', '1')), max: Number(getFieldValue('ninjutsu', '1')) },
