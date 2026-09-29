@@ -2131,6 +2131,10 @@ textarea {
 	font-size: 0.75rem;
 	color: var(--muted);
 }
+/* フォルダの種別(シノビガミ用・マギロギ用)の印 */
+.history-folder-kind-badge { flex-shrink: 0; margin-right: 0; }
+/* サブフォルダ(2段目)の行は少し小さくする */
+.history-folder[data-depth="2"] { padding: 6px 10px; font-size: 0.95em; }
 
 .history-item-info { min-width: 0; }
 
