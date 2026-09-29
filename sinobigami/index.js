@@ -68,6 +68,8 @@
     const next = current === 'pc' ? 'normal' : 'pc';
     localStorage.setItem(LAYOUT_STORAGE_KEY, next);
     applyLayout(next);
+    // 列の幅が変わるので、忍法などのテキストエリアの高さを新しい幅で計算し直す
+    resyncAllTextareaHeights();
   });
 })();
 
@@ -521,6 +523,21 @@ const resizeTextareaRow = (container, selector, rowId) => {
   rowTextareas.forEach(ta => { maxHeight = Math.max(maxHeight, ta.scrollHeight); });
   rowTextareas.forEach(ta => { ta.style.height = `${maxHeight}px`; });
 };
+
+/**
+ * 行の高さを自動で合わせるテキストエリア(data-row を持つもの)を、すべて今の幅で計算し直す。
+ * 高さはその時の幅に合わせた px で固定しているので、PC表示の切り替えやウィンドウの幅が変わったときに呼ぶ
+ * (呼ばないと、幅が広がって余白が大きすぎたり、狭まって下が見切れたりする)。
+ * 泡立たない input イベントを送るので、各テキストエリアの高さ合わせだけが動く。
+ */
+const resyncAllTextareaHeights = () => {
+  document.querySelectorAll('textarea[data-row]').forEach(ta => ta.dispatchEvent(new Event('input')));
+};
+let textareaResyncTimer = null;
+window.addEventListener('resize', () => {
+  clearTimeout(textareaResyncTimer);
+  textareaResyncTimer = setTimeout(resyncAllTextareaHeights, 150);
+});
 
 /** リストの末尾からrowSize個の子要素を削除する（ヘッダー行数以下にはしない） */
 const removeLastRow = (list, headerCount, rowSize) => {
