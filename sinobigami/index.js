@@ -2637,6 +2637,14 @@ if (newCharChoiceSinobigami) newCharChoiceSinobigami.addEventListener('click', (
 if (newCharChoiceMagirogi) newCharChoiceMagirogi.addEventListener('click', () => startNewCharacter('magirogi'));
 if (newCharacterModal) newCharacterModal.addEventListener('click', (e) => { if (e.target === newCharacterModal) closeNewCharacterModal(); });
 
+// 見出し(トップページへのリンク)で移動すると保存していない入力が消えるので、確認してから移動する。
+// Ctrl/⌘/Shift/Alt+クリックと中クリック(click は発生しない)は別のタブ・ウィンドウで開き、このページは残るので確認しない
+const homeLink = document.querySelector('h1 .home-link');
+if (homeLink) homeLink.addEventListener('click', (e) => {
+  if (e.button !== 0 || e.ctrlKey || e.metaKey || e.shiftKey || e.altKey) return;
+  if (!confirm('保存していない内容は消えます。移動しますか？')) e.preventDefault();
+});
+
 /**
  * 立ち絵の Blob から一覧用のサムネイルを作って送り、版を返す。
  * 失敗しても例外は投げずに null を返す(サムネイルは、持ち主が一覧を開いたときに作り直される)。
