@@ -2057,9 +2057,51 @@ const renderMyCharacters = async () => {
     myCharactersCache = flattenLayoutItems(myLayoutItems);
     applyGameFilter();
     refreshOwnerPasswordUI();
+    backfillThumbnails();
   } catch (err) {
     console.error(err);
     if (listEl) listEl.innerHTML = '<p class="history-empty">読み込みに失敗しました</p>';
+  }
+};
+
+/**
+ * 立ち絵はあるのにサムネイルが無いキャラ(サムネイルの導入前に保存した・古いフロントで立ち絵を変えた)について、
+ * 1体ずつ元の画像を読み込んでサムネイルを作って送り、できた行から表示を変える。
+ * 同時に1つだけ動かし、同じページで失敗したキャラは2度は試さない。ログアウトしたら止める。
+ */
+const backfillFailedIds = new Set();
+let isBackfillingThumbnails = false;
+const backfillThumbnails = async () => {
+  if (isBackfillingThumbnails) return;
+  isBackfillingThumbnails = true;
+  try {
+    for (;;) {
+      if (!getAuthToken()) break;
+      const target = myCharactersCache.find(c => c.hasImage && !c.thumb && !backfillFailedIds.has(c.id));
+      if (!target) break;
+      let version = null;
+      try {
+        const res = await fetch(`${API_BASE}/api/image/${encodeURIComponent(target.id)}`);
+        if (!res.ok) throw new Error(`立ち絵を読み込めませんでした(${res.status})`);
+        version = await uploadThumbnail(target.id, await res.blob());
+      } catch (err) {
+        console.warn('サムネイルを作れませんでした', target.id, err);
+      }
+      if (!version) {
+        backfillFailedIds.add(target.id);
+        continue;
+      }
+      const withThumb = (items) => items.map(item => item.type === 'folder'
+        ? { ...item, items: withThumb(item.items) }
+        : (item.id === target.id ? { ...item, thumb: version } : item));
+      myLayoutItems = withThumb(myLayoutItems);
+      myLayoutSavedItems = withThumb(myLayoutSavedItems);
+      myCharactersCache = flattenLayoutItems(myLayoutItems);
+      // ドラッグ中に描き直すと、動かしている行が消えるので待つ(次に描き直すときに反映される)
+      if (!document.querySelector('#history_list .is-dragging')) renderMyLayoutList();
+    }
+  } finally {
+    isBackfillingThumbnails = false;
   }
 };
 
