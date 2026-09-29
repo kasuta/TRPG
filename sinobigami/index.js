@@ -559,6 +559,46 @@ const bindAutoResize = (container, selector) => (textarea) => {
 /** HTML エスケープ */
 const escapeHTML = (str) => str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 
+/**
+ * 一覧用の立ち絵のサムネイルを作る。切らずに全体を縮小し(長い辺を THUMB_MAX_SIDE 以下に。拡大はしない)、
+ * WebP(作れないブラウザでは PNG)にする。THUMB_MAX_BYTES(APIの上限と同じ)以下にならなければ null。
+ */
+const THUMB_MAX_SIDE = 128;
+const THUMB_MAX_BYTES = 64 * 1024;
+const createThumbnail = async (blob) => {
+  let source;
+  try {
+    source = await createImageBitmap(blob);
+  } catch {
+    source = await new Promise((resolve, reject) => {
+      const img = new Image();
+      const url = URL.createObjectURL(blob);
+      img.onload = () => { URL.revokeObjectURL(url); resolve(img); };
+      img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('画像を読み込めませんでした')); };
+      img.src = url;
+    });
+  }
+  const width = source.naturalWidth || source.width;
+  const height = source.naturalHeight || source.height;
+  const scale = Math.min(1, THUMB_MAX_SIDE / Math.max(width, height));
+  const canvas = document.createElement('canvas');
+  canvas.width = Math.max(1, Math.round(width * scale));
+  canvas.height = Math.max(1, Math.round(height * scale));
+  const context = canvas.getContext('2d');
+  context.imageSmoothingQuality = 'high';
+  context.drawImage(source, 0, 0, canvas.width, canvas.height);
+  if (source.close) source.close();
+
+  const toBlob = (type, quality) => new Promise(resolve => canvas.toBlob(resolve, type, quality));
+  for (const quality of [0.85, 0.7, 0.5]) {
+    const webp = await toBlob('image/webp', quality);
+    if (!webp || webp.type !== 'image/webp') break; // WebP を作れないブラウザ
+    if (webp.size <= THUMB_MAX_BYTES) return webp;
+  }
+  const png = await toBlob('image/png');
+  return png && png.size <= THUMB_MAX_BYTES ? png : null;
+};
+
 // ==========================================
 // 画像プレビュー
 // ==========================================
@@ -1045,8 +1085,12 @@ document.addEventListener('DOMContentLoaded', () => {
   const loadFile = document.getElementById('load_data_file');
   const shareBtn = document.getElementById('share_link_btn');
   let savedImageBase64 = null;
+  // 今の立ち絵が、どのキャラの /api/image/<id> から読み込んだものか(ファイルを選んだ・JSONから読んだときは null)。
+  // 保存先のキャラと同じなら、保存のときに画像を送り直さない
+  let imageSourceId = null;
 
   imageInput.addEventListener('change', () => {
+    imageSourceId = null;
     const file = imageInput.files && imageInput.files[0];
     if (file && file.type.startsWith('image/')) {
       const reader = new FileReader();
@@ -1096,6 +1140,8 @@ document.addEventListener('DOMContentLoaded', () => {
     document.querySelectorAll('.skill-check, .gap-check').forEach(cb => { cb.checked = false; });
     document.querySelectorAll('.damage-check').forEach(el => { el.dataset.state = '0'; });
     savedImageBase64 = null;
+    // 画像の出どころは、読み込んだ側(共有リンクなら、そのキャラのID)が設定し直す
+    imageSourceId = null;
     clearPreview();
     const revealPasswordInput = document.getElementById('reveal_password');
     if (revealPasswordInput) revealPasswordInput.value = '';
@@ -2453,6 +2499,7 @@ const resetCharacterForm = () => {
   document.querySelectorAll('.damage-check').forEach(el => { el.dataset.state = '0'; });
 
   savedImageBase64 = null;
+  imageSourceId = null;
   clearPreview();
   if (imageInput) imageInput.value = '';
   const revealPasswordInput = document.getElementById('reveal_password');
@@ -2516,6 +2563,28 @@ if (newCharChoiceSinobigami) newCharChoiceSinobigami.addEventListener('click', (
 if (newCharChoiceMagirogi) newCharChoiceMagirogi.addEventListener('click', () => startNewCharacter('magirogi'));
 if (newCharacterModal) newCharacterModal.addEventListener('click', (e) => { if (e.target === newCharacterModal) closeNewCharacterModal(); });
 
+/**
+ * 立ち絵の Blob から一覧用のサムネイルを作って送り、版を返す。
+ * 失敗しても例外は投げずに null を返す(サムネイルは、持ち主が一覧を開いたときに作り直される)。
+ */
+const uploadThumbnail = async (id, imageBlob) => {
+  try {
+    const thumb = await createThumbnail(imageBlob);
+    if (!thumb) throw new Error(`サムネイルを${THUMB_MAX_BYTES / 1024}KB以下にできませんでした`);
+    const authHeaders = getAuthToken() ? { Authorization: `Bearer ${getAuthToken()}` } : {};
+    const res = await fetch(`${API_BASE}/api/upload-thumb/${id}`, {
+      method: 'POST',
+      headers: { 'Content-Type': thumb.type, ...authHeaders },
+      body: thumb,
+    });
+    if (!res.ok) throw new Error(`サムネイルの保存に失敗しました(${res.status})`);
+    return (await res.json()).version;
+  } catch (err) {
+    console.warn('サムネイルを保存できませんでした', err);
+    return null;
+  }
+};
+
 /** キャラクターを保存する(currentCharacterIdの有無で新規/更新を自動判定) */
 const saveCharacter = async () => {
   const data = buildSaveData();
@@ -2549,8 +2618,10 @@ const saveCharacter = async () => {
     history.replaceState(null, '', `${window.location.pathname}${window.location.search}#id=${id}`);
   }
 
-  // 画像があれば、そのIDに紐づけてアップロード(新規・更新どちらも同じ処理でOK)
-  if (imageBase64) {
+  // 画像は、選び直したとき・別のキャラの画像を持っているとき(JSONの読み込みや新規保存)だけ送る。
+  // このキャラの画像をサーバーから読み込んだまま上書き保存するときは送り直さない。
+  // 送るときは、一覧用のサムネイルも作って送る(失敗しても保存は成功とし、一覧を開いたときに作り直す)
+  if (imageBase64 && imageSourceId !== id) {
     const imageBlob = await (await fetch(imageBase64)).blob();
     const imgRes = await fetch(`${API_BASE}/api/upload-image/${id}`, {
       method: 'POST',
@@ -2558,6 +2629,8 @@ const saveCharacter = async () => {
       body: imageBlob,
     });
     if (!imgRes.ok) throw new Error('画像のアップロードに失敗しました');
+    await uploadThumbnail(id, imageBlob);
+    imageSourceId = id;
   }
 
   addToHistory(id, getFieldValue('name'));
@@ -2639,6 +2712,8 @@ document.addEventListener('keydown', (e) => {
 
     currentCharacterId = match[1];
     applyLoadedData(data);
+    // このキャラの立ち絵はサーバーにあるので、上書き保存では送り直さない
+    if (compact.img) imageSourceId = match[1];
     showToast('共有リンクからキャラクターデータを読み込みました！');
   } catch (err) {
     console.error('共有データの読み込みに失敗しました', err);
