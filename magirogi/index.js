@@ -1089,8 +1089,16 @@ const LIST_CARET_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentCol
 const LIST_PERSON_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="7" r="4"/><path d="M5 21v-1a7 7 0 0 1 14 0v1"/></svg>';
 
 
+/** 一覧のキャラを開くページのURL(そのキャラのゲームのキャラシに #id= を付ける) */
+const characterPageHref = (id, game) => {
+  const g = game === 'sinobigami' || game === 'magirogi' ? game : CURRENT_GAME;
+  return `../${g}/index.html#id=${encodeURIComponent(id)}`;
+};
+
 /**
  * 一覧のキャラ1行分のHTML(ゲスト履歴とマイキャラで共用。folderId があればフォルダの中の行)。
+ * 名前は、行全体に広げたリンクにする(右クリックの「新しいタブで開く」や Ctrl+クリックで別タブに開けるように)。
+ * 普通のクリックは一覧のクリック処理が受け取って、今までどおりこのタブで開く。行のドラッグを邪魔しないよう、リンク自体はドラッグさせない
  * showThumb なら(ログイン中の一覧)、左にサムネイルの枠を出し、右は「ゲーム・タグ」「名前」の2行にする
  */
 const buildListItemHTML = (h) => {
@@ -1114,7 +1122,7 @@ const buildListItemHTML = (h) => {
     : `<span class="history-item-thumb is-empty">${LIST_PERSON_ICON}</span>`);
   // サムネイルのある行(ログイン中の一覧)は、1行目にゲームのバッジとタグ、2行目に名前を出す(保存日時は出さない)。
   // タグが多いときは1行に収まる分だけ見せ、全部はツールチップで示す
-  const name = escapeHTML(h.name || '(名前未設定)');
+  const name = `<a class="history-item-link" href="${characterPageHref(h.id, h.game)}" draggable="false">${escapeHTML(h.name || '(名前未設定)')}</a>`;
   const info = h.showThumb
     ? `<div class="history-item-meta"${Array.isArray(h.tags) && h.tags.length ? ` title="${escapeHTML(h.tags.join(' / ')).replace(/"/g, '&quot;')}"` : ''}>${badge}${(Array.isArray(h.tags) ? h.tags : []).map(tag => `<span class="history-item-tag">${escapeHTML(tag)}</span>`).join('')}</div>
           <div class="history-item-name">${name}</div>`
@@ -1962,6 +1970,9 @@ const renderListItems = (items) => {
       }
       const item = e.target.closest('.history-item');
       if (item) {
+        // Ctrl/⌘/Shift+クリックは、名前のリンクをブラウザがそのまま開く(別タブ・別ウィンドウ)。Alt+クリックはリンクの保存になるので、普通のクリックと同じに扱う
+        if (e.button !== 0 || e.ctrlKey || e.metaKey || e.shiftKey) return;
+        e.preventDefault();
         const game = item.dataset.game;
         if (game && game !== CURRENT_GAME) {
           const targetPath = game === 'sinobigami' ? '../sinobigami/index.html' : '../magirogi/index.html';

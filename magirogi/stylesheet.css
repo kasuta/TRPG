@@ -1673,6 +1673,14 @@ textarea {
 
 .history-item:hover { background: var(--surface-alt); }
 
+/* 名前のリンクを行全体に広げる(右クリックの「新しいタブで開く」を行のどこでも使えるように)。削除ボタンはその上に出す */
+.history-item { position: relative; }
+.history-item-link { color: inherit; text-decoration: none; cursor: inherit; }
+.history-item-link::after { content: ''; position: absolute; inset: 0; border-radius: inherit; }
+.history-item-link:focus-visible { outline: none; }
+.history-item:has(.history-item-link:focus-visible) { outline: 2px solid var(--accent); outline-offset: 1px; }
+.history-item-delete { position: relative; z-index: 1; }
+
 /* ドラッグで並べ替えられる行(ログイン中の一覧・PCのみ。キャラ行とフォルダ行) */
 .history-item.is-draggable,
 .history-folder.is-draggable { position: relative; cursor: grab; }
