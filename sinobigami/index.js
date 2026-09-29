@@ -1708,54 +1708,64 @@ const saveMyLayout = async () => {
 /**
  * キャラかフォルダ(drag: { kind: 'character'|'folder', id })を移動して保存する。drop は次のどれか。
  *   { ref: { kind, id }, place: 'before'|'after' } … その行の前後(フォルダの中の行なら、そのフォルダの中)
- *   { into: フォルダID, position: 'start'|'end' }   … フォルダの中の先頭/末尾
+ *   { into: フォルダID, position: 'start'|'end' }   … フォルダ(どの段でも)の中の先頭/末尾
  *   { rootEnd: true }                                … 一覧(フォルダの外)の末尾
  * ツリーから取り除いて差し込むだけなので、ほかの項目(絞り込みで隠れたキャラも含む)の相対順は変わらない。
- * フォルダはフォルダの中に入れない(1階層)。
+ * 種別の合わないフォルダへの移動と、2段を超える移動(サブフォルダを持つフォルダを入れる、サブフォルダの中へ入れる)はしない。
  */
 const moveLayoutItem = (drag, drop) => {
   let moved = null;
-  const rest = [];
-  for (const item of myLayoutItems) {
-    if (item.type === 'folder') {
-      if (drag.kind === 'folder' && item.id === drag.id) { moved = item; continue; }
-      const child = drag.kind === 'character' ? item.items.find(c => c.id === drag.id) : null;
-      if (child) moved = child;
-      rest.push(child ? { ...item, items: item.items.filter(c => c !== child) } : item);
-    } else if (drag.kind === 'character' && item.id === drag.id) {
+  const take = (items) => items.flatMap(item => {
+    const isFolder = item.type === 'folder';
+    if (isFolder === (drag.kind === 'folder') && item.id === drag.id) {
       moved = item;
-    } else {
-      rest.push(item);
+      return [];
     }
-  }
+    return isFolder ? [{ ...item, items: take(item.items) }] : [item];
+  });
+  const rest = take(myLayoutItems);
   if (!moved) return;
-  // フォルダの中のキャラ(要約)には type が無いので、外に出すときに付ける
-  if (drag.kind === 'character') moved = { ...moved, type: 'character' };
+
+  // parent(フォルダ。null なら一覧のいちばん外)の中に、動かしたものを置けるか
+  const canPlace = (parent) => {
+    if (!parent) return true;
+    if (drag.kind === 'character') return canFolderHoldCharacter(parent, moved);
+    const isRoot = rest.some(item => item.type === 'folder' && item.id === parent.id);
+    return isRoot && !hasSubfolders(moved) && canParentHoldFolderKind(parent, folderKind(moved));
+  };
 
   let next = null;
   if (drop.rootEnd) {
     next = [...rest, moved];
   } else if (drop.into) {
-    if (drag.kind === 'folder') return;
-    next = rest.map(item => item.type === 'folder' && item.id === drop.into
-      ? { ...item, items: drop.position === 'start' ? [moved, ...item.items] : [...item.items, moved] }
-      : item);
+    const found = findLayoutFolder(rest, drop.into);
+    if (!found || !canPlace(found.folder)) return;
+    next = updateLayoutFolder(rest, drop.into, f => ({ ...f, items: drop.position === 'start' ? [moved, ...f.items] : [...f.items, moved] }));
   } else if (drop.ref) {
     const offset = drop.place === 'after' ? 1 : 0;
-    const rootIndex = rest.findIndex(item => (item.type === 'folder' ? 'folder' : 'character') === drop.ref.kind && item.id === drop.ref.id);
-    if (rootIndex >= 0) {
-      next = [...rest];
-      next.splice(rootIndex + offset, 0, moved);
-    } else if (drop.ref.kind === 'character' && drag.kind === 'character') {
-      next = rest.map(item => {
-        if (item.type !== 'folder') return item;
-        const index = item.items.findIndex(c => c.id === drop.ref.id);
-        if (index < 0) return item;
-        const items = [...item.items];
-        items.splice(index + offset, 0, moved);
-        return { ...item, items };
-      });
-    }
+    const isRef = (item) => (item.type === 'folder' ? 'folder' : 'character') === drop.ref.kind && item.id === drop.ref.id;
+    // ref の行がある配列に差し込む。見つからなければ undefined、置けなければ null
+    const insertNextTo = (items, parent) => {
+      const index = items.findIndex(isRef);
+      if (index >= 0) {
+        if (!canPlace(parent)) return null;
+        const copy = [...items];
+        copy.splice(index + offset, 0, moved);
+        return copy;
+      }
+      for (let i = 0; i < items.length; i++) {
+        const item = items[i];
+        if (item.type !== 'folder') continue;
+        const inner = insertNextTo(item.items, item);
+        if (inner === undefined) continue;
+        if (inner === null) return null;
+        const copy = [...items];
+        copy[i] = { ...item, items: inner };
+        return copy;
+      }
+      return undefined;
+    };
+    next = insertNextTo(rest, null) || null;
   }
   if (!next) return;
   if (JSON.stringify(toLayoutPayload(next)) === JSON.stringify(toLayoutPayload(myLayoutItems))) return;
@@ -2053,17 +2063,32 @@ if (historyListEl) {
   });
 
   // ドラッグで並べ替え・フォルダへの出し入れをする(ログイン中の一覧・PCのみ。行に draggable が付いているときだけ動く)
-  let dragging = null; // { kind: 'character'|'folder', id, grabOffset, height }
+  // { kind: 'character', id, game, grabOffset, height } か { kind: 'folder', id, folderKind, hasSub, grabOffset, height }
+  let dragging = null;
 
-  /** キャラを動かしているとき、フォルダ行の高さのこの割合以上に被ったらフォルダの中へ入れる */
+  /** 動かしている行が、フォルダ行の高さのこの割合以上に被ったらフォルダの中へ入れる */
   const FOLDER_DROP_OVERLAP = 0.5;
+
+  /** 動かしているものを、parentId のフォルダの中(null なら一覧のいちばん外)に置けるか(種別と2段の制限) */
+  const canPlaceUnder = (parentId) => {
+    if (!parentId) return true;
+    const found = findLayoutFolder(myLayoutItems, parentId);
+    if (!found) return false;
+    if (dragging.kind === 'character') return canFolderHoldCharacter(found.folder, dragging);
+    // フォルダは、サブフォルダを持たないものだけを、1段目のフォルダの中へ入れられる
+    return !found.parent && found.folder.id !== dragging.id && !dragging.hasSub && canParentHoldFolderKind(found.folder, dragging.folderKind);
+  };
+
+  /** 動かしているフォルダ自身の中の行か(自分の中へは入れない) */
+  const isInsideDragged = (el) => dragging.kind === 'folder' && !!el.closest(`.history-folder-children[data-folder-id="${dragging.id}"]`);
 
   /**
    * 落とす先(moveLayoutItem の drop)と、示し方を求める。落とせない場所なら null。
    * マウスの位置ではなく、動かしている行(掴んだ位置から計算した上端〜下端)で判定する。
-   * - キャラ: フォルダ行に FOLDER_DROP_OVERLAP 以上被ったら、そのフォルダの中(閉じていれば末尾、開いていれば先頭)。
-   * - それ以外は、動かしている行の中心がある行の前後(上半分=前 / 下半分=後)。
-   *   開いた空のフォルダの余白ならその中、一覧の下の余白ならルートの末尾。フォルダはフォルダの中に入れない。
+   * - フォルダ行に FOLDER_DROP_OVERLAP 以上被ったら、そのフォルダの中(閉じていれば末尾、開いていれば先頭)。
+   *   入れられるフォルダ(種別が合い、2段を超えない)だけが対象。
+   * - それ以外は、動かしている行の中心がある行の前後(上半分=前 / 下半分=後)。その行と同じフォルダの中に置けるときだけ。
+   *   開いた空のフォルダの余白ならその中、一覧の下の余白ならルートの末尾。
    */
   const resolveDrop = (e) => {
     if (!dragging) return null;
@@ -2071,50 +2096,48 @@ if (historyListEl) {
     const bottom = top + dragging.height;
     const centerY = (top + bottom) / 2;
 
-    if (dragging.kind === 'character') {
-      let best = null;
-      let bestOverlap = 0;
-      historyListEl.querySelectorAll('.history-folder:not(.is-editing)').forEach(folderRow => {
-        const rect = folderRow.getBoundingClientRect();
-        const overlap = Math.min(bottom, rect.bottom) - Math.max(top, rect.top);
-        if (overlap >= rect.height * FOLDER_DROP_OVERLAP && overlap > bestOverlap) {
-          best = folderRow;
-          bestOverlap = overlap;
-        }
-      });
-      if (best) {
-        const position = best.classList.contains('is-open') ? 'start' : 'end';
-        return { drop: { into: best.dataset.folderId, position }, into: best };
+    let best = null;
+    let bestOverlap = 0;
+    historyListEl.querySelectorAll('.history-folder:not(.is-editing):not(.is-dragging)').forEach(folderRow => {
+      if (isInsideDragged(folderRow) || !canPlaceUnder(folderRow.dataset.folderId)) return;
+      const rect = folderRow.getBoundingClientRect();
+      const overlap = Math.min(bottom, rect.bottom) - Math.max(top, rect.top);
+      if (overlap >= rect.height * FOLDER_DROP_OVERLAP && overlap > bestOverlap) {
+        best = folderRow;
+        bestOverlap = overlap;
       }
+    });
+    if (best) {
+      const position = best.classList.contains('is-open') ? 'start' : 'end';
+      return { drop: { into: best.dataset.folderId, position }, into: best };
+    }
 
-      // 開いた空のフォルダ(「キャラクターがいません」)の余白
-      for (const placeholder of historyListEl.querySelectorAll('.history-folder-empty')) {
-        const container = placeholder.closest('.history-folder-children');
-        const rect = container.getBoundingClientRect();
-        if (centerY >= rect.top && centerY <= rect.bottom) {
-          const folderId = container.dataset.folderId;
-          return { drop: { into: folderId, position: 'end' }, into: historyListEl.querySelector(`.history-folder[data-folder-id="${folderId}"]`) };
-        }
+    // 開いた空のフォルダ(「キャラクターがいません」)の余白
+    for (const placeholder of historyListEl.querySelectorAll('.history-folder-empty')) {
+      const container = placeholder.closest('.history-folder-children');
+      const folderId = container.dataset.folderId;
+      if (isInsideDragged(container) || folderId === dragging.id || !canPlaceUnder(folderId)) continue;
+      const rect = container.getBoundingClientRect();
+      if (centerY >= rect.top && centerY <= rect.bottom) {
+        return { drop: { into: folderId, position: 'end' }, into: historyListEl.querySelector(`.history-folder[data-folder-id="${folderId}"]`) };
       }
     }
 
     // 動かしている行自身(フォルダなら、その中の行も)と、名前の編集中のフォルダは対象にしない
     const rows = [...historyListEl.querySelectorAll('.history-item, .history-folder')].filter(r =>
-      !r.classList.contains('is-dragging')
-      && !r.classList.contains('is-editing')
-      && !(dragging.kind === 'folder' && r.dataset.parentFolder === dragging.id));
+      !r.classList.contains('is-dragging') && !r.classList.contains('is-editing') && !isInsideDragged(r));
     const row = rows.find(r => centerY < r.getBoundingClientRect().bottom);
     if (!row) return { drop: { rootEnd: true }, atEnd: true };
 
+    // その行の前後に置くと、その行と同じフォルダの中に入る
+    if (!canPlaceUnder(row.dataset.parentFolder || null)) return null;
     const rect = row.getBoundingClientRect();
     const before = centerY < rect.top + rect.height / 2;
     const place = before ? 'before' : 'after';
-    if (row.classList.contains('history-folder')) {
-      return { drop: { ref: { kind: 'folder', id: row.dataset.folderId }, place }, row, before };
-    }
-    // フォルダはフォルダの中に入れられない
-    if (dragging.kind === 'folder' && row.dataset.parentFolder) return null;
-    return { drop: { ref: { kind: 'character', id: row.dataset.id }, place }, row, before };
+    const ref = row.classList.contains('history-folder')
+      ? { kind: 'folder', id: row.dataset.folderId }
+      : { kind: 'character', id: row.dataset.id };
+    return { drop: { ref, place }, row, before };
   };
 
   const clearDropIndicator = () => {
@@ -2129,9 +2152,14 @@ if (historyListEl) {
     // 掴んだ位置と行の高さを記録し、ドラッグ中は動かしている行の位置で判定する
     const rect = row.getBoundingClientRect();
     const geometry = { grabOffset: e.clientY - rect.top, height: rect.height };
-    dragging = row.classList.contains('history-folder')
-      ? { kind: 'folder', id: row.dataset.folderId, ...geometry }
-      : { kind: 'character', id: row.dataset.id, ...geometry };
+    if (row.classList.contains('history-folder')) {
+      const found = findLayoutFolder(myLayoutItems, row.dataset.folderId);
+      if (!found) return;
+      dragging = { kind: 'folder', id: found.folder.id, folderKind: folderKind(found.folder), hasSub: hasSubfolders(found.folder), ...geometry };
+    } else {
+      const c = myCharactersCache.find(x => x.id === row.dataset.id);
+      dragging = { kind: 'character', id: row.dataset.id, game: c ? c.game : row.dataset.game, ...geometry };
+    }
     e.dataTransfer.effectAllowed = 'move';
     e.dataTransfer.setData('text/plain', dragging.id);
     row.classList.add('is-dragging');
