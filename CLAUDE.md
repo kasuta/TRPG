@@ -45,8 +45,10 @@ Key endpoints (used identically from both apps, differentiated by a `game` query
 - `PUT /api/update/:id` — update an existing character
 - `GET /api/load/:id` — load a character by id (used when opening a shared link)
 - `DELETE /api/character/:id` — delete a character (owner only, requires `Authorization`; also removes the R2 image)
-- `POST /api/upload-image/:id` — upload character portrait (requires `Authorization` header)
-- `GET /api/image/:id` — fetch character portrait
+- `POST /api/upload-image/:id` — upload character portrait (requires `Authorization` header; also deletes the list thumbnail)
+- `GET /api/image/:id` — fetch character portrait (`max-age=0, must-revalidate`; answers 304 when `If-None-Match` matches)
+- `POST /api/upload-thumb/:id` — upload the list thumbnail (same permission as the portrait; the portrait must exist; ≤64KB png/jpeg/webp; returns `{ version }`)
+- `GET /api/thumb/:id?v=<version>` — fetch the list thumbnail (`max-age=31536000, immutable`; the version in the URL changes when the thumbnail changes)
 - `GET /api/my-characters` — list the logged-in user's characters (newest first; kept for compatibility, the apps no longer call it)
 - `GET /api/my-layout` / `PUT /api/my-layout` — the logged-in user's character list order and folders (see below)
 - `POST /api/login`, `POST /api/register`, `POST /api/logout` — auth
@@ -69,7 +71,7 @@ The Worker source now lives in its own repo: `https://github.com/kasuta/sinobiga
   - `PUT /api/my-layout` takes `{ v: 2, items }` with ids only: `{type:"character", id}`, and folders whose `items` are character id strings or subfolder objects.
   - Folder `kind` is `sinobigami` / `magirogi` / `general`. Sinobigami/Magirogi folders may only hold that game's characters (400 otherwise); a subfolder's kind must match its parent unless the parent is general. Folders (subfolders included) max 100, names 1–30 chars; other users' / unknown ids are silently dropped.
   - Layouts saved before v2 are read as general folders (no DB migration). Without `?v=2`, `GET` still returns the old v1 shape (no kinds, subfolder characters flattened into the parent) and a v1 `PUT` keeps the stored kinds, or returns 409 if subfolders exist — this keeps old cached pages from wiping subfolders.
-  - Character summaries (also from `/api/my-characters`) are `id, name, furigana, tags, game, kind, updatedAt, createdAt`. `kind` (`shinobi`/`enemy`) is only present for Shinobigami characters. `tags` are cleaned up server-side (strings, trimmed, 1–20 chars, unique, max 5).
+  - Character summaries (also from `/api/my-characters`) are `id, name, furigana, tags, game, kind, hasImage, thumb, updatedAt, createdAt` (`hasImage`: a portrait exists; `thumb`: the thumbnail version or null). `kind` (`shinobi`/`enemy`) is only present for Shinobigami characters. `tags` are cleaned up server-side (strings, trimmed, 1–20 chars, unique, max 5).
   - The server builds the order (it has tests; this repo doesn't). Plan and decisions: `docs/plan-2026-09-features.md`.
 - **第2期 (2026-09-29)**: フォルダの種別と2段、シノビ/エネミーの区分、タグ、一覧の検索. Decisions (Q22–Q43), requirements, non-requirements, the implementation plan and results are in `docs/plan-2026-09-features.md` under 「第2期」.
 - Rate limiting is **not** enabled on the API yet (on hold because of unclear pricing), so don't assume 429 handling exists server-side.
@@ -79,6 +81,12 @@ The Worker source now lives in its own repo: `https://github.com/kasuta/sinobiga
 Each `index.js` is a single large script (1500–2000 lines) organized around these concerns, all operating directly on the DOM (no virtual DOM / component framework):
 
 - **Form state**: character sheet fields are plain form inputs (`input[type=text]`, `input[type=number]`, `select`, `textarea`, checkboxes). `buildSaveData()` serializes all matching form elements into a save payload (skipping `#history_panel` and the tag input); `applyLoadedData()` does the reverse to populate the form from loaded data.
+- **Portraits and list thumbnails** (both apps, added 2026-09-29):
+  - Saving uploads the portrait only when it isn't already this character's server image (`imageSourceId` = the id whose `/api/image/<id>` the current portrait came from; set by the share-link loader, cleared by choosing a file / loading JSON / new character).
+  - When it does upload, `saveCharacter` also sends a thumbnail. `createThumbnail` (global) shrinks the whole image to a 128px long side, WebP or PNG, ≤64KB. `uploadThumbnail` never throws.
+  - Logged-in list rows (`buildListItemHTML` with `showThumb`) show a 36×48 frame: the thumbnail (`loading="lazy"`, versioned URL, `object-fit: contain`) or a person icon.
+  - After the list loads, `backfillThumbnails` creates missing thumbnails one at a time for characters with `hasImage && !thumb`. It fetches the portrait once and skips ids that failed in this page.
+  - Guest history and the judgement tool show no thumbnails.
 - **Tags** (both apps): up to `MAX_TAGS` (5) tags of 1–`MAX_TAG_LENGTH` (20) chars per character, kept in `characterTags` (global, before the `DOMContentLoaded` callback) and edited as chips in 基本情報 (`#tag_chips`, `#tag_input`; Enter or leaving the field adds, IME composition is ignored, × removes). They are saved as `tags` (JSON) / `tg` (compact format) and reset by `applyLoadedData` / new character. The `<datalist>` suggests tags from the user's own characters (`refreshTagSuggestions` → `tagSuggestionProvider`, which the list code registers inside the callback because it needs the login state and `myCharactersCache`). Logged-in list rows show the tags (`buildListItemHTML`). Tags are visible to anyone with the share link.
 - **Dynamic rows**: repeatable sections (spells/relations in sinobigami, similar list rows in magirogi) are added/removed/reordered via row-builder functions (e.g. `addSpellRow`, `removeSpellRow`, `swapSpellRows`) and pruned of empty trailing rows before save (`trimTrailingEmpty`, `isEmptySpellRow`/`isEmptyRelationRow`).
 - **Share links / compact encoding**: `compactifyForShare()` / `expandFromShare()` compress the full form data into a compact query-string-friendly shape for share URLs; loading a shared link goes through `GET /api/load/:id`.
