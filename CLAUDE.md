@@ -18,6 +18,18 @@ There is no build, lint, or test tooling in this repo. Open the relevant `index.
 
 **Testing against a local API**: when the pages are opened on `localhost`/`127.0.0.1`, both apps talk to `http://localhost:8787` instead of production (the production API does not allow localhost origins anyway). Run the API locally from `sinobigami-api` (copy `.dev.vars.example` to `.dev.vars`, `npm run db:migrate:local`, `npm run dev`), then serve this repo with the `static-server` entry in `.claude/launch.json` (port 8420). Browsers may cache `index.js`/`stylesheet.css` from the static server — bust the cache when a change doesn't seem to apply.
 
+## Deployment (hosting)
+
+The same static files are published to two hosts (both are allowed origins of the API):
+
+- **GitHub Pages — `https://kasuta.github.io/TRPG/`**: updates automatically a minute or two after a push to `main`.
+- **Cloudflare Pages — `https://trpg-tools.pages.dev/`**: does **not** update on push. The user has set it up to update **only when they deploy it manually**. After pushing to `main`:
+  - Tell the user that pages.dev needs a manual deploy.
+  - Don't treat pages.dev still serving the old files as a failed deploy or a build problem.
+  - Don't try to deploy it yourself.
+
+When a frontend change depends on a new API contract, deploy the API first. Pages that haven't been updated yet (pages.dev before the manual deploy, or cached pages) keep running the old frontend, so API changes must stay backward compatible (see the v1/v2 layout notes below).
+
 ## Backend
 
 Both `magirogi` and `sinobigami` talk to the same remote Cloudflare Worker API — **not part of this repo**:
