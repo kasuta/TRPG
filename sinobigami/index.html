@@ -115,27 +115,12 @@
         <h2>基本情報</h2>
         <form class="input-form info-grid">
           <div class="info-row info-row-full">
-            <label for="char_kind" class="info-label">区分</label>
-            <select id="char_kind" name="char_kind">
-              <option value="shinobi">シノビ</option>
-              <option value="enemy">エネミー</option>
-            </select>
-          </div>
-          <div class="info-row info-row-full">
             <label for="name" class="info-label">名前</label>
             <input id="name" name="name" type="text"/>
           </div>
           <div class="info-row info-row-full">
             <label for="furigana" class="info-label">ふりがな</label>
             <input id="furigana" name="furigana" type="text"/>
-          </div>
-          <div class="info-row info-row-full">
-            <label for="tag_input" class="info-label" title="タグは共有リンクを開いた人にも見えます">タグ</label>
-            <div class="tag-editor">
-              <span class="tag-chips" id="tag_chips"></span>
-              <input id="tag_input" type="text" list="tag_suggestions" maxlength="20" autocomplete="off" placeholder="Enterで追加(5個まで)" title="1〜20文字・5個まで。タグは共有リンクを開いた人にも見えます" aria-label="タグを追加" />
-              <datalist id="tag_suggestions"></datalist>
-            </div>
           </div>
           <div class="info-row">
             <label for="school" class="info-label">上位流派</label>
@@ -180,6 +165,21 @@
             <input id="face" name="face" type="text"/>
             <label for="belief" class="info-label">信念</label>
             <input id="belief" name="belief" type="text"/>
+          </div>
+          <div class="info-row info-row-full">
+            <label for="char_kind" class="info-label">区分</label>
+            <select id="char_kind" name="char_kind">
+              <option value="shinobi">シノビ</option>
+              <option value="enemy">エネミー</option>
+            </select>
+          </div>
+          <div class="info-row info-row-full">
+            <label for="tag_input" class="info-label" title="タグは共有リンクを開いた人にも見えます">タグ</label>
+            <div class="tag-editor">
+              <span class="tag-chips" id="tag_chips"></span>
+              <input id="tag_input" type="text" list="tag_suggestions" maxlength="20" autocomplete="off" placeholder="Enterで追加(5個まで)" title="1〜20文字・5個まで。タグは共有リンクを開いた人にも見えます" aria-label="タグを追加" />
+              <datalist id="tag_suggestions"></datalist>
+            </div>
           </div>
           <div class="info-row info-row-full reveal-password-row" id="reveal_password_owner_row">
             <label for="reveal_password" class="info-label reveal-password-label" title="「奥義」「忍具」の表示ロック用のパスワードです。未設定の場合、誰でも表示可能です。">表示パス</label>
