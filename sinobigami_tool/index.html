@@ -131,6 +131,9 @@
     }
     .header-actions { display: flex; align-items: center; gap: 12px; }
     header a { color: var(--header-link); font-size: 0.85rem; }
+    /* 見出しはトップページ(ツールまとめ)へのリンク。見た目は見出しのまま */
+    header h1 .home-link { color: inherit; font-size: inherit; text-decoration: none; }
+    header h1 .home-link:hover, header h1 .home-link:focus-visible { text-decoration: underline; text-underline-offset: 0.15em; text-decoration-thickness: 2px; }
     .theme-toggle { background: var(--panel); color: var(--text); border-color: var(--border); }
     .theme-toggle:hover:not(:disabled) { background: var(--surface-alt); }
 
@@ -362,7 +365,7 @@
 <body>
   <div class="page">
     <header>
-      <h1>シノビガミ 判定ツール</h1>
+      <h1><a class="home-link" href="../" title="ツールまとめへ">シノビガミ 判定ツール</a></h1>
       <div class="header-actions">
         <button type="button" class="theme-toggle" id="theme_toggle_btn" title="キャラシと共通の設定です"></button>
         <a href="../sinobigami/index.html">キャラシ作成サイトへ</a>
