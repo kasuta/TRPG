@@ -732,7 +732,6 @@ textarea {
 	color: var(--text);
 	font: inherit;
 	font-family: monospace;
-	line-height: 1.6;
 	resize: vertical;
 	box-shadow: none;
 }
