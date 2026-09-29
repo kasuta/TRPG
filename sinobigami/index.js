@@ -1469,7 +1469,13 @@ const LIST_TRASH_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentCol
 const LIST_FOLDER_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>';
 const LIST_CARET_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg>';
 
-/** 一覧のキャラ1行分のHTML(ゲスト履歴とマイキャラで共用。folderId があればフォルダの中の行) */
+/** 立ち絵の無いキャラの行に出す、人形のアイコン */
+const LIST_PERSON_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="7" r="4"/><path d="M5 21v-1a7 7 0 0 1 14 0v1"/></svg>';
+
+/**
+ * 一覧のキャラ1行分のHTML(ゲスト履歴とマイキャラで共用。folderId があればフォルダの中の行)。
+ * showThumb ならサムネイルの枠を出す(ログイン中の一覧だけ)
+ */
 const buildListItemHTML = (h) => {
   const date = new Date(h.updatedAt);
   const dateStr = isNaN(date) ? '' : date.toLocaleString('ja-JP', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' });
@@ -1484,8 +1490,14 @@ const buildListItemHTML = (h) => {
   const tags = Array.isArray(h.tags) && h.tags.length
     ? `<div class="history-item-tags">${h.tags.map(tag => `<span class="history-item-tag">${escapeHTML(tag)}</span>`).join('')}</div>`
     : '';
+  // ログイン中の一覧だけ、立ち絵のサムネイル(切らずに枠に収める。無ければ人形のアイコン)を出す。
+  // URL に版を付けて長くキャッシュさせるので、描き直しでは読み込み直さない。読み込めなければ枠だけにする
+  const thumb = !h.showThumb ? '' : (h.thumb
+    ? `<span class="history-item-thumb"><img src="${API_BASE}/api/thumb/${encodeURIComponent(h.id)}?v=${encodeURIComponent(h.thumb)}" alt="" loading="lazy" width="36" height="48" onerror="this.remove()"></span>`
+    : `<span class="history-item-thumb is-empty">${LIST_PERSON_ICON}</span>`);
   return `
-      <div class="history-item${h.draggable ? ' is-draggable' : ''}" data-id="${h.id}" data-game="${h.game || ''}"${folderAttr}${dragAttrs}>
+      <div class="history-item${h.draggable ? ' is-draggable' : ''}${h.showThumb ? ' has-thumb' : ''}" data-id="${h.id}" data-game="${h.game || ''}"${folderAttr}${dragAttrs}>
+        ${thumb}
         <div class="history-item-info">
           <div class="history-item-name">${badge}${escapeHTML(h.name || '(名前未設定)')}</div>
           ${tags}
@@ -1738,7 +1750,7 @@ const renderMyLayoutList = () => {
   const isVisibleCharacter = (c) => matchesGameFilter(c) && matchesListSearch(c);
   const draggable = canReorderByDrag() && !searching;
   const openIds = getOpenFolderIds();
-  const charRow = (c, folderId) => buildListItemHTML({ ...c, deletable: true, deleteType: 'server', folderId, draggable });
+  const charRow = (c, folderId) => buildListItemHTML({ ...c, deletable: true, deleteType: 'server', folderId, draggable, showThumb: true });
   // 作成中のフォルダの行(parent の中。1段目なら parent は null)
   const newFolderRow = (parent, depth) => {
     if (!editingFolder || !editingFolder.isNew || editingFolder.parentId !== (parent ? parent.id : null)) return '';
