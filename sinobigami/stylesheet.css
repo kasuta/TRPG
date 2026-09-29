@@ -2311,6 +2311,17 @@ textarea {
 }
 .history-item-game-badge.badge-sinobigami { background: #8c4433; }
 .history-item-game-badge.badge-magirogi { background: #2f5d62; }
+/* シノビガミの区分(エネミー)。どのテーマでも読めるよう、文字色の枠線だけにする */
+.history-item-kind-badge {
+	display: inline-block;
+	font-size: 0.68rem;
+	font-weight: 700;
+	padding: 0 5px;
+	border: 1px solid currentColor;
+	border-radius: 8px;
+	margin-right: 6px;
+	vertical-align: middle;
+}
 
 .modal-overlay {
 	position: fixed;

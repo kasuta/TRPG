@@ -715,7 +715,8 @@ const LIST_CARET_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentCol
 const buildListItemHTML = (h) => {
   const date = new Date(h.updatedAt);
   const dateStr = isNaN(date) ? '' : date.toLocaleString('ja-JP', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' });
-  const badge = h.game ? `<span class="history-item-game-badge badge-${h.game}">${GAME_LABEL[h.game] || h.game}</span>` : '';
+  const badge = (h.game ? `<span class="history-item-game-badge badge-${h.game}">${GAME_LABEL[h.game] || h.game}</span>` : '')
+    + (h.kind === 'enemy' ? '<span class="history-item-kind-badge">エネミー</span>' : '');
 
   const deleteBtn = h.deletable
     ? `<button type="button" class="history-item-delete" data-delete-id="${h.id}" data-delete-type="${h.deleteType || 'local'}" title="削除">${LIST_TRASH_ICON}</button>`
