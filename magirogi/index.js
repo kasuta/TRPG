@@ -2208,7 +2208,7 @@ if (newCharacterModal) newCharacterModal.addEventListener('click', (e) => { if (
 const homeLink = document.querySelector('h1 .home-link');
 if (homeLink) homeLink.addEventListener('click', (e) => {
   if (e.button !== 0 || e.ctrlKey || e.metaKey || e.shiftKey || e.altKey) return;
-  if (!confirm('保存していない内容は消えます。移動しますか？')) e.preventDefault();
+  if (!confirm('ツールまとめページに移動します。保存していない内容は消えますが、移動しますか？')) e.preventDefault();
 });
   /** キャラクターを保存する(currentCharacterIdの有無で新規/更新を自動判定) */
   /**
