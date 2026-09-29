@@ -205,6 +205,98 @@ const resizeTextareaRow = (container, selector, rowId) => {
 /** HTML エスケープ */
 const escapeHTML = (str) => str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 
+/**
+ * キャラのタグ(基本情報の「タグ」)。1〜20文字・完全一致の重複なし・5個まで(APIの一覧の要約も同じ上限)。
+ * 保存データでは tags、短縮形では tg。共有リンクを開いた人にも見える。
+ */
+const MAX_TAGS = 5;
+const MAX_TAG_LENGTH = 20;
+let characterTags = [];
+
+/** タグの配列を、前後の空白なし・1〜20文字・重複なし・5個までに整える */
+const normalizeTags = (list) => {
+  const tags = [];
+  (Array.isArray(list) ? list : []).forEach(tag => {
+    if (typeof tag !== 'string') return;
+    const trimmed = tag.trim();
+    const length = [...trimmed].length;
+    if (length < 1 || length > MAX_TAG_LENGTH || tags.includes(trimmed) || tags.length >= MAX_TAGS) return;
+    tags.push(trimmed);
+  });
+  return tags;
+};
+
+const renderTagChips = () => {
+  const chips = document.getElementById('tag_chips');
+  if (!chips) return;
+  chips.innerHTML = characterTags.map((tag, i) =>
+    `<span class="tag-chip">${escapeHTML(tag)}<button type="button" class="tag-chip-remove" data-tag-index="${i}" title="タグを外す" aria-label="タグを外す">×</button></span>`
+  ).join('');
+};
+
+/** タグを1つ足す。足せた(または空・付いていた)ら true、上限で足せなければ知らせて false */
+const addTag = (text) => {
+  const tag = String(text || '').trim();
+  if (!tag || characterTags.includes(tag)) return true;
+  if ([...tag].length > MAX_TAG_LENGTH) {
+    showToast(`タグは${MAX_TAG_LENGTH}文字までです。`);
+    return false;
+  }
+  if (characterTags.length >= MAX_TAGS) {
+    showToast(`タグは${MAX_TAGS}個までです。`);
+    return false;
+  }
+  characterTags = [...characterTags, tag];
+  renderTagChips();
+  return true;
+};
+
+/** タグごとの使っている数を、多い順(同じ数なら名前順)の [タグ, 数] の配列にする */
+const tagUsage = (characters) => {
+  const counts = new Map();
+  characters.forEach(c => (Array.isArray(c.tags) ? c.tags : []).forEach(tag => counts.set(tag, (counts.get(tag) || 0) + 1)));
+  return [...counts.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0], 'ja'));
+};
+
+/**
+ * タグの入力候補(自分のキャラで使っているタグ)。キャラの要約の一覧を返す関数は、ログインと一覧の処理の側で登録する
+ * (tagSuggestionProvider。未ログインなら空)。
+ */
+let tagSuggestionProvider = null;
+const refreshTagSuggestions = async () => {
+  const datalist = document.getElementById('tag_suggestions');
+  if (!datalist || !tagSuggestionProvider) return;
+  const characters = await tagSuggestionProvider();
+  datalist.innerHTML = tagUsage(characters)
+    .filter(([tag]) => !characterTags.includes(tag))
+    .map(([tag]) => `<option value="${escapeHTML(tag).replace(/"/g, '&quot;')}"></option>`)
+    .join('');
+};
+
+const tagInput = document.getElementById('tag_input');
+if (tagInput) {
+  tagInput.addEventListener('keydown', (e) => {
+    // 日本語入力の変換確定のEnterは無視する(keyCode 229 は変換中を示す古いブラウザ向け)
+    if (e.key !== 'Enter' || e.isComposing || e.keyCode === 229) return;
+    e.preventDefault();
+    if (addTag(tagInput.value)) {
+      tagInput.value = '';
+      refreshTagSuggestions();
+    }
+  });
+  tagInput.addEventListener('focus', refreshTagSuggestions);
+  // 入力したまま離れたときも足す
+  tagInput.addEventListener('change', () => {
+    if (addTag(tagInput.value)) tagInput.value = '';
+  });
+}
+document.getElementById('tag_chips')?.addEventListener('click', (e) => {
+  const btn = e.target.closest('.tag-chip-remove');
+  if (!btn) return;
+  characterTags = characterTags.filter((_, i) => i !== Number(btn.dataset.tagIndex));
+  renderTagChips();
+});
+
 // ==========================================
 // 画像プレビュー（defer で即時実行）
 // ==========================================
@@ -431,11 +523,13 @@ document.addEventListener('DOMContentLoaded', () => {
     const data = { inputs: {}, checkboxes: {}, spells: [], relations: [], image: savedImageBase64 };
 
     document.querySelectorAll('input[type="text"], input[type="number"], select, textarea').forEach(el => {
-      if (el.closest('#history_panel')) return;
+      // 一覧パネル(ログイン・検索)の入力と、タグの入力欄(タグは tags に入れる)は保存しない
+      if (el.closest('#history_panel') || el.id === 'tag_input') return;
       if (!el.name) return;
       if (el.name.startsWith('spell_') || el.name.startsWith('relation_')) return;
       data.inputs[el.id || el.name] = el.value;
     });
+    data.tags = [...characterTags];
     document.querySelectorAll('input[type="checkbox"]').forEach(el => {
       if (el.closest('#history_panel')) return;
       if (el.id.startsWith('relation_check_')) return;
@@ -458,6 +552,8 @@ document.addEventListener('DOMContentLoaded', () => {
     document.querySelectorAll('.gap-check').forEach(cb => { cb.checked = false; });
     savedImageBase64 = null;
     clearPreview();
+    characterTags = [];
+    renderTagChips();
   };
 
   /** セーブデータ(JSON)を現在のフォームへ反映(前のキャラの残留を防ぐため、まず全体をクリアしてから適用) */
@@ -470,6 +566,8 @@ document.addEventListener('DOMContentLoaded', () => {
         if (el) { el.value = value; if (key === 'area') el.dispatchEvent(new Event('change')); }
       }
     }
+    characterTags = normalizeTags(data.tags);
+    renderTagChips();
     if (data.checkboxes) {
       for (const [key, checked] of Object.entries(data.checkboxes)) {
         const el = document.getElementById(key);
@@ -619,6 +717,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     if (data.spells && data.spells.length) compact.sp = spellsToArrays(data.spells);
     if (data.relations && data.relations.length) compact.rl = relationsToArrays(data.relations);
+    if (data.tags && data.tags.length) compact.tg = data.tags;
     return compact;
   };
 
@@ -637,6 +736,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (compact.cb) compact.cb.forEach(id => { data.checkboxes[id] = true; });
     if (compact.sp) data.spells = arraysToSpells(compact.sp);
     if (compact.rl) data.relations = arraysToRelations(compact.rl);
+    if (Array.isArray(compact.tg)) data.tags = compact.tg;
     return data;
   };
 
@@ -723,10 +823,14 @@ const buildListItemHTML = (h) => {
     : '';
   const dragAttrs = h.draggable ? ' draggable="true"' : '';
   const folderAttr = h.folderId ? ` data-parent-folder="${h.folderId}"` : '';
+  const tags = Array.isArray(h.tags) && h.tags.length
+    ? `<div class="history-item-tags">${h.tags.map(tag => `<span class="history-item-tag">${escapeHTML(tag)}</span>`).join('')}</div>`
+    : '';
   return `
       <div class="history-item${h.draggable ? ' is-draggable' : ''}" data-id="${h.id}" data-game="${h.game || ''}"${folderAttr}${dragAttrs}>
         <div class="history-item-info">
           <div class="history-item-name">${badge}${escapeHTML(h.name || '(名前未設定)')}</div>
+          ${tags}
           <div class="history-item-date">${dateStr}</div>
         </div>
         ${deleteBtn}
@@ -1225,6 +1329,23 @@ const renderListItems = (items) => {
       console.error(err);
       if (listEl) listEl.innerHTML = '<p class="history-empty">読み込みに失敗しました</p>';
     }
+  };
+
+  /**
+   * キャラシのタグの入力候補に使う、自分のキャラの要約の一覧(未ログインなら空)。
+   * 一覧パネルをまだ開いていなければ、一覧を1回だけ取得する。
+   */
+  let tagSuggestionFetch = null;
+  tagSuggestionProvider = async () => {
+    if (!getAuthToken()) return [];
+    if (myCharactersCache.length) return myCharactersCache;
+    if (!tagSuggestionFetch) {
+      tagSuggestionFetch = fetch(`${API_BASE}/api/my-layout?v=2`, { headers: { Authorization: `Bearer ${getAuthToken()}` } })
+        .then(res => (res.ok ? res.json() : { items: [] }))
+        .then(json => flattenLayoutItems(json.items || []))
+        .catch(() => []);
+    }
+    return tagSuggestionFetch;
   };
 
   /** ログイン/未ログインに応じて表示を切り替える */

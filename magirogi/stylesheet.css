@@ -512,6 +512,47 @@ h1 {
 	grid-column: 2 / 5;
 }
 
+/* タグ: 付けたタグのチップと、追加の入力欄 */
+.info-grid .tag-editor {
+	grid-column: 2 / 5;
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 4px;
+	min-width: 0;
+	padding: 4px 8px;
+	background: var(--surface);
+}
+.tag-chips { display: contents; }
+.tag-chip {
+	display: inline-flex;
+	align-items: center;
+	gap: 2px;
+	max-width: 100%;
+	padding: 1px 2px 1px 8px;
+	border: 1px solid var(--border);
+	border-radius: 999px;
+	background: var(--surface-alt);
+	font-size: 0.8rem;
+	overflow-wrap: anywhere;
+}
+.tag-chip-remove {
+	border: none;
+	background: transparent;
+	color: var(--muted);
+	cursor: pointer;
+	padding: 0 4px;
+	font-size: 0.9rem;
+	line-height: 1;
+}
+.tag-chip-remove:hover { color: var(--accent); }
+.info-grid .tag-editor input[type="text"] {
+	flex: 1;
+	width: auto;
+	min-width: 12em;
+	padding: 2px;
+}
+
 label {
 	font-weight: 600;
 	color: var(--muted);
@@ -1674,6 +1715,25 @@ textarea {
 }
 .history-item-game-badge.badge-sinobigami { background: #8c4433; }
 .history-item-game-badge.badge-magirogi { background: #2f5d62; }
+/* 一覧の行のタグ */
+.history-item-tags {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 3px;
+	margin-top: 2px;
+}
+.history-item-tag {
+	max-width: 100%;
+	padding: 0 6px;
+	border: 1px solid var(--border);
+	border-radius: 999px;
+	background: var(--surface-alt);
+	color: var(--muted);
+	font-size: 0.68rem;
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
 /* シノビガミの区分(エネミー)。どのテーマでも読めるよう、文字色の枠線だけにする */
 .history-item-kind-badge {
 	display: inline-block;
