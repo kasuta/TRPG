@@ -223,6 +223,46 @@ window.addEventListener('resize', () => {
 const escapeHTML = (str) => str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 
 /**
+ * 一覧用の立ち絵のサムネイルを作る。切らずに全体を縮小し(長い辺を THUMB_MAX_SIDE 以下に。拡大はしない)、
+ * WebP(作れないブラウザでは PNG)にする。THUMB_MAX_BYTES(APIの上限と同じ)以下にならなければ null。
+ */
+const THUMB_MAX_SIDE = 128;
+const THUMB_MAX_BYTES = 64 * 1024;
+const createThumbnail = async (blob) => {
+  let source;
+  try {
+    source = await createImageBitmap(blob);
+  } catch {
+    source = await new Promise((resolve, reject) => {
+      const img = new Image();
+      const url = URL.createObjectURL(blob);
+      img.onload = () => { URL.revokeObjectURL(url); resolve(img); };
+      img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('画像を読み込めませんでした')); };
+      img.src = url;
+    });
+  }
+  const width = source.naturalWidth || source.width;
+  const height = source.naturalHeight || source.height;
+  const scale = Math.min(1, THUMB_MAX_SIDE / Math.max(width, height));
+  const canvas = document.createElement('canvas');
+  canvas.width = Math.max(1, Math.round(width * scale));
+  canvas.height = Math.max(1, Math.round(height * scale));
+  const context = canvas.getContext('2d');
+  context.imageSmoothingQuality = 'high';
+  context.drawImage(source, 0, 0, canvas.width, canvas.height);
+  if (source.close) source.close();
+
+  const toBlob = (type, quality) => new Promise(resolve => canvas.toBlob(resolve, type, quality));
+  for (const quality of [0.85, 0.7, 0.5]) {
+    const webp = await toBlob('image/webp', quality);
+    if (!webp || webp.type !== 'image/webp') break; // WebP を作れないブラウザ
+    if (webp.size <= THUMB_MAX_BYTES) return webp;
+  }
+  const png = await toBlob('image/png');
+  return png && png.size <= THUMB_MAX_BYTES ? png : null;
+};
+
+/**
  * キャラのタグ(基本情報の「タグ」)。1〜20文字・完全一致の重複なし・5個まで(APIの一覧の要約も同じ上限)。
  * 保存データでは tags、短縮形では tg。共有リンクを開いた人にも見える。
  */
@@ -322,6 +362,9 @@ const imagePreview = document.getElementById('setting_image_preview');
 const imageEmpty = document.getElementById('setting_image_empty');
 let previewUrl = null;
 let savedImageBase64 = null;
+// 今の立ち絵が、どのキャラの /api/image/<id> から読み込んだものか(ファイルを選んだ・JSONから読んだときは null)。
+// 保存先のキャラと同じなら、保存のときに画像を送り直さない
+let imageSourceId = null;
 
 const clearPreview = () => {
   if (previewUrl) { URL.revokeObjectURL(previewUrl); previewUrl = null; }
@@ -332,6 +375,7 @@ const clearPreview = () => {
 
 /** プレビュー表示とセーブ用base64変換をまとめて行う */
 imageInput.addEventListener('change', () => {
+  imageSourceId = null;
   const file = imageInput.files && imageInput.files[0];
   if (!file) { clearPreview(); savedImageBase64 = null; return; }
   if (!file.type.startsWith('image/')) {
@@ -568,6 +612,8 @@ document.addEventListener('DOMContentLoaded', () => {
     document.querySelectorAll('.skill-check').forEach(cb => { cb.checked = false; });
     document.querySelectorAll('.gap-check').forEach(cb => { cb.checked = false; });
     savedImageBase64 = null;
+    // 画像の出どころは、読み込んだ側(共有リンクなら、そのキャラのID)が設定し直す
+    imageSourceId = null;
     clearPreview();
     characterTags = [];
     renderTagChips();
@@ -828,7 +874,14 @@ const LIST_TRASH_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentCol
 const LIST_FOLDER_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>';
 const LIST_CARET_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg>';
 
-/** 一覧のキャラ1行分のHTML(ゲスト履歴とマイキャラで共用。folderId があればフォルダの中の行) */
+/** 立ち絵の無いキャラの行に出す、人形のアイコン */
+const LIST_PERSON_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="7" r="4"/><path d="M5 21v-1a7 7 0 0 1 14 0v1"/></svg>';
+
+
+/**
+ * 一覧のキャラ1行分のHTML(ゲスト履歴とマイキャラで共用。folderId があればフォルダの中の行)。
+ * showThumb ならサムネイルの枠を出す(ログイン中の一覧だけ)
+ */
 const buildListItemHTML = (h) => {
   const date = new Date(h.updatedAt);
   const dateStr = isNaN(date) ? '' : date.toLocaleString('ja-JP', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' });
@@ -843,8 +896,14 @@ const buildListItemHTML = (h) => {
   const tags = Array.isArray(h.tags) && h.tags.length
     ? `<div class="history-item-tags">${h.tags.map(tag => `<span class="history-item-tag">${escapeHTML(tag)}</span>`).join('')}</div>`
     : '';
+  // ログイン中の一覧だけ、立ち絵のサムネイル(切らずに枠に収める。無ければ人形のアイコン)を出す。
+  // URL に版を付けて長くキャッシュさせるので、描き直しでは読み込み直さない。読み込めなければ枠だけにする
+  const thumb = !h.showThumb ? '' : (h.thumb
+    ? `<span class="history-item-thumb"><img src="${API_BASE}/api/thumb/${encodeURIComponent(h.id)}?v=${encodeURIComponent(h.thumb)}" alt="" loading="lazy" width="36" height="48" onerror="this.remove()"></span>`
+    : `<span class="history-item-thumb is-empty">${LIST_PERSON_ICON}</span>`);
   return `
-      <div class="history-item${h.draggable ? ' is-draggable' : ''}" data-id="${h.id}" data-game="${h.game || ''}"${folderAttr}${dragAttrs}>
+      <div class="history-item${h.draggable ? ' is-draggable' : ''}${h.showThumb ? ' has-thumb' : ''}" data-id="${h.id}" data-game="${h.game || ''}"${folderAttr}${dragAttrs}>
+        ${thumb}
         <div class="history-item-info">
           <div class="history-item-name">${badge}${escapeHTML(h.name || '(名前未設定)')}</div>
           ${tags}
@@ -1096,7 +1155,7 @@ const renderListItems = (items) => {
     const isVisibleCharacter = (c) => matchesGameFilter(c) && matchesListSearch(c);
     const draggable = canReorderByDrag() && !searching;
     const openIds = getOpenFolderIds();
-    const charRow = (c, folderId) => buildListItemHTML({ ...c, deletable: true, deleteType: 'server', folderId, draggable });
+    const charRow = (c, folderId) => buildListItemHTML({ ...c, deletable: true, deleteType: 'server', folderId, draggable, showThumb: true });
     // 作成中のフォルダの行(parent の中。1段目なら parent は null)
     const newFolderRow = (parent, depth) => {
       if (!editingFolder || !editingFolder.isNew || editingFolder.parentId !== (parent ? parent.id : null)) return '';
@@ -1403,11 +1462,54 @@ const renderListItems = (items) => {
       myLayoutSavedItems = myLayoutItems;
       myCharactersCache = flattenLayoutItems(myLayoutItems);
       applyGameFilter();
+      backfillThumbnails();
     } catch (err) {
       console.error(err);
       if (listEl) listEl.innerHTML = '<p class="history-empty">読み込みに失敗しました</p>';
     }
   };
+
+  /**
+   * 立ち絵はあるのにサムネイルが無いキャラ(サムネイルの導入前に保存した・古いフロントで立ち絵を変えた)について、
+   * 1体ずつ元の画像を読み込んでサムネイルを作って送り、できた行から表示を変える。
+   * 同時に1つだけ動かし、同じページで失敗したキャラは2度は試さない。ログアウトしたら止める。
+   */
+  const backfillFailedIds = new Set();
+  let isBackfillingThumbnails = false;
+  const backfillThumbnails = async () => {
+    if (isBackfillingThumbnails) return;
+    isBackfillingThumbnails = true;
+    try {
+      for (;;) {
+        if (!getAuthToken()) break;
+        const target = myCharactersCache.find(c => c.hasImage && !c.thumb && !backfillFailedIds.has(c.id));
+        if (!target) break;
+        let version = null;
+        try {
+          const res = await fetch(`${API_BASE}/api/image/${encodeURIComponent(target.id)}`);
+          if (!res.ok) throw new Error(`立ち絵を読み込めませんでした(${res.status})`);
+          version = await uploadThumbnail(target.id, await res.blob());
+        } catch (err) {
+          console.warn('サムネイルを作れませんでした', target.id, err);
+        }
+        if (!version) {
+          backfillFailedIds.add(target.id);
+          continue;
+        }
+        const withThumb = (items) => items.map(item => item.type === 'folder'
+          ? { ...item, items: withThumb(item.items) }
+          : (item.id === target.id ? { ...item, thumb: version } : item));
+        myLayoutItems = withThumb(myLayoutItems);
+        myLayoutSavedItems = withThumb(myLayoutSavedItems);
+        myCharactersCache = flattenLayoutItems(myLayoutItems);
+        // ドラッグ中に描き直すと、動かしている行が消えるので待つ(次に描き直すときに反映される)
+        if (!document.querySelector('#history_list .is-dragging')) renderMyLayoutList();
+      }
+    } finally {
+      isBackfillingThumbnails = false;
+    }
+  };
+
 
   /**
    * キャラシのタグの入力候補に使う、自分のキャラの要約の一覧(未ログインなら空)。
@@ -1878,6 +1980,29 @@ if (newCharChoiceSinobigami) newCharChoiceSinobigami.addEventListener('click', (
 if (newCharChoiceMagirogi) newCharChoiceMagirogi.addEventListener('click', () => startNewCharacter('magirogi'));
 if (newCharacterModal) newCharacterModal.addEventListener('click', (e) => { if (e.target === newCharacterModal) closeNewCharacterModal(); });
   /** キャラクターを保存する(currentCharacterIdの有無で新規/更新を自動判定) */
+  /**
+   * 立ち絵の Blob から一覧用のサムネイルを作って送り、版を返す。
+   * 失敗しても例外は投げずに null を返す(サムネイルは、持ち主が一覧を開いたときに作り直される)。
+   */
+  const uploadThumbnail = async (id, imageBlob) => {
+    try {
+      const thumb = await createThumbnail(imageBlob);
+      if (!thumb) throw new Error(`サムネイルを${THUMB_MAX_BYTES / 1024}KB以下にできませんでした`);
+      const authHeaders = getAuthToken() ? { Authorization: `Bearer ${getAuthToken()}` } : {};
+      const res = await fetch(`${API_BASE}/api/upload-thumb/${id}`, {
+        method: 'POST',
+        headers: { 'Content-Type': thumb.type, ...authHeaders },
+        body: thumb,
+      });
+      if (!res.ok) throw new Error(`サムネイルの保存に失敗しました(${res.status})`);
+      return (await res.json()).version;
+    } catch (err) {
+      console.warn('サムネイルを保存できませんでした', err);
+      return null;
+    }
+  };
+
+
   const saveCharacter = async () => {
     const data = buildSaveData();
     const imageBase64 = data.image;
@@ -1908,7 +2033,10 @@ if (newCharacterModal) newCharacterModal.addEventListener('click', (e) => { if (
       history.replaceState(null, '', `${window.location.pathname}${window.location.search}#id=${id}`);
     }
 
-    if (imageBase64) {
+    // 画像は、選び直したとき・別のキャラの画像を持っているとき(JSONの読み込みや新規保存)だけ送る。
+    // このキャラの画像をサーバーから読み込んだまま上書き保存するときは送り直さない。
+    // 送るときは、一覧用のサムネイルも作って送る(失敗しても保存は成功とし、一覧を開いたときに作り直す)
+    if (imageBase64 && imageSourceId !== id) {
       const imageBlob = await (await fetch(imageBase64)).blob();
       const imgRes = await fetch(`${API_BASE}/api/upload-image/${id}`, {
         method: 'POST',
@@ -1916,7 +2044,10 @@ if (newCharacterModal) newCharacterModal.addEventListener('click', (e) => { if (
         body: imageBlob,
       });
       if (!imgRes.ok) throw new Error('画像のアップロードに失敗しました');
+      await uploadThumbnail(id, imageBlob);
+      imageSourceId = id;
     }
+
 
     addToHistory(id, getFieldValue('name'));
     return id;
@@ -1997,6 +2128,8 @@ if (newCharacterModal) newCharacterModal.addEventListener('click', (e) => { if (
 
       currentCharacterId = match[1];
       applyLoadedData(data);
+      // このキャラの立ち絵はサーバーにあるので、上書き保存では送り直さない
+      if (compact.img) imageSourceId = match[1];
       showToast('共有リンクからキャラクターデータを読み込みました！');
     } catch (err) {
       console.error('共有データの読み込みに失敗しました', err);
