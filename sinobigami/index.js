@@ -1474,7 +1474,7 @@ const LIST_PERSON_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentCo
 
 /**
  * 一覧のキャラ1行分のHTML(ゲスト履歴とマイキャラで共用。folderId があればフォルダの中の行)。
- * showThumb ならサムネイルの枠を出す(ログイン中の一覧だけ)
+ * showThumb なら(ログイン中の一覧)、左にサムネイルの枠を出し、右は「ゲーム・タグ」「名前」の2行にする
  */
 const buildListItemHTML = (h) => {
   const date = new Date(h.updatedAt);
@@ -1493,15 +1493,22 @@ const buildListItemHTML = (h) => {
   // ログイン中の一覧だけ、立ち絵のサムネイル(切らずに枠に収める。無ければ人形のアイコン)を出す。
   // URL に版を付けて長くキャッシュさせるので、描き直しでは読み込み直さない。読み込めなければ枠だけにする
   const thumb = !h.showThumb ? '' : (h.thumb
-    ? `<span class="history-item-thumb"><img src="${API_BASE}/api/thumb/${encodeURIComponent(h.id)}?v=${encodeURIComponent(h.thumb)}" alt="" loading="lazy" width="36" height="48" onerror="this.remove()"></span>`
+    ? `<span class="history-item-thumb"><img src="${API_BASE}/api/thumb/${encodeURIComponent(h.id)}?v=${encodeURIComponent(h.thumb)}" alt="" loading="lazy" width="48" height="48" onerror="this.remove()"></span>`
     : `<span class="history-item-thumb is-empty">${LIST_PERSON_ICON}</span>`);
+  // サムネイルのある行(ログイン中の一覧)は、1行目にゲームのバッジとタグ、2行目に名前を出す(保存日時は出さない)。
+  // タグが多いときは1行に収まる分だけ見せ、全部はツールチップで示す
+  const name = escapeHTML(h.name || '(名前未設定)');
+  const info = h.showThumb
+    ? `<div class="history-item-meta"${Array.isArray(h.tags) && h.tags.length ? ` title="${escapeHTML(h.tags.join(' / ')).replace(/"/g, '&quot;')}"` : ''}>${badge}${(Array.isArray(h.tags) ? h.tags : []).map(tag => `<span class="history-item-tag">${escapeHTML(tag)}</span>`).join('')}</div>
+          <div class="history-item-name">${name}</div>`
+    : `<div class="history-item-name">${badge}${name}</div>
+          ${tags}
+          <div class="history-item-date">${dateStr}</div>`;
   return `
       <div class="history-item${h.draggable ? ' is-draggable' : ''}${h.showThumb ? ' has-thumb' : ''}" data-id="${h.id}" data-game="${h.game || ''}"${folderAttr}${dragAttrs}>
         ${thumb}
         <div class="history-item-info">
-          <div class="history-item-name">${badge}${escapeHTML(h.name || '(名前未設定)')}</div>
-          ${tags}
-          <div class="history-item-date">${dateStr}</div>
+          ${info}
         </div>
         ${deleteBtn}
       </div>`;
