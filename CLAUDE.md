@@ -27,6 +27,8 @@ The same static files are published to two hosts (both are allowed origins of th
   - Tell the user that pages.dev needs a manual deploy.
   - Don't treat pages.dev still serving the old files as a failed deploy or a build problem.
   - Don't try to deploy it yourself.
+  - The project `trpg-tools` is a Direct Upload project (no Git connection). The user deploys the repo root with wrangler from an up-to-date, clean `main`: `npx wrangler pages deploy . --project-name trpg-tools --branch main`.
+  - `wrangler pages deploy` skips `.git`, `node_modules` and `.wrangler`, but uploads everything else in the folder, including untracked files. Keep local-only files (e.g. `.claude/launch.json`) out of the repo folder.
 
 When a frontend change depends on a new API contract, deploy the API first. Pages that haven't been updated yet (pages.dev before the manual deploy, or cached pages) keep running the old frontend, so API changes must stay backward compatible (see the v1/v2 layout notes below).
 
