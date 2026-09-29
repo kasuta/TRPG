@@ -844,7 +844,7 @@ textarea {
 }
 
 .ninpo-mode-row {
-	justify-content: space-between;
+	justify-content: flex-start;
 	align-items: center;
 	gap: 12px;
 	margin-bottom: 12px;
@@ -1319,9 +1319,29 @@ textarea {
 	border-top-color: var(--ink, #211815);
 }
 
-.help-tooltip:hover .help-tooltip-text {
+.help-tooltip:hover .help-tooltip-text,
+.help-tooltip:focus-within .help-tooltip-text {
 	visibility: visible;
 	opacity: 1;
+}
+
+/* 下に開くツールチップ(パネルの上端に近く、上に出すと見切れる場所用)。長い説明は折り返す */
+.help-tooltip-below .help-tooltip-text {
+	bottom: auto;
+	top: calc(100% + 8px);
+	left: 0;
+	transform: none;
+	width: 24em;
+	max-width: 80vw;
+	white-space: normal;
+}
+
+.help-tooltip-below .help-tooltip-text::after {
+	top: auto;
+	bottom: 100%;
+	left: 12px;
+	border-top-color: transparent;
+	border-bottom-color: var(--ink, #211815);
 }
 
 .btn {
