@@ -103,6 +103,13 @@
         <h2>基本情報</h2>
         <form class="input-form info-grid">
           <div class="info-row info-row-full">
+            <label for="char_kind" class="info-label">区分</label>
+            <select id="char_kind" name="char_kind">
+              <option value="shinobi">シノビ</option>
+              <option value="enemy">エネミー</option>
+            </select>
+          </div>
+          <div class="info-row info-row-full">
             <label for="name" class="info-label">名前</label>
             <input id="name" name="name" type="text"/>
           </div>
@@ -166,7 +173,7 @@
         <div class="life-block">
         <h2>生命力</h2>
         <form class="input-form info-grid life-grid">
-          <label for="life_extra" class="info-label">追加生命力</label>
+          <label for="life_extra" id="life_extra_label" class="info-label">追加生命力</label>
           <input id="life_extra" name="life_extra" type="text"/>
         </form>
         </div>

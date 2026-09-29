@@ -166,6 +166,27 @@ const parseNinguCount = (value = '') => {
   return /^\d+$/.test(halfWidth) ? Number(halfWidth) : 0;
 };
 
+/**
+ * キャラの区分(基本情報の「区分」)。lifeLabel は生命力の欄の見出し。区分を増やすときはここに足す。
+ * 値の無い古いデータや不明な値はシノビとして扱う(APIの一覧の要約も同じ)。
+ */
+const CHARACTER_KINDS = {
+  shinobi: { label: 'シノビ', lifeLabel: '追加生命力' },
+  enemy: { label: 'エネミー', lifeLabel: '生命力' },
+};
+const DEFAULT_CHARACTER_KIND = 'shinobi';
+const getCharacterKind = () => {
+  const kind = getFieldValue('char_kind', DEFAULT_CHARACTER_KIND);
+  return CHARACTER_KINDS[kind] ? kind : DEFAULT_CHARACTER_KIND;
+};
+
+/** 区分に合わせて、生命力の欄の見出しを変える */
+const applyCharacterKindUI = () => {
+  const label = document.getElementById('life_extra_label');
+  if (label) label.textContent = CHARACTER_KINDS[getCharacterKind()].lifeLabel;
+};
+document.getElementById('char_kind')?.addEventListener('change', applyCharacterKindUI);
+
 /** 習得済み特技のチェックボックスを、列が若い順(同じ列なら行が若い順)に並べて返す */
 const getCheckedSkillsByColumn = () => {
   const pos = (cb) => {
@@ -1048,6 +1069,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     if (revealPasswordInput) revealPasswordInput.value = data.revealPassword || '';
     if (ninpoInputMode === 'text') syncNinpoTextFromGrid();
+    applyCharacterKindUI();
     syncTabTitle();
     refreshOwnerPasswordUI();
   };
@@ -1142,7 +1164,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const HAIKEI_ORDER = ['name', 'merit', 'cost', 'effect', 'ref'];
   const INPUT_KEY_MAP = {
     name: 'n', furigana: 'fu', age: 'a', gender: 'g', school: 'sc', sub_school: 'ss', rank: 'rk',
-    join_condition: 'jc', manner: 'mn', nemesis: 'nm', face: 'fc', belief: 'bl', points: 'pt', life_extra: 'le',
+    join_condition: 'jc', manner: 'mn', nemesis: 'nm', face: 'fc', belief: 'bl', points: 'pt', life_extra: 'le', char_kind: 'kd',
     setting: 'st', ningu_hyorogan: 'nh', ningu_jintsumaru: 'nj',
     ningu_tonkofu: 'nt', ningu_other: 'no', special_skill: 'sp',
   };
@@ -2048,6 +2070,7 @@ const resetCharacterForm = () => {
 
   currentCharacterId = null;
   history.replaceState(null, '', window.location.pathname + window.location.search);
+  applyCharacterKindUI();
   syncTabTitle();
   refreshOwnerPasswordUI();
 };
@@ -2484,6 +2507,7 @@ GWT　戦国変調表`;
     const v = (id) => escapeHTML(getFieldValue(id));
     const setting = getFieldValue('setting');
     const specialSkill = getFieldValue('special_skill');
+    const lifeLabel = CHARACTER_KINDS[getCharacterKind()].lifeLabel;
     const skillIds = getAcquiredSkillIds();
     const ougi = collectOugi().filter(og => og.name);
     const ninpo = collectNinpo().filter(np => np.name);
@@ -2609,9 +2633,9 @@ GWT　戦国変調表`;
             </dl>
           </div>
           <div class="pv-section">
-            <h2>追加生命力</h2>
+            <h2>${lifeLabel}</h2>
             <dl class="pv-dl">
-              <dt>追加生命力</dt><dd>${v('life_extra')}</dd>
+              <dt>${lifeLabel}</dt><dd>${v('life_extra')}</dd>
             </dl>
           </div>
         </div>
