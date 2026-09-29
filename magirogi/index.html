@@ -331,8 +331,11 @@
         </div>
       </div>
     </section>
-    <section class="input-panel spell-form">
+    <section class="input-panel spell-form" id="spell_section">
       <h2>蔵書</h2>
+      <div class="control-row spell-mode-row">
+        <button type="button" id="spell_mode_toggle_btn" class="btn btn-outline">切り替え</button>
+      </div>
       <div class="spell-grid-wrap">
         <div class="spell-grid" id="spell_list">
           <div class="spell-head">魔法名</div>
@@ -344,6 +347,9 @@
           <div class="spell-head">参照p</div>
           <div class="spell-head"></div>
         </div>
+      </div>
+      <div class="spell-text-wrap" id="spell_text_wrap">
+        <div class="spell-text-list" id="spell_text_list"></div>
       </div>
       <div class="control-row">
         <button type="button" id="add_spell_btn" class="btn">＋ 魔法を追加</button>

@@ -136,8 +136,11 @@ const SPELL_TEXT_FIELDS = [
   { key: 'ref', attr: 'reference_p' },
 ];
 
-/** 蔵書データを収集 */
-const collectSpells = () => {
+/** 蔵書の入力方式('grid' = 表、'text' = ルールブックの書式のテキスト) */
+let spellInputMode = 'grid';
+
+/** 表形式の蔵書データを収集 */
+const collectSpellsFromGrid = () => {
   const spells = [];
   let i = 1;
   while (document.querySelector(`[name="spell_name_${i}"]`)) {
@@ -151,6 +154,122 @@ const collectSpells = () => {
   }
   return spells;
 };
+
+// ── 蔵書のテキスト入力(ルールブックの書式) ──
+// 例:
+//   汎用                     ← 魔法名より前の行(分類など)は読み飛ばす
+//   退去｛デポーテーション｝  ← ルビは魔法名の2行目にする(「退去\nデポーテーション」)
+//   タイプ：呪文
+//   指定特技：《重力》        ← 《》は外す
+//   目標：敵の立会人1人       ← 表の「対象」
+//   コスト：力1
+//   効果：                    ← 効果・呪句・概要は、次のラベルまでの行をまとめて読む
+//   …
+//   呪句：                    ← ルビ｛｝は外す
+//   …
+//   概要：                    ← 入れる欄が無いので読み飛ばす
+//   …
+
+/** ラベル → 蔵書の項目のキー(null は読み飛ばす項目) */
+const SPELL_TEXT_LABELS = {
+  'タイプ': 'type',
+  '指定特技': 'skill',
+  '目標': 'target',
+  '対象': 'target',
+  'コスト': 'cost',
+  '参照p': 'ref',
+  '効果': 'effect',
+  '呪句': 'phrase',
+  '概要': null,
+};
+/** 次のラベルまでの行をまとめて読む項目 */
+const SPELL_TEXT_MULTILINE_LABELS = ['効果', '呪句', '概要'];
+const SPELL_TEXT_LABEL_PATTERN = new RegExp(`^(${Object.keys(SPELL_TEXT_LABELS).join('|')})\\s*(?:[：:]|[\\s\\u3000]+|$)\\s*(.*)$`);
+const SPELL_TYPES = ['召喚', '呪文', '装備'];
+const SPELL_RUBY_PATTERN = /[｛{][^｝}]*[｝}]/g;
+
+/** 魔法名の行を表の形にする(末尾のルビ「退去｛デポーテーション｝」は2行目へ) */
+const parseSpellNameLine = (line = '') => {
+  const match = line.trim().match(/^([^｛{]+)[｛{]([^｝}]+)[｝}]$/);
+  return match ? `${match[1].trim()}\n${match[2].trim()}` : line.trim();
+};
+
+/** 表の魔法名をテキストの1行に戻す(2行目以降はルビとして｛｝で囲む) */
+const serializeSpellName = (name = '') => {
+  const [base = '', ...rest] = String(name).replace(/\r\n/g, '\n').split('\n').map(s => s.trim());
+  const ruby = rest.join('');
+  return ruby ? `${base}｛${ruby}｝` : base;
+};
+
+/** 表の魔法名の1行目(CCFOLIAなど、1行で出す場所で使う) */
+const spellFirstLine = (name = '') => String(name).split(/\r?\n/)[0].trim();
+
+const normalizeSpellType = (value = '') => {
+  const trimmed = String(value).trim();
+  const base = trimmed.replace(/魔法$/, '');
+  return SPELL_TYPES.includes(base) ? base : trimmed;
+};
+
+/** ルールブックの書式のテキスト1件を、蔵書の1行分のデータにする */
+const parseSpellBlock = (block = '') => {
+  const spell = { name: '', type: '', skill: '', target: '', cost: '', effect: '', phrase: '', ref: '' };
+  const lines = String(block).replace(/\r\n/g, '\n').split('\n').map(line => line.trim());
+  const firstLabelIndex = lines.findIndex(line => SPELL_TEXT_LABEL_PATTERN.test(line));
+  const headLines = (firstLabelIndex < 0 ? lines : lines.slice(0, firstLabelIndex)).filter(Boolean);
+  if (headLines.length) spell.name = parseSpellNameLine(headLines[headLines.length - 1]);
+  if (firstLabelIndex < 0) return spell;
+
+  const multiline = { effect: [], phrase: [] };
+  let currentLabel = null;
+  lines.slice(firstLabelIndex).forEach(line => {
+    const match = line.match(SPELL_TEXT_LABEL_PATTERN);
+    if (match) {
+      const [, label, value] = match;
+      currentLabel = label;
+      const key = SPELL_TEXT_LABELS[label];
+      if (!key) return;
+      if (multiline[key]) { if (value) multiline[key].push(value); }
+      else spell[key] = value.trim();
+      return;
+    }
+    if (SPELL_TEXT_MULTILINE_LABELS.includes(currentLabel)) {
+      const key = SPELL_TEXT_LABELS[currentLabel];
+      if (key) multiline[key].push(line);
+      return;
+    }
+    // ラベルの無い行は効果とみなす
+    multiline.effect.push(line);
+  });
+
+  spell.type = normalizeSpellType(spell.type);
+  spell.skill = spell.skill.replace(/[《》]/g, '').trim();
+  spell.effect = multiline.effect.join('\n').trim();
+  // 呪句は1行の入力欄なので、折り返しの改行はつなげる
+  spell.phrase = multiline.phrase.join('').replace(SPELL_RUBY_PATTERN, '').trim();
+  return spell;
+};
+
+/** 蔵書の1行分のデータを、ルールブックの書式のテキストにする(参照pは本に無いので、コストの後に足す) */
+const serializeSpellBlock = (spell = {}) => [
+  serializeSpellName(spell.name || ''),
+  `タイプ：${spell.type || ''}`,
+  `指定特技：${spell.skill || ''}`,
+  `目標：${spell.target || ''}`,
+  `コスト：${spell.cost || ''}`,
+  `参照p：${spell.ref || ''}`,
+  '効果：',
+  ...(spell.effect ? [String(spell.effect).replace(/\r\n/g, '\n').trimEnd()] : []),
+  '呪句：',
+  ...(spell.phrase ? [spell.phrase] : []),
+].join('\n');
+
+/** テキスト入力の蔵書データを収集(空の行は除く) */
+const collectSpellsFromText = () => Array.from(document.querySelectorAll('#spell_text_list .spell-text-block'))
+  .map(textarea => parseSpellBlock(textarea.value || ''))
+  .filter(row => !isEmptySpellRow(row));
+
+/** 蔵書データを収集(今の入力方式に合わせる) */
+const collectSpells = () => (spellInputMode === 'text' ? collectSpellsFromText() : collectSpellsFromGrid());
 
 /** 関係データを収集 */
 const collectRelations = () => {
@@ -507,13 +626,111 @@ document.addEventListener('DOMContentLoaded', () => {
     resizeTextareaRow(spellList, '.spell-textarea', '1');
   };
 
+  /** 表の i 行目に1件分のデータを入れる(applyLoadedData とテキスト入力からの切り替えで共有) */
+  const fillSpellRow = (i, spell = {}) => {
+    SPELL_TEXT_FIELDS.forEach(({ key, attr }) => {
+      const el = document.querySelector(`[name="spell_${attr}_${i}"]`);
+      if (!el) return;
+      if (key === 'type') el.value = spell.type || '召喚';
+      else if (key === 'phrase') el.value = typeof spell.phrase === 'string' ? spell.phrase : '';
+      else el.value = spell[key] || '';
+    });
+    document.querySelector(`[name="spell_effect_${i}"]`).dispatchEvent(new Event('input'));
+    document.querySelector(`[name="spell_phrase_${i}"]`).dispatchEvent(new Event('input'));
+  };
+
   if (spellList) {
     addSpellRow();
     addSpellRow();
     setDefaultSpellPreset();
   }
-  if (addSpellBtn) addSpellBtn.addEventListener('click', addSpellRow);
-  if (removeSpellBtn) removeSpellBtn.addEventListener('click', removeSpellRow);
+
+  // ── 蔵書のテキスト入力(表との切り替え) ──
+  const spellSection = document.getElementById('spell_section');
+  const spellTextWrap = document.getElementById('spell_text_wrap');
+  const spellTextList = document.getElementById('spell_text_list');
+  const spellModeToggleBtn = document.getElementById('spell_mode_toggle_btn');
+
+  const bindSpellTextBlock = (textarea) => {
+    if (textarea.dataset.resizeBound) return;
+    textarea.dataset.resizeBound = 'true';
+    textarea.addEventListener('input', () => resizeTextareaRow(spellTextList, '.spell-text-block', textarea.dataset.row));
+    resizeTextareaRow(spellTextList, '.spell-text-block', textarea.dataset.row);
+  };
+
+  const countSpellTextRows = () => (spellTextList ? spellTextList.querySelectorAll('.spell-text-row').length : 0);
+
+  const addSpellTextRow = (spell = null) => {
+    if (!spellTextList) return;
+    const n = countSpellTextRows() + 1;
+    const rowHTML = `
+      <div class="spell-text-row">
+        <div class="spell-text-row-head">魔法 ${n}</div>
+        <textarea name="spell_text_${n}" class="spell-text-block" rows="12" data-row="${n}" placeholder="${n}件目の魔法を入力"></textarea>
+      </div>`;
+    spellTextList.insertAdjacentHTML('beforeend', rowHTML);
+    const textarea = spellTextList.querySelector(`textarea[name="spell_text_${n}"]`);
+    if (!textarea) return;
+    textarea.value = spell && !isEmptySpellRow(spell) ? serializeSpellBlock(spell) : '';
+    bindSpellTextBlock(textarea);
+  };
+
+  const removeSpellTextRow = () => {
+    if (!spellTextList) return;
+    const rows = spellTextList.querySelectorAll('.spell-text-row');
+    if (rows.length <= 1) return;
+    rows[rows.length - 1].remove();
+  };
+
+  const clearSpellTextRows = () => {
+    if (spellTextList) spellTextList.innerHTML = '';
+  };
+
+  const syncSpellTextFromGrid = () => {
+    clearSpellTextRows();
+    const spells = collectSpellsFromGrid().filter(row => !isEmptySpellRow(row));
+    (spells.length ? spells : [null]).forEach(addSpellTextRow);
+  };
+
+  const syncSpellGridFromText = () => {
+    const spells = collectSpellsFromText();
+    while (document.querySelectorAll('.spell-textarea[name^="spell_name_"]').length > 0) removeSpellRow();
+    (spells.length ? spells : [{}]).forEach((spell, idx) => {
+      addSpellRow();
+      fillSpellRow(idx + 1, spell);
+    });
+  };
+
+  const updateSpellModeUI = () => {
+    if (!spellSection) return;
+    const isText = spellInputMode === 'text';
+    spellSection.classList.toggle('spell-mode-text', isText);
+    spellSection.classList.toggle('spell-mode-grid', !isText);
+    if (spellTextWrap) spellTextWrap.setAttribute('aria-hidden', String(!isText));
+    if (spellList) spellList.setAttribute('aria-hidden', String(isText));
+  };
+
+  const setSpellMode = (mode) => {
+    if (mode === spellInputMode) return;
+    if (mode === 'text') syncSpellTextFromGrid();
+    else syncSpellGridFromText();
+    spellInputMode = mode;
+    updateSpellModeUI();
+    // 表示されてから高さを合わせ直す(非表示の間は高さを計算できないため)
+    const container = mode === 'text' ? spellTextList : spellList;
+    if (container) container.querySelectorAll('textarea[data-row]').forEach(ta => ta.dispatchEvent(new Event('input')));
+  };
+
+  if (addSpellBtn) addSpellBtn.addEventListener('click', () => {
+    if (spellInputMode === 'text') addSpellTextRow();
+    else addSpellRow();
+  });
+  if (removeSpellBtn) removeSpellBtn.addEventListener('click', () => {
+    if (spellInputMode === 'text') removeSpellTextRow();
+    else removeSpellRow();
+  });
+  if (spellModeToggleBtn) spellModeToggleBtn.addEventListener('click', () => setSpellMode(spellInputMode === 'grid' ? 'text' : 'grid'));
+  updateSpellModeUI();
 
   // ──────────────────────────────
   // 3. 領域 → ギャップ連動
@@ -638,22 +855,15 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     }
 
+    // 蔵書はテキスト入力中でも表に入れ、テキスト入力の欄は表から作り直す
     while (document.querySelectorAll('.spell-textarea[name^="spell_name_"]').length > 0) removeSpellRow();
     if (data.spells) {
       data.spells.filter(row => !isEmptySpellRow(row)).forEach((spell, idx) => {
         addSpellRow();
-        const i = idx + 1;
-        SPELL_TEXT_FIELDS.forEach(({ key, attr }) => {
-          const el = document.querySelector(`[name="spell_${attr}_${i}"]`);
-          if (!el) return;
-          if (key === 'type') el.value = spell.type || '召喚';
-          else if (key === 'phrase') el.value = typeof spell.phrase === 'string' ? spell.phrase : '';
-          else el.value = spell[key] || '';
-        });
-        document.querySelector(`[name="spell_effect_${i}"]`).dispatchEvent(new Event('input'));
-        document.querySelector(`[name="spell_phrase_${i}"]`).dispatchEvent(new Event('input'));
+        fillSpellRow(idx + 1, spell);
       });
     }
+    if (spellInputMode === 'text') syncSpellTextFromGrid();
 
     while (document.querySelectorAll('.relation-textarea[name^="relation_anchor_"]').length > 0) removeRelationRow();
     if (data.relations) {
@@ -1946,6 +2156,11 @@ const renderListItems = (items) => {
     addSpellRow();
     addSpellRow();
     setDefaultSpellPreset();
+    clearSpellTextRows();
+    spellInputMode = 'grid';
+    updateSpellModeUI();
+    // テキスト入力中に作った表の行は高さを計算できていないので、表示してから合わせ直す
+    spellList.querySelectorAll('textarea[data-row]').forEach(ta => ta.dispatchEvent(new Event('input')));
 
     while (document.querySelectorAll('.relation-textarea[name^="relation_anchor_"]').length > 0) removeRelationRow();
     addRelationRow();
@@ -2159,7 +2374,7 @@ if (newCharacterModal) newCharacterModal.addEventListener('click', (e) => { if (
     spells.forEach(sp => {
       if (sp.name) {
         const effectOneLine = sp.effect.replace(/\r?\n/g, '');
-        commands += `【${sp.name}】(取得=/種別=${sp.type}/特技=${sp.skill}/目標=${sp.target}/コスト=${sp.cost}/参照p=${sp.ref})効果：${effectOneLine}\n`;
+        commands += `【${spellFirstLine(sp.name)}】(取得=/種別=${sp.type}/特技=${sp.skill}/目標=${sp.target}/コスト=${sp.cost}/参照p=${sp.ref})効果：${effectOneLine}\n`;
       }
     });
 
@@ -2171,7 +2386,7 @@ if (newCharacterModal) newCharacterModal.addEventListener('click', (e) => { if (
     spells.forEach(sp => {
       if (sp.name && sp.phrase) {
         const phraseOneLine = sp.phrase.replace(/\r?\n/g, '');
-        commands += `呪句【${sp.name}】${phraseOneLine}\n`;
+        commands += `呪句【${spellFirstLine(sp.name)}】${phraseOneLine}\n`;
       }
     });
 
@@ -2257,7 +2472,7 @@ FLT　その後表`;
 
       const statusArr = [];
       ccfoliaSpells.forEach(sp => {
-        if (sp.name) statusArr.push({ label: `${sp.name}:${sp.cost}`, value: 0, max: Number(rootVal) });
+        if (sp.name) statusArr.push({ label: `${spellFirstLine(sp.name)}:${sp.cost}`, value: 0, max: Number(rootVal) });
       });
 
       const paramsArr = [
@@ -2350,7 +2565,7 @@ FLT　その後表`;
     if (spells.length) {
       spellHTML = '<table class="pv-table"><thead><tr><th>魔法名</th><th>タイプ</th><th>指定特技</th><th>対象</th><th>コスト</th><th>効果</th><th>呪句</th><th>参照p</th></tr></thead><tbody>';
       spells.forEach(sp => {
-        spellHTML += `<tr><td>${escapeHTML(sp.name)}</td><td>${escapeHTML(sp.type)}</td><td>${escapeHTML(sp.skill)}</td><td>${escapeHTML(sp.target)}</td><td>${escapeHTML(sp.cost)}</td><td class="pv-effect">${escapeHTML(sp.effect)}</td><td>${escapeHTML(sp.phrase || '□')}</td><td>${escapeHTML(sp.ref)}</td></tr>`;
+        spellHTML += `<tr><td>${escapeHTML(sp.name).replace(/\r?\n/g, '<br>')}</td><td>${escapeHTML(sp.type)}</td><td>${escapeHTML(sp.skill)}</td><td>${escapeHTML(sp.target)}</td><td>${escapeHTML(sp.cost)}</td><td class="pv-effect">${escapeHTML(sp.effect)}</td><td>${escapeHTML(sp.phrase || '□')}</td><td>${escapeHTML(sp.ref)}</td></tr>`;
       });
       spellHTML += '</tbody></table>';
     }
