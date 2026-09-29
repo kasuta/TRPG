@@ -117,6 +117,14 @@
             <label for="furigana" class="info-label">ふりがな</label>
             <input id="furigana" name="furigana" type="text"/>
           </div>
+          <div class="info-row info-row-full">
+            <label for="tag_input" class="info-label" title="タグは共有リンクを開いた人にも見えます">タグ</label>
+            <div class="tag-editor">
+              <span class="tag-chips" id="tag_chips"></span>
+              <input id="tag_input" type="text" list="tag_suggestions" maxlength="20" autocomplete="off" placeholder="Enterで追加(5個まで)" title="1〜20文字・5個まで。タグは共有リンクを開いた人にも見えます" aria-label="タグを追加" />
+              <datalist id="tag_suggestions"></datalist>
+            </div>
+          </div>
           <div class="info-row">
             <label for="school" class="info-label">上位流派</label>
             <select id="school" name="school">
