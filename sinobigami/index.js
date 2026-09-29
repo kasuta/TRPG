@@ -440,14 +440,15 @@ const parseNinpoText = (text = '') => normalizeNinpoText(text)
 
 const serializeNinpoText = (rows = []) => rows.map(serializeNinpoBlock).filter(Boolean).join('\n\n');
 
+/** 表形式の忍法の i 行目が無効化(✕)されているか */
+const isNinpoGridRowDisabled = (i) => !!document.querySelector(`.btn-ninpo-disable[data-ninpo-row="${i}"]`)?.classList.contains('is-disabled');
+
 const collectNinpoFromGrid = ({ includeDisabled = true } = {}) => {
   const ninpo = [];
   let i = 1;
   let nameEl;
   while ((nameEl = document.querySelector(`[name="ninpo_name_${i}"]`))) {
-    const isDisabled = nameEl.closest('.ninpo-grid, .ninpo-row')?.querySelector(`.btn-ninpo-disable[data-ninpo-row="${i}"]`)?.classList.contains('is-disabled')
-      || document.querySelector(`.btn-ninpo-disable[data-ninpo-row="${i}"]`)?.classList.contains('is-disabled');
-    if (!includeDisabled && isDisabled) { i++; continue; }
+    if (!includeDisabled && isNinpoGridRowDisabled(i)) { i++; continue; }
     ninpo.push({
       name: normalizeNinpoName(nameEl.value || ''),
       type: textField('ninpo_type')(i),
@@ -462,13 +463,24 @@ const collectNinpoFromGrid = ({ includeDisabled = true } = {}) => {
   return ninpo;
 };
 
-const collectNinpoFromText = () => {
+/**
+ * テキスト入力の忍法を、行ごとの無効化の状態と一緒に集める(空の行は除く)。
+ * 無効化は表形式の ✕ をテキスト入力へ切り替えても保つためのもので、行の data-ninpo-disabled に持つ(保存データには入れない)
+ */
+const collectNinpoTextEntries = () => {
   const ninpoTextList = document.getElementById('ninpo_text_list');
   if (!ninpoTextList) return [];
-  return Array.from(ninpoTextList.querySelectorAll('.ninpo-text-block'))
-    .map(textarea => parseNinpoBlock(textarea.value || ''))
-    .filter(row => !isEmptyNinpoRow(row));
+  return Array.from(ninpoTextList.querySelectorAll('.ninpo-text-row'))
+    .map(rowEl => ({
+      row: parseNinpoBlock(rowEl.querySelector('.ninpo-text-block')?.value || ''),
+      disabled: rowEl.dataset.ninpoDisabled === 'true',
+    }))
+    .filter(entry => !isEmptyNinpoRow(entry.row));
 };
+
+const collectNinpoFromText = ({ includeDisabled = true } = {}) => collectNinpoTextEntries()
+  .filter(entry => includeDisabled || !entry.disabled)
+  .map(entry => entry.row);
 
 /** 指定フィールドが全てfalsyな行を「空行」とみなす判定関数を作る */
 const makeEmptyRowChecker = (fields) => (row = {}) => fields.every(field => !row[field]);
@@ -480,7 +492,7 @@ const isEmptyRelationRow = makeEmptyRowChecker(['name', 'location', 'secret', 'o
 /** 忍法データを収集 (disabled行を除外するかどうか選択可能) */
 const collectNinpo = ({ includeDisabled = true } = {}) => {
   if (ninpoInputMode === 'text') {
-    return collectNinpoFromText();
+    return collectNinpoFromText({ includeDisabled });
   }
   return collectNinpoFromGrid({ includeDisabled });
 };
@@ -734,13 +746,16 @@ document.addEventListener('DOMContentLoaded', () => {
 
   const countNinpoTextRows = () => ninpoTextList ? ninpoTextList.querySelectorAll('.ninpo-text-row').length : 0;
 
-  const addNinpoTextRow = (row = {}) => {
+  /** テキスト入力の行の見出し。表形式で無効化(✕)した忍法には「（無効）」を付ける */
+  const ninpoTextRowHeadLabel = (n, disabled) => `忍法 ${n}${disabled ? '（無効）' : ''}`;
+
+  const addNinpoTextRow = (row = {}, { disabled = false } = {}) => {
     if (!ninpoTextList) return;
     const n = countNinpoTextRows() + 1;
     const rowHTML = `
-      <div class="ninpo-text-row">
-        <div class="ninpo-text-row-head">忍法 ${n}</div>
-        <textarea name="ninpo_text_${n}" class="ninpo-text-block" rows="8" data-row="${n}" placeholder="${n}件目の忍法を入力"></textarea>
+      <div class="ninpo-text-row" data-ninpo-disabled="${disabled}">
+        <div class="ninpo-text-row-head">${ninpoTextRowHeadLabel(n, disabled)}</div>
+        <textarea name="ninpo_text_${n}" class="ninpo-text-block${disabled ? ' ninpo-cell-disabled' : ''}" rows="8" data-row="${n}" placeholder="${n}件目の忍法を入力"></textarea>
       </div>`;
     ninpoTextList.insertAdjacentHTML('beforeend', rowHTML);
     const textarea = ninpoTextList.querySelector(`textarea[name="ninpo_text_${n}"]`);
@@ -756,7 +771,7 @@ document.addEventListener('DOMContentLoaded', () => {
       const rowNumber = index + 1;
       const head = row.querySelector('.ninpo-text-row-head');
       const textarea = row.querySelector('.ninpo-text-block');
-      if (head) head.textContent = `忍法 ${rowNumber}`;
+      if (head) head.textContent = ninpoTextRowHeadLabel(rowNumber, row.dataset.ninpoDisabled === 'true');
       if (textarea) {
         textarea.name = `ninpo_text_${rowNumber}`;
         textarea.dataset.row = String(rowNumber);
@@ -790,16 +805,19 @@ document.addEventListener('DOMContentLoaded', () => {
     clearNinpoTextRows();
     const rows = collectNinpoFromGrid({ includeDisabled: true });
     const renderRows = rows.length ? rows : [{}];
-    renderRows.forEach(row => addNinpoTextRow(row));
+    renderRows.forEach((row, index) => addNinpoTextRow(row, { disabled: isNinpoGridRowDisabled(index + 1) }));
     renumberNinpoTextRows();
   };
 
   const syncNinpoGridFromText = () => {
     if (!ninpoList) return;
-    const rows = collectNinpoFromText();
+    const entries = collectNinpoTextEntries();
     clearNinpoGridRows();
-    const renderRows = rows.length ? rows : [{}];
-    renderRows.forEach(row => addNinpoRow(row));
+    const renderEntries = entries.length ? entries : [{ row: {}, disabled: false }];
+    renderEntries.forEach(({ row, disabled }) => {
+      addNinpoRow(row);
+      if (disabled) toggleNinpoDisable(ninpoCount);
+    });
   };
 
   const updateNinpoModeUI = () => {
