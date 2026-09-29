@@ -1087,20 +1087,26 @@ A1（API のレイアウト v2 の検証と保存）は実装済み（`sinobigam
 
 ---
 
-## 第3期: キャラ一覧の立ち絵サムネイル（2026-09-29〜）
+## 第3期: キャラ一覧の立ち絵サムネイル（2026-09-29〜。計画は承認済み）
 
-### 要望
-ログイン中のキャラ一覧に、立ち絵の画像を表示したい。ただし、アクセス数が大きく増えるならやめる。
+### Context
+ログイン中のキャラ一覧に、立ち絵を表示したい。ただし、アクセスが大きく増えるならやめる。
 
-### 見積もりと方針（2026-09-29 の調査）
-- 今の立ち絵: 45枚、合計 27.8MB（中央値 172KB、平均 632KB、最大 3.3MB、1MB を超えるものが8枚。ほとんど PNG）。
-- 配信（`GET /api/image/:id`）は、表示のたびに Worker と R2 に1回ずつアクセスする。`max-age=0` で、しかも毎回、画像全体を送り直している（304 を返さない）。
+#### 見積もり（2026-09-29 の調査）
+- 今の立ち絵: 45枚、27.8MB（中央値 172KB、平均 632KB、最大 3.3MB）。
+- 配信（`GET /api/image/:id`）は `max-age=0` で、しかも毎回、画像全体を送り直している（304 を返さない）。
 - 元の画像をそのまま一覧に出した場合
-  - **リクエスト数**: 1日 1,000〜2,000 回程度で、無料枠（Workers は1日10万、R2 の読み出しは月1,000万）に対して問題にならない。
-  - **データ量**: 一覧を開くたびに数MB〜十数MBになる。転送量は無料だが、スマホでは遅く、通信量も大きい。
-- そこで**サムネイル方式**にする（ユーザーが選択）。
-  - 保存時にブラウザで小さな画像を作り、一覧ではそれを使う。
-  - URL に版を付け、長くキャッシュさせる。
+  - リクエスト数は無料枠の範囲に収まる。
+  - 一覧を開くたびに数MB〜十数MB を読み込み、スマホでは重い。
+- そこで、次の方式にする（ユーザーが選択）。
+  - 保存時にブラウザで小さなサムネイルを作る。
+  - 一覧ではそれを表示し、URL に版を付けて長くキャッシュさせる。
+- あわせて、次の2つの無駄も減らす。
+  - 保存のたびに元の画像を送り直している。
+  - 元の画像に 304 を返していない。
+
+仕様は Q44〜Q50 で決まった。（この節は、`1dab386` の草案を、承認された計画で置き換えたもの）
+
 
 ### 決定事項（一問一答。2026-09-29）
 | # | 論点 | 決定 | 補足 |
@@ -1113,111 +1119,192 @@ A1（API のレイアウト v2 の検証と保存）は実装済み（`sinobigam
 | Q49 | サムネイルの操作 | **行と同じ（押すとキャラを開く）だけ** | 拡大表示はしない |
 | Q50 | 保存のたびの再アップロード | **画像を選び直したときだけ送る** | 普通の保存は、文字のデータだけにする。別のキャラの画像を持ったまま新規保存するとき（共有リンクから開いて保存など）は、今と同じく画像も写す |
 
-### 設計
-#### API（`sinobigami-api`）
-- **マイグレーション `0006`**: `characters` に `thumb_version TEXT` を足す（NULL はサムネイル無し）。
-- **サムネイルの保存先**: R2 の同じバケットに、キー `thumb/<キャラID>` で置く。
-  - バックアップは、`image_url` のあるキャラの画像だけを取る（今の `scripts/backup.mjs`）。サムネイルは自動で作り直せるので、バックアップの対象にしない。
-- **`POST /api/upload-thumb/:id`**
-  - 権限は `upload-image` と同じ（持ち主、または持ち主のいないキャラ）。
-  - 元の画像が無いキャラには 409 を返す。
-  - 本文は 64KB まで（413）。形式は先頭のバイトで判定し、png / jpeg / webp だけを受け付ける（415）。
-  - 保存したら、`thumb_version` を新しい値（時刻の36進数など）にし、`{ version }` を返す。
-- **`GET /api/thumb/:id?v=<version>`**
-  - R2 の `thumb/<id>` を返す。無ければ 404。
-  - URL に版が付いているので、`Cache-Control: public, max-age=31536000, immutable` にする。
-- **`POST /api/upload-image/:id`**: 元の画像を置き換えたら、サムネイルを消す（R2 から削除し、`thumb_version` を NULL にする）。
-  - 古いフロントが元の画像だけを変えても、古いサムネイルが残らない。
-  - 新しいフロントは、この直後にサムネイルを送る。
-- **`DELETE /api/character/:id`**: サムネイルも消す。
-- **一覧の要約**（`toCharacterSummary`。`/api/my-layout` と `/api/my-characters`）に、次の2つを足す。
-  - `hasImage`: `image_url` の有無
-  - `thumb`: `thumb_version`、または null
-- **`GET /api/image/:id`**
-  - `If-None-Match` が今の ETag と同じなら 304 を返す（R2 の `get(id, { onlyIf: request.headers })` を使う）。
-  - `Cache-Control` は今のまま（毎回、確認する）。
-- テストは vitest で書く。
+---
 
-#### フロント（両アプリ）
-- **サムネイルの作成**（`createThumbnail(blob)`）
-  - 画像を読み込み、長い辺が 128px 以下になるように縮小してキャンバスに描く（切らない。拡大しない）。
-  - WebP（品質 0.85）にする。ブラウザが WebP を作れなければ、PNG にする。
-  - 64KB を超えたら、品質を下げてやり直す。
-- **保存**（`saveCharacter`）
-  - 画像の出どころ（`imageSourceId`: その画像が、どのキャラの `/api/image/<id>` か）を持つ。
-    - ファイルを選び直したとき・JSON から画像を読み込んだときは null。
-    - サーバーから読み込んだときは、そのキャラのID。
-  - 保存先のIDと `imageSourceId` が違うときだけ、元の画像とサムネイルを送る。
-    - 送ったら、`imageSourceId` を保存先のIDにする。
-    - 普通の上書き保存では、画像を送らない（Q50）。
-  - サムネイルの送信に失敗しても、保存自体は成功として扱う（一覧を開いたときに作り直される）。
-- **一覧**（`buildListItemHTML`。ログイン中の一覧のときだけ）
-  - 行の左に、幅36×高さ48px の枠を置く。
-    - `thumb` があれば `<img src="…/api/thumb/<id>?v=<thumb>" loading="lazy">` を、`object-fit: contain` で出す。
-    - 無ければ、薄い人形のアイコンを出す。
-  - ゲスト履歴には出さない。
-- **自動作成**（Q45）
-  - 一覧を読み込んだ後、`hasImage` があって `thumb` の無いキャラについて、1体ずつ順に作る。
-    1. 元の画像を取得する。
-    2. サムネイルを作ってアップロードする。
-    3. その行を描き直す。
-  - 同じページでは、失敗したキャラを2度は試さない。ログアウトしたら止める。
-- 判定ツールは変えない。
+### 1. 要件定義（機能要件）
+| # | 要件 | 受け入れの条件 |
+|---|---|---|
+| FR-1 | ログイン中のキャラ一覧（両アプリ）の各行の左に、立ち絵のサムネイルを出す | 幅36×高さ48px の枠に、切らずに収める（縦長・横長とも全体が見える） |
+| FR-2 | 立ち絵の無いキャラの行にも、空の枠（薄い人形のアイコン）を出す | 立ち絵の有無にかかわらず、名前の開始位置が揃う |
+| FR-3 | 立ち絵を選んで保存すると、サムネイルも作って保存する | 保存後の一覧に、新しいサムネイルが出る。立ち絵を差し替えれば、サムネイルも差し替わる |
+| FR-4 | 今ある立ち絵のサムネイルは、持ち主が一覧を開いたときに自動で作る | サムネイルの無いキャラを1体ずつ処理し、できた行から表示が変わる。失敗したキャラがあっても、ほかのキャラの処理は続く |
+| FR-5 | サムネイルを押すと、行と同じくキャラを開く | 拡大表示はしない |
+| FR-6 | 立ち絵を変えていない保存では、画像を送らない | 上書き保存の通信は、本文の `PUT` だけになる |
+| FR-7 | 別のキャラの画像を持ったまま新規保存するときは、今と同じく画像を写す | JSON で画像を読み込んで新規保存したとき、新しいキャラにも立ち絵とサムネイルが付く |
+| FR-8 | キャラを削除すると、サムネイルも消える | R2 に `thumb/<id>` が残らない |
+| FR-9 | 元の立ち絵に変更が無ければ、送り直さない | 2回目以降の `GET /api/image/:id` は 304（中身なし） |
+| FR-10 | 古いフロントで立ち絵を差し替えても、古いサムネイルが残らない | 差し替えでサムネイルが消え、次に新しいフロントで一覧を開いたときに作り直される |
 
-### 機能要件
-1. ログイン中のキャラ一覧（両アプリ）の各行に、立ち絵のサムネイル（幅36×高さ48px の枠。切らずに収める）を出す。立ち絵の無いキャラには、空の枠（人形のアイコン）を出す。
-2. 立ち絵を選んで保存すると、サムネイルも作って保存し、一覧に反映する。立ち絵を変えたら、サムネイルも新しくなる。
-3. 今ある立ち絵は、持ち主が一覧を開いたときに、自動でサムネイルができる（1体ずつ。作り終えた行から表示される）。
-4. サムネイルを押すと、行と同じくキャラを開く。
-5. 立ち絵を変えていない保存では、画像を送らない。共有リンクなどから開いた別のキャラの画像を持ったまま新規保存するときは、今と同じく画像を写す。
-6. キャラを削除すると、サムネイルも消える。
-7. キャラシで元の立ち絵を開くとき、変更が無ければ、画像を送り直さない（304）。
+### 2. 非機能要件
+| # | 分類 | 要件 |
+|---|---|---|
+| NFR-1 | データ量 | サムネイルは長い辺 128px の WebP（作れなければ PNG）で、1枚 64KB 以下（見込み 5〜15KB）。一覧の画像は `loading="lazy"` にし、見えている行だけを読み込む |
+| NFR-2 | キャッシュ | サムネイルの URL は `…/api/thumb/<id>?v=<版>` とし、`Cache-Control: public, max-age=31536000, immutable` にする。2回目以降の表示や、検索での描き直しでは通信しない |
+| NFR-3 | リクエスト数 | 増えるのは、初回の表示と自動作成（1体ずつ・同じページで1回まで）のときだけ。無料枠（Workers は1日10万、R2 の読み出しは月1,000万）に対して問題にならない |
+| NFR-4 | 互換性 | 一覧の要約には、キーを足すだけにする（古いフロントも動く）。公開は API → フロントの順。`/api/load` と保存の形は変えない |
+| NFR-5 | セキュリティ | サムネイルの保存は、元の画像と同じ権限（持ち主、または持ち主のいないキャラ）にする。形式は先頭のバイトで判定し（png / jpeg / webp）、64KB を超えれば 413。見える範囲は元の画像と同じ |
+| NFR-6 | 障害時 | サムネイルの保存に失敗しても、キャラの保存は成功として扱う（自動作成で作り直される）。サムネイルが読めない行は、空の枠を出す |
+| NFR-7 | データ | マイグレーションは1回（`0006`、列を1つ足すだけ）。サムネイルは作り直せるので、バックアップの対象にしない |
+| NFR-8 | テスト・確認 | API は vitest。フロントは、ローカルの API とブラウザで確かめる（下の「検証」） |
+| NFR-9 | 保守 | 両アプリの `index.js` に、同じ処理を今の書き方で入れる。`CLAUDE.md`・AGENTS.md・計画書・開発ログを更新する |
+| NFR-10 | 公開 | 本番のバックアップ・マイグレーション・デプロイは、ユーザーが実行する。pages.dev は、ユーザーが手動でデプロイする |
+| NFR-11 | 容量（無料枠） | R2 は、今 48 個・32MB。サムネイルで +0.5MB 程度（最悪 +3MB）で、無料枠 10GB の 0.3% のまま。今後も立ち絵1枚あたり +約10KB（元の画像の約1.6%）。D1 は、今 319KB。列の追加で +1KB 未満で、無料枠 5GB に対して無視できる。R2 の書き込み（Class A）は、サムネイルで1回増えるが、保存のたびの元の画像の再アップロードをやめる（FR-6）ので、全体では減る |
 
-### 非機能要件
-- **データ量**
-  - サムネイルは1枚 64KB 以下（多くは 5〜15KB の見込み）。
-  - 1回目: 一覧を開いても、見えている行の分だけ読み込む（`loading="lazy"`）。10体で 100KB 程度。
-  - 2回目以降: キャッシュが効き、ほぼ通信しない。
-- **リクエスト数**: 増えるのは1回目の表示と自動作成のときだけで、無料枠に対して問題にならない。
-- **互換性**
-  - 一覧の要約にキーが増えるだけなので、古いフロントもそのまま動く。
-  - 古いフロントが元の画像を変えると、サムネイルは消え、次に新しいフロントで一覧を開いたときに作り直される。
-  - API → フロントの順に公開する。
-- **セキュリティ**
-  - サムネイルの保存は、元の画像と同じ権限・形式の判定・サイズの上限で守る。
-  - サムネイルは、元の画像と同じく誰でも見られる（キャラのIDを知っていれば）。
-- **公開の手順**
-  - API: バックアップ → マイグレーション `0006`（本番）→ デプロイ → スモークテスト。ユーザーが実行する。
-  - フロント: push する。pages.dev は、ユーザーが手動でデプロイする。
-- **テスト**: API は vitest。フロントは、ローカルの API とブラウザで確かめる。
-
-### スコープ外
-- ゲスト履歴・判定ツールへのサムネイルの表示、拡大表示
+### 3. 非要件（スコープ外）
+- ゲスト履歴と判定ツールへのサムネイルの表示、マウスを乗せたときの拡大表示
 - 元の画像の縮小・変換（上限 5MB はそのまま）、立ち絵の削除ボタン
-- サムネイルの一括作成スクリプト（Q45 の自動作成で足りる）
-- 元の画像の長期キャッシュ（今のまま、毎回確認する。304 で軽くする）
+- サムネイルを一括で作るスクリプト（自動作成で足りる）
+- 元の画像の長期キャッシュ（今のまま毎回確認し、304 で軽くするだけ）
+- サムネイルの大きさ・切り抜きの選択、既存画像の画質の見直し
 
-### 実装計画（タスク。上から順に実行。1タスク＝1コミット。〔運用〕は実行前に確認を取る）
-**API**（`sinobigami-api`、`feature/thumbnails`）
-- [ ] TA1 マイグレーション `0006_thumbnails.sql`（`thumb_version`）と、一覧の要約の `hasImage` / `thumb`、テスト
-- [ ] TA2 `POST /api/upload-thumb/:id`・`GET /api/thumb/:id`。`upload-image` でサムネイルを消し、削除でも消す。テスト ← TA1
-- [ ] TA3 `GET /api/image/:id` の 304、テスト
-- [ ] TA4 AGENTS.md の契約と、バックアップの説明（サムネイルは対象外）を更新する ← TA2, TA3
-- [ ] TA5 〔運用〕`main` へのマージと push、バックアップ → 本番のマイグレーション → デプロイ（ユーザー）、スモークテスト、開発ログ ← TA4
+---
 
-**フロント**（`TRPG`、`feature/list-thumbnails`）
-- [ ] TF1 シノビガミ: `createThumbnail` と保存時の送信、`imageSourceId` で画像を送り直さない（Q50）
-- [ ] TF2 シノビガミ: 一覧のサムネイルの枠と、人形のアイコン（CSS・4つのテーマ）← TF1
-- [ ] TF3 シノビガミ: サムネイルの無いキャラの自動作成 ← TF2
-- [ ] TF4 マギロギ: TF1〜TF3 と同じ処理 ← TF3
-- [ ] TF5 `CLAUDE.md` とこの計画書を更新する。〔運用〕push する（pages.dev は手動でデプロイ）← TF4, TA5
+### 4. 設計
 
-**確かめること（ローカル）**
-- 保存・画像の選び直し・新規保存・共有リンクから開いた画像での新規保存で、画像を送るかどうか。
-- サムネイルの大きさ（64KB 以下）と、縦長・横長・透過 PNG の見え方。
-- 一覧での表示と、立ち絵の無い行の枠。
-- 自動作成（1体ずつ。失敗しても止まらない）。
-- 削除でサムネイルが消えること。
-- 2回目の表示で通信が起きないこと。
-- 元の画像の 304。
-- 古いフロント（今の `main`）で画像を変えたときに、サムネイルが消えること。
+#### API（`sinobigami-api/src/index.js`）
+- **マイグレーション `migrations/0006_thumbnails.sql`**: `ALTER TABLE characters ADD COLUMN thumb_version TEXT;`（NULL はサムネイル無し）
+- **R2 のキー**: 同じバケット（`sinobigami_images`）に `thumb/<キャラID>` で置く。
+- **一覧の要約**（`toCharacterSummary`）
+  - `hasImage: !!row.image_url` と `thumb: row.thumb_version || null` を足す。
+  - `/api/my-layout` と `/api/my-characters` の SELECT に、`image_url` と `thumb_version` を足す。
+- **`POST /api/upload-thumb/:id`**（`upload-image` の処理を手本にする）
+  - `isValidId` で ID を確かめ、キャラが無ければ 404。
+  - 権限を確かめる（持ち主がいれば本人だけ。違えば 403）。
+  - 元の画像が無ければ（`image_url` が NULL）409。
+  - `readBodyLimited(request, MAX_THUMB_BYTES=64KB)` で読む（超えれば 413）。
+  - `detectImageType` の結果が png / jpeg / webp のどれかで、宣言した形式と一致しなければ 415。
+  - R2 に `thumb/<id>` として置き、`thumb_version = Date.now().toString(36)` にして、`{ version }` を返す。
+- **`GET /api/thumb/:id`**
+  - R2 の `thumb/<id>` を返す。無ければ 404。
+  - ヘッダーは、CORS・`Content-Type`・`ETag`・`Cache-Control: public, max-age=31536000, immutable`・`X-Content-Type-Options: nosniff`。
+- **`POST /api/upload-image/:id`**: 元の画像を置いた後に、R2 の `thumb/<id>` を削除し、`image_url` を更新するときに `thumb_version = NULL` も一緒に入れる。
+- **`DELETE /api/character/:id`**: 元の画像に加えて、`thumb/<id>` も削除する。
+- **`GET /api/image/:id`**
+  - `env.sinobigami_images.get(id, { onlyIf: request.headers })` で読む。
+  - 本文の無いオブジェクト（条件が一致した）なら、304 と ETag を返す。
+  - それ以外は今と同じ。
+
+#### フロント（`sinobigami/index.js` と `magirogi/index.js`。マギロギは字下げが1段深い）
+- **定数**: `THUMB_MAX_SIDE = 128`、`THUMB_MAX_BYTES = 64 * 1024`、`THUMB_BOX = 36×48`（CSS）
+- **`createThumbnail(blob)`**（グローバル。`escapeHTML` の近く）
+  1. `createImageBitmap(blob)` で読む（使えなければ `Image`）。
+  2. 倍率 = `min(1, 128 / max(幅, 高さ))` でキャンバスに描く。
+  3. `toBlob('image/webp', q)` にする（q は 0.85 → 0.7 → 0.5）。
+  4. 返ってきた形式が webp でなければ、`image/png` で作り直す。
+  5. 64KB 以下になった Blob を返す。ならなければ null。
+- **`uploadThumbnail(id, blob)`**
+  - `createThumbnail` の結果を `POST /api/upload-thumb/:id` に送る。
+  - 失敗したら `console.warn` だけにし、例外は投げない。
+- **画像の出どころ `imageSourceId`**（`savedImageBase64` の隣。DOMContentLoaded の中）
+  - `null` にするとき:
+    - 画像の入力欄の `change`（sinobigami/index.js:1049 の処理）
+    - `applyLoadedData`（JSON からの読み込み）
+    - `resetCharacterForm`
+  - 共有リンクからの読み込み（index.js:2636）で `compact.img` があるときは、`imageSourceId = match[1]`。
+- **`saveCharacter`**（index.js:2552）
+  - 画像を送るのは、`imageBase64 && imageSourceId !== id` のときだけにする。
+  - 送るときは、元の画像を `upload-image` に送った後、同じ Blob から `uploadThumbnail(id, blob)` を送る。
+  - 両方が済んだら、`imageSourceId = id` にする。
+- **一覧の行**（`buildListItemHTML`）
+  - `h.showThumb` が true のときだけ、`<span class="history-item-thumb">` を名前の左に置く。
+    - `h.thumb` があれば `<img src="${API_BASE}/api/thumb/${id}?v=${thumb}" alt="" loading="lazy" width="36" height="48">`。
+    - 無ければ、人形の SVG（`LIST_PERSON_ICON`）。
+    - `<img>` が読めなければ（`onerror`）、枠だけにする。
+  - `renderMyLayoutList` の `charRow` で、`showThumb: true` を渡す。ゲスト履歴は false のまま。
+- **自動作成**（`renderMyCharacters` の後）
+  - `backfillThumbnails()` を作る。
+    - `myCharactersCache` の中の `hasImage && !thumb` のキャラを、1体ずつ `await` で処理する。
+      1. `fetch(/api/image/:id)` で元の画像を取得する。
+      2. `createThumbnail` でサムネイルを作る。
+      3. `upload-thumb` に送る。
+      4. 成功したら、`myLayoutItems` の中のその要約の `thumb` を更新して、`renderMyLayoutList()` で描き直す。
+  - 同時に1つだけ動かす（`isBackfilling`）。
+  - 同じページで失敗したIDは `backfillFailed`（Set）に入れて、もう試さない。
+  - `getAuthToken()` が無くなったら止める。
+- **CSS**（両アプリの `stylesheet.css`）
+  - `.history-item-thumb`
+    - 大きさ: 幅36×高さ48、`flex-shrink: 0`
+    - 見た目: 角丸、`background: var(--surface-alt)`、`border: 1px solid var(--border)`
+  - `.history-item-thumb img`: `width: 100%; height: 100%; object-fit: contain`
+  - 人形のアイコン: `var(--muted)` で薄く描く。
+  - `.history-item` の中で、名前の左に並べる。4つのテーマで確かめる。
+
+---
+
+### 5. 細かいステップ（上から順に実行。✔ はそのステップの完了条件）
+
+#### 準備
+- **S0** 計画書の「第3期」の節を、この内容に置き換えて、`feature/list-thumbnails` にコミットする。API に `feature/thumbnails` ブランチを切る。
+  - ✔ 計画書に、要件・非要件・ステップが載っている。
+
+#### API（`sinobigami-api`、`feature/thumbnails`）
+- **S1** `migrations/0006_thumbnails.sql` を作り、ローカルに適用する（`npm run db:migrate:local`）。
+  - ✔ ローカルの D1 に `thumb_version` 列がある。テストの初期化（`test/apply-migrations.js`）でも適用される。
+- **S2** `toCharacterSummary` と2つの SELECT に、`hasImage` / `thumb` を足し、テストを書く（`index.spec.js`）。
+  - ✔ 画像の無いキャラは `hasImage:false, thumb:null`、画像を上げたキャラは `hasImage:true`。
+- **S3** `POST /api/upload-thumb/:id` を作り、テストを書く（新しい `test/thumbnails.spec.js`）。
+  - テストの内容:
+    - 成功と、版の返り値
+    - 401 と 403（持ち主のいるキャラ）、持ち主のいないキャラの成功
+    - 元の画像が無いときの 409、64KB を超えたときの 413、形式の食い違いと gif の 415
+    - 不正な ID の 404
+  - ✔ `npx vitest run` が全件通る。
+- **S4** `GET /api/thumb/:id` を作り、テストを書く。
+  - ✔ 200 のときの `Cache-Control`・`Content-Type`・`ETag`、無いときの 404。
+- **S5** `upload-image` でサムネイルを消し、削除でも消す。テストを書く。
+  - ✔ 元の画像を上げ直すと、`thumb` が null になり、`GET /api/thumb` が 404 になる。キャラを削除すると、`thumb/<id>` が R2 から消える。
+- **S6** `GET /api/image/:id` の 304 を作り、テストを書く。
+  - ✔ `If-None-Match` に同じ ETag を付けると 304（本文なし）、違えば 200。
+- **S7** AGENTS.md（契約・バックアップの対象外）を更新する。
+  - ✔ 新しいエンドポイント・要約のキー・304 が書かれている。
+- **S8** ローカルで、今の本番のフロントとの互換を確かめる。
+  - ✔ 今の `main` のフロントで、一覧・保存・画像の表示が今までどおり動く。
+- **S9** 〔運用・確認を取る〕API の `main` にマージして push する。
+- **S10** 〔運用・ユーザーが実行〕本番に反映する。
+  1. `npm run db:backup`
+  2. `npm run db:migrate:remote`（`0006`）
+  3. `npx wrangler deploy`
+- **S11** 本番のスモークテストをし、開発ログを書いて push する（確認を取る）。
+  - ✔ `GET /api/thumb/<無いID>` は 404、`POST /api/upload-thumb/<ID>` の未認証は 401 か 404、`/api/my-layout` の未認証は 401。
+
+#### フロント（`TRPG`、`feature/list-thumbnails`）
+- **S12** シノビガミ: `createThumbnail` と `uploadThumbnail` を作る。
+  - ✔ 縦長・横長・透過 PNG・3MB の画像から、長い辺 128px、64KB 以下の Blob ができる（ブラウザで確かめる）。
+- **S13** シノビガミ: `imageSourceId` と、`saveCharacter` の送信の条件を入れ、サムネイルを送る。
+  - ✔ 次の4つの場合で、送信の有無が要件どおりになる（ネットワークの記録で確かめる）。
+    - 画像を選んで保存 → 元の画像とサムネイルを送る
+    - 変更なしで上書き保存 → `PUT` だけ
+    - JSON の画像を読み込んで新規保存 → 両方を送る
+    - 新規作成 → 画像なし
+- **S14** シノビガミ: 一覧のサムネイルの枠・人形のアイコン・CSS を入れる。
+  - ✔ サムネイルのある行・無い行・読み込みに失敗した行が正しく出る。4つのテーマとスマホ幅で崩れない。2回目の表示で `/api/thumb` の通信が無い（キャッシュ）。
+- **S15** シノビガミ: `backfillThumbnails` を入れる。
+  - ✔ サムネイルの無い画像つきのキャラが1体ずつ埋まる。失敗するキャラ（元の画像が壊れているなど）があっても次へ進む。ログアウトで止まる。
+- **S16** マギロギ: S12〜S15 と同じ処理を移す（今までどおり、字下げを変えたパッチを当て、合わない部分は手で直す）。
+  - ✔ マギロギで、S12〜S15 と同じ確認が通る。
+- **S17** 両アプリで通しの確認をする。
+  - ✔ 削除でサムネイルが消える。古いフロントで画像を差し替えると、サムネイルが消えてから作り直される。キャラシでの元の画像の 304。コンソールにエラーが無い。
+- **S18** `CLAUDE.md`（一覧の行・保存の送信条件・API の契約）と計画書（結果）を更新する。
+  - ✔ 文書が実装と一致している。
+- **S19** 〔運用・確認を取る〕API の本番反映（S10）の後に、TRPG の `main` にマージして push する。pages.dev の手動デプロイは、ユーザーに頼む。
+
+---
+
+### 6. 重要なファイル
+- `sinobigami-api/src/index.js`
+  - `toCharacterSummary`、`/api/my-layout` と `/api/my-characters` の SELECT
+  - `upload-image`、`DELETE /api/character/:id`、`GET /api/image/:id`
+  - 新しい `upload-thumb` と `GET /api/thumb`
+- `sinobigami-api/migrations/0006_thumbnails.sql`、`test/thumbnails.spec.js`（新規）、`test/index.spec.js`、`AGENTS.md`、`docs/development-log.md`
+- `TRPG/sinobigami/index.js`
+  - 画像の入力欄の `change`（1049）、`applyLoadedData`、`saveCharacter`（2520）、共有リンクからの読み込み（2624）
+  - `buildListItemHTML`、`renderMyLayoutList`、`renderMyCharacters`、`resetCharacterForm`
+- `TRPG/magirogi/index.js`（同じ処理。1913・1995 付近）
+- 両アプリの `stylesheet.css`、`CLAUDE.md`、`docs/plan-2026-09-features.md`
+
+### 7. 検証（通し）
+- **API**: `npx vitest run`（今の 88 件に、S2〜S6 の分を足して、すべて通過）。
+- **ローカルの通し確認**（API を `local-api`、画面を `static-server` で動かし、内蔵ブラウザで確かめる）
+  - S12〜S17 の ✔ を、ネットワークの記録（`read_network_requests`）と画面の状態（`javascript_tool`・スクリーンショット）で確かめる。
+  - 検索で何度も描き直しても、`/api/thumb` の通信が増えないことを確かめる。
+- **本番**: スモークテスト（S11）。公開後に、ユーザーがログインして、一覧のサムネイルと自動作成を確かめる。
