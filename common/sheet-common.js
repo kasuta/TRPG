@@ -1239,7 +1239,6 @@ if (logoutBtn) {
 
 const historyToggleBtn = document.getElementById('history_toggle_btn');
 const historyPanel = document.getElementById('history_panel');
-const historyCloseBtn = document.getElementById('history_close_btn');
 const historyListEl = document.getElementById('history_list');
 
 const newFolderBtn = document.getElementById('new_folder_btn');
@@ -1317,12 +1316,12 @@ const closeHistoryPanel = () => {
   }
 };
 
+// パネルは、パネルの左に付いてくる開閉ボタン(＞)で開け閉めする
 if (historyToggleBtn) {
   historyToggleBtn.addEventListener('click', () => {
     historyPanel.classList.contains('is-open') ? closeHistoryPanel() : openHistoryPanel();
   });
 }
-if (historyCloseBtn) historyCloseBtn.addEventListener('click', closeHistoryPanel);
 
 if (historyListEl) {
   historyListEl.addEventListener('click', (e) => {

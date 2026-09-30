@@ -2043,6 +2043,8 @@ textarea {
 	width: 300px;
 	max-width: 85vw;
 	height: 100vh;
+	/* スマホではアドレスバーの分だけ 100vh より狭いので、下端のアカウント欄が隠れないよう見えている高さに合わせる */
+	height: 100dvh;
 	background: var(--panel);
 	border-left: 1px solid var(--border);
 	box-shadow: -8px 0 24px var(--panel-shadow);
@@ -2056,23 +2058,17 @@ textarea {
 
 .history-panel.is-open { transform: translateX(0); }
 
-.history-panel-head {
-	display: flex;
-	justify-content: space-between;
-	align-items: center;
-	padding: 16px 18px;
-	border-bottom: 1px solid var(--border);
+/* アカウント欄(ログイン・新規登録・ログアウト)。パネルの下端に置き、一覧が長くても常に見える */
+.history-panel-account {
+	border-top: 1px solid var(--border);
+	padding-bottom: env(safe-area-inset-bottom);
 }
 
-.history-panel-head h2 { margin: 0; font-size: 1.1rem; }
-
-.history-close-btn {
-	border: none;
-	background: transparent;
+.history-panel-account-title {
+	margin: 0;
+	padding: 10px 16px 0;
+	font-size: 0.85rem;
 	color: var(--muted);
-	font-size: 1.1rem;
-	cursor: pointer;
-	padding: 4px 8px;
 }
 
 .history-list {
@@ -2329,8 +2325,7 @@ textarea {
 }
 
 .auth-section {
-	padding: 12px 16px;
-	border-bottom: 1px solid var(--border);
+	padding: 8px 16px 12px;
 }
 
 .history-panel-actions {
@@ -2373,6 +2368,8 @@ textarea {
 }
 
 .auth-form input {
+	/* ユーザー名(type="text")だけ全体の input[type="text"] の幅(24ch)で細くならないよう、パスワードと揃える */
+	width: 100%;
 	font-size: 0.9rem;
 	padding: 8px 10px;
 }
