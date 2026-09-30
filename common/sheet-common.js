@@ -311,11 +311,24 @@ let savedImageBase64 = null;
 // 保存先のキャラと同じなら、保存のときに画像を送り直さない
 let imageSourceId = null;
 
+/** サーバーが受け付ける立ち絵の形式と大きさ(APIと同じ。形式は中身の先頭バイトでも確かめられる) */
+const IMAGE_TYPES = ['image/png', 'image/jpeg', 'image/gif', 'image/webp', 'image/avif'];
+const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
+const IMAGE_EMPTY_TEXT = imageEmpty.textContent;
+
 const clearPreview = () => {
   if (previewUrl) { URL.revokeObjectURL(previewUrl); previewUrl = null; }
   imagePreview.removeAttribute('src');
   imagePreview.classList.remove('is-visible');
+  imageEmpty.textContent = IMAGE_EMPTY_TEXT;
   imageEmpty.hidden = false;
+};
+
+/** 選んだファイルを立ち絵にできない理由(できるなら null) */
+const imageFileProblem = (file) => {
+  if (!IMAGE_TYPES.includes(file.type)) return 'この形式の画像は保存できません(PNG・JPEG・GIF・WebP・AVIF のみ)。';
+  if (file.size > MAX_IMAGE_BYTES) return `画像が大きすぎます(${MAX_IMAGE_BYTES / 1024 / 1024}MBまで)。`;
+  return null;
 };
 
 /** 立ち絵を外す(画像の出どころは、読み込んだ側(共有リンクなら、そのキャラのID)が設定し直す) */
@@ -338,16 +351,22 @@ imageInput.addEventListener('change', () => {
   imageSourceId = null;
   const file = imageInput.files && imageInput.files[0];
   if (!file) { clearPreview(); savedImageBase64 = null; return; }
-  if (!file.type.startsWith('image/')) {
+  // サーバーが受け付けない画像は、保存してから失敗させず、選んだ時点で知らせて外す
+  const problem = imageFileProblem(file);
+  if (problem) {
+    const message = `${problem}別の画像を選んでください。`;
     clearPreview();
-    imageEmpty.textContent = '画像ファイルを選択してください';
+    imageEmpty.textContent = message;
     savedImageBase64 = null;
+    imageInput.value = '';
+    showToast(message, 4000);
     return;
   }
   if (previewUrl) URL.revokeObjectURL(previewUrl);
   previewUrl = URL.createObjectURL(file);
   imagePreview.src = previewUrl;
   imagePreview.classList.add('is-visible');
+  imageEmpty.textContent = IMAGE_EMPTY_TEXT;
   imageEmpty.hidden = true;
 
   const reader = new FileReader();
@@ -1580,7 +1599,32 @@ const uploadThumbnail = async (id, imageBlob) => {
   }
 };
 
-/** キャラクターを保存する(currentCharacterIdの有無で新規/更新を自動判定) */
+/**
+ * API を呼ぶ。つながらなかったとき(fetch の例外。文言がブラウザごとに違う)は、分かる文言の Error にする。
+ */
+const fetchApi = async (url, options) => {
+  try {
+    return await fetch(url, options);
+  } catch (err) {
+    console.error(err);
+    throw new Error('サーバーに接続できませんでした。通信状況を確かめて、もう一度保存してください。');
+  }
+};
+
+/**
+ * 失敗した応答から、利用者に見せる文言を作る。サーバーの理由({ error })があれば添え、
+ * 大きすぎるとき(413)は、どうすればよいかも添える。
+ */
+const apiErrorMessage = async (res, what, tooLargeHint = '') => {
+  const json = await res.json().catch(() => ({}));
+  const reason = json.error || `エラー ${res.status}`;
+  return `${what}に失敗しました: ${reason}${res.status === 413 && tooLargeHint ? `\n${tooLargeHint}` : ''}`;
+};
+
+/**
+ * キャラクターを保存する(currentCharacterIdの有無で新規/更新を自動判定)。
+ * 失敗したら、理由を書いた Error を投げる。キャラは保存できて立ち絵だけ失敗したときは、err.characterSaved が true。
+ */
 const saveCharacter = async () => {
   const data = sheetHooks.buildSaveData();
   const imageBase64 = data.image;
@@ -1588,47 +1632,64 @@ const saveCharacter = async () => {
   const compact = sheetHooks.compactifyForShare(data);
 
   const authHeaders = getAuthToken() ? { Authorization: `Bearer ${getAuthToken()}` } : {};
+  const tooLargeHint = '効果や設定などの長い文章を短くしてから、もう一度保存してください。';
 
   let id;
   if (currentCharacterId) {
     // 既にIDがある → 更新
-    const res = await fetch(`${API_BASE}/api/update/${currentCharacterId}`, {
+    const res = await fetchApi(`${API_BASE}/api/update/${currentCharacterId}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json', ...authHeaders },
       body: JSON.stringify(compact),
     });
-    if (!res.ok) throw new Error('更新に失敗しました');
+    if (!res.ok) throw new Error(await apiErrorMessage(res, '更新', tooLargeHint));
     id = currentCharacterId;
   } else {
     // IDがない → 新規作成
-    const res = await fetch(`${API_BASE}/api/save?game=${CURRENT_GAME}`, {
+    const res = await fetchApi(`${API_BASE}/api/save?game=${CURRENT_GAME}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', ...authHeaders },
       body: JSON.stringify(compact),
     });
-    if (!res.ok) throw new Error('保存に失敗しました');
+    if (!res.ok) throw new Error(await apiErrorMessage(res, '保存', tooLargeHint));
     const json = await res.json();
     id = json.id;
     currentCharacterId = id;
     history.replaceState(null, '', `${window.location.pathname}${window.location.search}#id=${id}`);
   }
+  // キャラ自体は保存できたので、立ち絵が失敗しても履歴には残す
+  addToHistory(id, getFieldValue('name'));
 
   // 画像は、選び直したとき・別のキャラの画像を持っているとき(JSONの読み込みや新規保存)だけ送る。
   // このキャラの画像をサーバーから読み込んだまま上書き保存するときは送り直さない。
   // 送るときは、一覧用のサムネイルも作って送る(失敗しても保存は成功とし、一覧を開いたときに作り直す)
   if (imageBase64 && imageSourceId !== id) {
-    const imageBlob = await (await fetch(imageBase64)).blob();
-    const imgRes = await fetch(`${API_BASE}/api/upload-image/${id}`, {
-      method: 'POST',
-      headers: { 'Content-Type': imageBlob.type, ...authHeaders },
-      body: imageBlob,
-    });
-    if (!imgRes.ok) throw new Error('画像のアップロードに失敗しました');
+    const imageFailed = (message) => Object.assign(new Error(message), { characterSaved: true });
+    let imageBlob;
+    try {
+      // data URL か、別のキャラの /api/image/<id>(そのキャラの共有リンクから読み込んで新規保存するとき)
+      imageBlob = await (await fetchApi(imageBase64)).blob();
+    } catch (err) {
+      throw imageFailed(err.message);
+    }
+    // JSON から読み込んだ古い画像など、サーバーが受け付けないものは送らずに知らせる
+    const problem = imageFileProblem(imageBlob);
+    if (problem) throw imageFailed(problem);
+    let imgRes;
+    try {
+      imgRes = await fetchApi(`${API_BASE}/api/upload-image/${id}`, {
+        method: 'POST',
+        headers: { 'Content-Type': imageBlob.type, ...authHeaders },
+        body: imageBlob,
+      });
+    } catch (err) {
+      throw imageFailed(err.message);
+    }
+    if (!imgRes.ok) throw imageFailed(await apiErrorMessage(imgRes, '立ち絵の保存'));
     await uploadThumbnail(id, imageBlob);
     imageSourceId = id;
   }
 
-  addToHistory(id, getFieldValue('name'));
   return id;
 };
 
@@ -1652,7 +1713,14 @@ if (saveCharacterBtn) {
       showToast('保存しました！');
     } catch (err) {
       console.error('保存に失敗しました', err);
-      alert(`保存中にエラーが発生しました。\n${err && err.message ? err.message : err}`);
+      const reason = err && err.message ? err.message : err;
+      if (err && err.characterSaved) {
+        // キャラは保存できている(共有リンクも使える)ので、一覧は新しくする
+        if (getAuthToken()) renderMyCharacters();
+        alert(`キャラクターは保存しましたが、立ち絵は保存できませんでした。\n${reason}`);
+      } else {
+        alert(`保存中にエラーが発生しました。\n${reason}`);
+      }
     } finally {
       saveCharacterBtn.disabled = false;
       saveCharacterBtn.innerHTML = originalHTML;
