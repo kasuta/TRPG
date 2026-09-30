@@ -660,8 +660,9 @@ const defaultFolderKind = (parent) => {
 
 /**
  * 一覧の検索条件(名前・ふりがな、タグ、シノビガミの区分)。ブラウザには記憶しない。
- * ゲームの絞り込みタブと組み合わせる(すべて AND)。検索中は、一致するキャラを含むフォルダだけを開いて表示し、
- * ドラッグとフォルダの編集はしない。
+ * ゲームの絞り込みタブと組み合わせる(すべて AND)。検索中は、一致するキャラを含むフォルダだけを表示し、
+ * ドラッグとフォルダの編集はしない。名前・タグで検索しているときは、そのフォルダをすべて開いて見せる
+ * (区分だけで絞り込んでいるときは開かず、いつもどおり開け閉めできる)。
  */
 const listSearch = { text: '', tags: new Set(), kind: 'all' };
 
@@ -673,7 +674,9 @@ const normalizeSearchText = (value) => String(value || '')
 
 /** 区分の絞り込み(マギロギのタブでは区分が無いので効かせない) */
 const activeKindFilter = () => (gameFilter === 'magirogi' ? 'all' : listSearch.kind);
-const isListSearchActive = () => !!listSearch.text.trim() || listSearch.tags.size > 0 || activeKindFilter() !== 'all';
+/** 名前・ふりがなかタグで検索しているか(このときは、一致を含むフォルダを開いて見せる) */
+const isListTextOrTagSearchActive = () => !!listSearch.text.trim() || listSearch.tags.size > 0;
+const isListSearchActive = () => isListTextOrTagSearchActive() || activeKindFilter() !== 'all';
 
 /** 検索条件に合うキャラか(名前かふりがなの部分一致・選んだタグをすべて持つ・区分) */
 const matchesListSearch = (c) => {
@@ -754,8 +757,10 @@ const renderMyLayoutList = () => {
   const currentKind = listEl.querySelector('.history-folder-kind');
   if (editingFolder && currentKind) editingFolder.draftKind = currentKind.value;
 
-  // 検索中は、一致するキャラを含むフォルダだけを開いて表示し、ドラッグとフォルダの編集はしない(開閉の記憶は変えない)
+  // 検索中は、一致するキャラを含むフォルダだけを表示し、ドラッグとフォルダの編集はしない。
+  // 名前・タグで検索しているときは、そのフォルダを開いて見せる(開閉の記憶は変えない。区分だけなら開閉の記憶どおり)
   const searching = isListSearchActive();
+  const forceOpen = isListTextOrTagSearchActive();
   const isVisibleCharacter = (c) => matchesGameFilter(c) && matchesListSearch(c);
   const draggable = canReorderByDrag() && !searching;
   const openIds = getOpenFolderIds();
@@ -773,7 +778,7 @@ const renderMyLayoutList = () => {
   const renderFolder = (folder, depth, parent) => {
     const count = flattenLayoutItems(folder.items).filter(isVisibleCharacter).length;
     if (searching && count === 0) return '';
-    const isOpen = searching || openIds.has(folder.id);
+    const isOpen = forceOpen || openIds.has(folder.id);
     const editing = !searching && !!editingFolder && !editingFolder.isNew && editingFolder.id === folder.id;
     const kindOptions = editing ? allowedFolderKinds(folder, parent) : [];
     const draftKind = editing ? editingFolder.draftKind : null;
@@ -892,9 +897,9 @@ const deleteFolder = (folderId) => {
   saveMyLayout();
 };
 
-/** フォルダを開閉する(検索中は、一致を含むフォルダをすべて開いて見せるので開閉しない) */
+/** フォルダを開閉する(名前・タグで検索中は、一致を含むフォルダをすべて開いて見せるので開閉しない) */
 const toggleFolder = (folderId) => {
-  if (isListSearchActive()) return;
+  if (isListTextOrTagSearchActive()) return;
   setFolderOpen(folderId, !getOpenFolderIds().has(folderId));
   renderMyLayoutList();
 };

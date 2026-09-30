@@ -1628,6 +1628,8 @@ textarea {
 	display: flex;
 	flex-direction: column;
 	overflow: hidden;
+	/* パネルの上でのスクロールを、後ろのキャラシに伝えない */
+	overscroll-behavior: contain;
 }
 
 .history-panel.is-open { transform: translateX(0); }
@@ -1648,7 +1650,12 @@ textarea {
 .history-list {
 	flex: 1;
 	overflow-y: auto;
+	/* 一覧の端までスクロールしたあと、さらに回しても後ろのキャラシが動かないようにする */
+	overscroll-behavior: contain;
 	padding: 8px;
+	/* 一番下のキャラも一覧の中ほどまで上げて見られるよう、下に余白を取る(一覧はパネルの高さの半分ほど) */
+	padding-bottom: 30vh;
+	padding-bottom: 30dvh;
 	display: flex;
 	flex-direction: column;
 	gap: 6px;
