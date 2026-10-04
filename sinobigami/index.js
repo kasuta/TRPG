@@ -267,6 +267,7 @@ const isEmptyNinpoRow = makeEmptyRowChecker(['name', 'type', 'skill', 'range', '
 const isEmptyOugiRow = makeEmptyRowChecker(['name', 'skill', 'kaizou', 'effect']);
 const isEmptyHaikeiRow = makeEmptyRowChecker(['name', 'merit', 'cost', 'effect', 'ref']);
 const isEmptyRelationRow = makeEmptyRowChecker(['name', 'location', 'secret', 'ougi', 'emotion_sign', 'emotion']);
+const isEmptyNinguRow = makeEmptyRowChecker(['name', 'count']);
 
 /** 忍法データを収集 (disabled行を除外するかどうか選択可能) */
 const collectNinpo = ({ includeDisabled = true } = {}) => {
@@ -294,6 +295,27 @@ const collectRelations = () => collectRows(i => `[name="relation_name_${i}"]`, {
   emotion_sign: checkboxField('relation_emotion_sign'),
   emotion: textField('relation_emotion'),
 });
+
+/** 忍具の自由記述の行(兵糧丸・神通丸・遁甲符以外)を収集 */
+const collectNingu = () => collectRows(i => `[name="ningu_item_name_${i}"]`, {
+  name: textField('ningu_item_name'),
+  count: textField('ningu_item_count'),
+});
+
+/** 忍具の個数の合計(兵糧丸・神通丸・遁甲符と、自由記述の行) */
+const getNinguTotal = () =>
+  ['ningu_hyorogan', 'ningu_jintsumaru', 'ningu_tonkofu'].reduce((sum, key) => sum + parseNinguCount(getFieldValue(key)), 0)
+  + collectNingu().reduce((sum, row) => sum + parseNinguCount(row.count), 0);
+
+/**
+ * 以前の「その他」欄(ningu_other)の値を、自由記述の1行にする。
+ * 数字だけなら個数として「その他」の名前を付け、文字が混じっていれば名前欄にそのまま入れる
+ */
+const legacyNinguOtherRow = (value = '') => {
+  const text = String(value).trim();
+  if (!text) return null;
+  return /^[\d０-９]+$/.test(text) ? { name: 'その他', count: text } : { name: text, count: '' };
+};
 
 /** 習得済み特技IDリストを返す */
 const getAcquiredSkillIds = () => {
@@ -394,6 +416,38 @@ document.addEventListener('DOMContentLoaded', () => {
   }
   if (addOugiBtn) addOugiBtn.addEventListener('click', addOugiRow);
   if (removeOugiBtn) removeOugiBtn.addEventListener('click', removeOugiRow);
+
+  // ──────────────────────────────
+  // 1a'. 忍具セクション(自由記述の行)
+  // ──────────────────────────────
+  const ninguList = document.getElementById('ningu_list');
+  const addNinguBtn = document.getElementById('add_ningu_btn');
+  const removeNinguBtn = document.getElementById('remove_ningu_btn');
+  let ninguCount = 0;
+  // 兵糧丸・神通丸・遁甲符の3行(ラベル+入力欄)は消さない
+  const NINGU_FIXED_COUNT = 6;
+  const NINGU_ROW_SIZE = 2;
+
+  const addNinguRow = (row = {}) => {
+    if (!ninguList) return;
+    ninguCount++;
+    const n = ninguCount;
+    ninguList.insertAdjacentHTML('beforeend', `
+      <input name="ningu_item_name_${n}" type="text" class="ningu-input ningu-name-input" placeholder="忍具名" aria-label="忍具名" />
+      <input name="ningu_item_count_${n}" type="text" class="ningu-input" aria-label="個数" />`);
+    ninguList.querySelector(`[name="ningu_item_name_${n}"]`).value = row.name || '';
+    ninguList.querySelector(`[name="ningu_item_count_${n}"]`).value = row.count || '';
+  };
+
+  const removeNinguRow = () => {
+    if (ninguCount === 0) return;
+    if (removeLastRow(ninguList, NINGU_FIXED_COUNT, NINGU_ROW_SIZE)) ninguCount = Math.max(0, ninguCount - 1);
+  };
+
+  const clearNinguRows = () => { while (ninguCount > 0) removeNinguRow(); };
+
+  if (addNinguBtn) addNinguBtn.addEventListener('click', () => addNinguRow());
+  if (removeNinguBtn) removeNinguBtn.addEventListener('click', removeNinguRow);
 
   // ──────────────────────────────
   // 1b. 忍法セクション
@@ -786,7 +840,7 @@ document.addEventListener('DOMContentLoaded', () => {
       // 一覧パネル(ログイン・検索)の入力と、タグの入力欄(タグは tags に入れる)は保存しない
       if (el.closest('#history_panel') || el.id === 'tag_input') return;
       if (el.id === 'reveal_password' || el.id === 'reveal_password_prompt_input') return;
-      if (!el.name.startsWith('ougi_') && !el.name.startsWith('ninpo_') && !el.name.startsWith('relation_')) {
+      if (!el.name.startsWith('ougi_') && !el.name.startsWith('ninpo_') && !el.name.startsWith('relation_') && !el.name.startsWith('ningu_item_')) {
         data.inputs[el.id || el.name] = el.value;
       }
     });
@@ -800,6 +854,7 @@ document.addEventListener('DOMContentLoaded', () => {
     data.ninpo = collectNinpo().filter(row => !isEmptyNinpoRow(row));
     data.haikei = collectHaikei().filter(row => !isEmptyHaikeiRow(row));
     data.relations = collectRelations().filter(row => !isEmptyRelationRow(row));
+    data.ningu = collectNingu().filter(row => !isEmptyNinguRow(row));
     const revealPasswordInput = document.getElementById('reveal_password');
     data.revealPassword = revealPasswordInput ? revealPasswordInput.value : '';
     return data;
@@ -809,7 +864,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const clearCharacterForm = () => {
     document.querySelectorAll('input[type="text"], input[type="number"], select, textarea').forEach(el => {
       if (el.closest('#history_panel') || el.id === 'reveal_password_prompt_input') return;
-      if (/^(ougi_|ninpo_|haikei_|relation_)/.test(el.name || '')) return;
+      if (/^(ougi_|ninpo_|haikei_|relation_|ningu_item_)/.test(el.name || '')) return;
       if (el.tagName === 'SELECT') el.selectedIndex = 0;
       else el.value = '';
     });
@@ -894,6 +949,13 @@ document.addEventListener('DOMContentLoaded', () => {
       // 新規作成時と同様に空の行を1つ残す
       if (document.querySelectorAll('.relation-textarea[name^="relation_name_"]').length === 0) addRelationRow();
     }
+    // 忍具の自由記述の行。前のキャラの行を残さないよう、データに無くても必ず作り直す。
+    // 以前の「その他」欄に値があるデータは、その内容を1行目にする
+    clearNinguRows();
+    const legacyNingu = legacyNinguOtherRow(data.inputs?.ningu_other);
+    [...(legacyNingu ? [legacyNingu] : []), ...(Array.isArray(data.ningu) ? data.ningu : [])]
+      .filter(row => !isEmptyNinguRow(row))
+      .forEach(row => addNinguRow(row));
     if (data.image) showLoadedImage(data.image);
     const revealPasswordInput = document.getElementById('reveal_password');
     if (revealPasswordInput) revealPasswordInput.value = data.revealPassword || '';
@@ -944,6 +1006,8 @@ document.addEventListener('DOMContentLoaded', () => {
   const NINPO_ORDER = ['name', 'type', 'skill', 'range', 'cost', 'effect', 'ref'];
   const OUGI_ORDER = ['name', 'skill', 'kaizou', 'effect'];
   const HAIKEI_ORDER = ['name', 'merit', 'cost', 'effect', 'ref'];
+  const NINGU_ORDER = ['name', 'count'];
+  // ningu_other(no)は以前の「その他」欄。今は保存しないが、古いデータを読むために残している
   const INPUT_KEY_MAP = {
     name: 'n', furigana: 'fu', age: 'a', gender: 'g', school: 'sc', sub_school: 'ss', rank: 'rk',
     join_condition: 'jc', manner: 'mn', nemesis: 'nm', face: 'fc', belief: 'bl', points: 'pt', life_extra: 'le', char_kind: 'kd',
@@ -999,6 +1063,7 @@ document.addEventListener('DOMContentLoaded', () => {
         return trimTrailingEmpty([r.name || '', mask, r.emotion || '']);
       });
     }
+    if (data.ningu && data.ningu.length) compact.ng = rowsToArrays(data.ningu, NINGU_ORDER);
     if (data.revealPassword) compact.pw = data.revealPassword;
     if (data.tags && data.tags.length) compact.tg = data.tags;
     return compact;
@@ -1030,6 +1095,7 @@ document.addEventListener('DOMContentLoaded', () => {
         emotion: emotion || '',
       }));
     }
+    if (Array.isArray(compact.ng)) data.ningu = arraysToRows(compact.ng, NINGU_ORDER);
     if (compact.pw) data.revealPassword = compact.pw;
     if (Array.isArray(compact.tg)) data.tags = compact.tg;
     return data;
@@ -1056,6 +1122,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
     while (document.querySelectorAll('.relation-textarea[name^="relation_name_"]').length > 0) removeRelationRow();
     addRelationRow();
+
+    clearNinguRows();
 
     currentCharacterId = null;
     history.replaceState(null, '', window.location.pathname + window.location.search);
@@ -1098,9 +1166,8 @@ ET　感情表
 WT　変調表
 GWT　戦国変調表`;
 
-      // 忍具の各欄(兵糧丸・神通丸・遁甲符・その他)の数字の合計
-      const ninguTotal = ['ningu_hyorogan', 'ningu_jintsumaru', 'ningu_tonkofu', 'ningu_other']
-        .reduce((sum, key) => sum + parseNinguCount(getFieldValue(key)), 0);
+      // 忍具の各欄(兵糧丸・神通丸・遁甲符・自由記述の行)の数字の合計
+      const ninguTotal = getNinguTotal();
 
       // シノビガミ用ステータス配列(エネミーは分野ごとの生命力を持たないので、生命力と忍具だけ)
       const life = Number(getFieldValue('life_extra', '0'));
@@ -1165,8 +1232,9 @@ GWT　戦国変調表`;
   const setRevealState = (hidden) => {
     isHidden = hidden;
     document.body.classList.toggle('hidden-mode', isHidden);
-    if (ougiSection) { ougiSection.classList.toggle('hideable-section', isHidden); ougiSection.dataset.hideLabel = '奥義'; }
-    if (ninguSection) { ninguSection.classList.toggle('hideable-section', isHidden); ninguSection.dataset.hideLabel = '忍具'; }
+    // 隠している間は黒塗りの下の入力欄にTabで入れないよう inert にする
+    if (ougiSection) { ougiSection.classList.toggle('hideable-section', isHidden); ougiSection.dataset.hideLabel = '奥義'; ougiSection.inert = isHidden; }
+    if (ninguSection) { ninguSection.classList.toggle('hideable-section', isHidden); ninguSection.dataset.hideLabel = '忍具'; ninguSection.inert = isHidden; }
     if (hideToggleBtn) hideToggleBtn.innerHTML = isHidden ? `${ICON_EYE}表示する` : `${ICON_EYE_SLASH}隠す`;
   };
 
@@ -1429,16 +1497,18 @@ GWT　戦国変調表`;
       hyorogan: escapeHTML(getFieldValue('ningu_hyorogan')),
       jintsumaru: escapeHTML(getFieldValue('ningu_jintsumaru')),
       tonkofu: escapeHTML(getFieldValue('ningu_tonkofu')),
-      other: escapeHTML(getFieldValue('ningu_other'))
+      items: collectNingu().filter(row => !isEmptyNinguRow(row))
     };
-    const hasNingu = ninguData.hyorogan || ninguData.jintsumaru || ninguData.tonkofu || ninguData.other;
+    const hasNingu = ninguData.hyorogan || ninguData.jintsumaru || ninguData.tonkofu || ninguData.items.length;
     let ninguHTML = '';
     if (hasNingu) {
       ninguHTML = '<table class="pv-table"><thead><tr><th>忍具</th><th>個数</th></tr></thead><tbody>';
       if (ninguData.hyorogan) ninguHTML += `<tr><td>兵糧丸</td><td>${ninguData.hyorogan}</td></tr>`;
       if (ninguData.jintsumaru) ninguHTML += `<tr><td>神通丸</td><td>${ninguData.jintsumaru}</td></tr>`;
       if (ninguData.tonkofu) ninguHTML += `<tr><td>遁甲符</td><td>${ninguData.tonkofu}</td></tr>`;
-      if (ninguData.other) ninguHTML += `<tr><td>その他</td><td>${ninguData.other}</td></tr>`;
+      ninguData.items.forEach(row => {
+        ninguHTML += `<tr><td>${escapeHTML(row.name || 'その他')}</td><td>${escapeHTML(row.count)}</td></tr>`;
+      });
       ninguHTML += '</tbody></table>';
     }
 

@@ -11,7 +11,7 @@
     <link rel="stylesheet" href="stylesheet.css">
     <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
     <script src="../common/sheet-common.js?v=20260930" data-game="sinobigami" defer></script>
-    <script src="index.js?v=20260930" defer></script>
+    <script src="index.js?v=20261005" defer></script>
 </head>
 
 <body>
@@ -438,15 +438,17 @@
     </section>
     <section class="input-panel ningu-panel" id="ningu_section">
       <h2>忍具</h2>
-      <div class="ningu-grid">
+      <div class="ningu-grid" id="ningu_list">
         <div class="ningu-label">兵糧丸</div>
         <input id="ningu_hyorogan" name="ningu_hyorogan" type="text" class="ningu-input" />
         <div class="ningu-label">神通丸</div>
         <input id="ningu_jintsumaru" name="ningu_jintsumaru" type="text" class="ningu-input" />
         <div class="ningu-label">遁甲符</div>
         <input id="ningu_tonkofu" name="ningu_tonkofu" type="text" class="ningu-input" />
-        <div class="ningu-label">その他</div>
-        <input id="ningu_other" name="ningu_other" type="text" class="ningu-input" />
+      </div>
+      <div class="control-row">
+        <button type="button" id="add_ningu_btn" class="btn">＋ 忍具を追加</button>
+        <button type="button" id="remove_ningu_btn" class="btn btn-outline">－ 削除</button>
       </div>
     </section>
     </div>
