@@ -825,7 +825,11 @@ FLT　その後表`;
       const defenseVal = getFirstValue(['defense']);
       const rootVal = getFirstValue(['kongen']);
 
-      const statusArr = [];
+      // 魔力・一時的魔力はセッション中に増減させる値なので、キャラシの内容によらず0で出す
+      const statusArr = [
+        { label: '魔力', value: 0, max: 0 },
+        { label: '一時的魔力', value: 0, max: 0 }
+      ];
       ccfoliaSpells.forEach(sp => {
         if (sp.name) statusArr.push({ label: `${spellFirstLine(sp.name)}:${sp.cost}`, value: 0, max: Number(rootVal) });
       });
