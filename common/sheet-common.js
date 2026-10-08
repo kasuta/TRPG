@@ -256,8 +256,8 @@ window.addEventListener('resize', () => {
   textareaResyncTimer = setTimeout(resyncAllTextareaHeights, 150);
 });
 
-/** HTML エスケープ */
-const escapeHTML = (str) => str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+/** HTML エスケープ(属性値の中でも使えるよう、引用符も置き換える) */
+const escapeHTML = (str) => str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 
 /**
  * 一覧用の立ち絵のサムネイルを作る。切らずに全体を縮小し(長い辺を THUMB_MAX_SIDE 以下に。拡大はしない)、
@@ -338,8 +338,27 @@ const clearCharacterImage = () => {
   clearPreview();
 };
 
-/** 読み込んだデータの立ち絵(data URL か /api/image の URL)を表示し、保存用に持つ */
+/** サーバーのキャラIDとして通る形(APIの isValidId と同じ。8桁・12桁の16進を含む) */
+const CHARACTER_ID_PATTERN = /^[A-Za-z0-9_-]{1,64}$/;
+
+/**
+ * 読み込んだデータの立ち絵として使ってよい値か。base64 の画像の data URL か、このAPIの /api/image/<id> だけを通す。
+ * JSONファイルの image は誰でも書き換えられ、そのまま <img> の src や画像出力のHTMLに入るので、
+ * 引用符などを含む値や、よそのURLは使わない。
+ */
+const isAllowedImageSource = (image) => {
+  if (typeof image !== 'string') return false;
+  if (/^data:image\/[a-z0-9.+-]+;base64,[A-Za-z0-9+/]+=*$/i.test(image)) return true;
+  const prefix = `${API_BASE}/api/image/`;
+  return image.startsWith(prefix) && CHARACTER_ID_PATTERN.test(image.slice(prefix.length));
+};
+
+/** 読み込んだデータの立ち絵(data URL か /api/image の URL)を表示し、保存用に持つ。使えない値なら付けずに知らせる */
 const showLoadedImage = (image) => {
+  if (!isAllowedImageSource(image)) {
+    showToast('立ち絵は読み込めない形式だったので外しました。', 4000);
+    return;
+  }
   savedImageBase64 = image;
   imagePreview.src = image;
   imagePreview.classList.add('is-visible');
@@ -942,6 +961,12 @@ const saveMyLayout = async () => {
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${getAuthToken()}` },
         body: JSON.stringify(toLayoutPayload(items)),
       });
+      if (res.status === 401) {
+        // ログインの有効期限切れ。未ログインの表示(ゲスト履歴)に戻すので、一覧は描き直さない
+        pendingMyLayout = null;
+        handleAuthExpired();
+        break;
+      }
       if (!res.ok) throw new Error('並び順の保存に失敗しました');
       myLayoutSavedItems = items;
     } catch (err) {
@@ -1034,6 +1059,10 @@ const deleteCharacterFromServer = async (id) => {
       method: 'DELETE',
       headers: { Authorization: `Bearer ${getAuthToken()}` },
     });
+    if (res.status === 401) {
+      handleAuthExpired();
+      return;
+    }
     if (!res.ok) throw new Error('削除に失敗しました');
     myLayoutItems = removeFromLayoutItems(myLayoutItems, id);
     myLayoutSavedItems = removeFromLayoutItems(myLayoutSavedItems, id);
@@ -1066,6 +1095,10 @@ const renderMyCharacters = async () => {
     const res = await fetch(`${API_BASE}/api/my-layout?v=2`, {
       headers: { Authorization: `Bearer ${getAuthToken()}` },
     });
+    if (res.status === 401) {
+      handleAuthExpired();
+      return;
+    }
     if (!res.ok) throw new Error('取得に失敗しました');
     myLayoutItems = (await res.json()).items;
     myLayoutSavedItems = myLayoutItems;
@@ -1154,6 +1187,18 @@ const updateAuthUI = () => {
     if (userSection) userSection.style.display = 'none';
     renderGuestHistory();
   }
+};
+
+/**
+ * ログインが必要な操作が 401 だったとき(ログインの有効期限切れ)。このブラウザのログイン情報を消して
+ * 未ログインの表示に戻し、ログインし直すよう知らせる(ログイン表示のまま、保存が匿名や失敗になり続けないように)。
+ */
+const handleAuthExpired = () => {
+  if (!getAuthToken()) return;
+  clearAuth();
+  updateAuthUI();
+  sheetHooks.onMyCharactersLoaded();
+  showToast('ログインの有効期限が切れました。ログインし直してください。', 5000);
 };
 
 // タブ切替
@@ -1637,6 +1682,12 @@ const saveCharacter = async () => {
 
   const authHeaders = getAuthToken() ? { Authorization: `Bearer ${getAuthToken()}` } : {};
   const tooLargeHint = '効果や設定などの長い文章を短くしてから、もう一度保存してください。';
+  // ログインの有効期限切れ(401)なら、未ログインの表示に戻して中止する(匿名キャラとして保存し直しはしない)
+  const stopIfAuthExpired = (res, what) => {
+    if (res.status !== 401) return;
+    handleAuthExpired();
+    throw new Error(`ログインの有効期限が切れていたため、${what}は保存していません。ログインし直してから、もう一度保存してください。`);
+  };
 
   let id;
   if (currentCharacterId) {
@@ -1646,6 +1697,7 @@ const saveCharacter = async () => {
       headers: { 'Content-Type': 'application/json', ...authHeaders },
       body: JSON.stringify(compact),
     });
+    stopIfAuthExpired(res, 'キャラクター');
     if (!res.ok) throw new Error(await apiErrorMessage(res, '更新', tooLargeHint));
     id = currentCharacterId;
   } else {
@@ -1655,6 +1707,7 @@ const saveCharacter = async () => {
       headers: { 'Content-Type': 'application/json', ...authHeaders },
       body: JSON.stringify(compact),
     });
+    stopIfAuthExpired(res, 'キャラクター');
     if (!res.ok) throw new Error(await apiErrorMessage(res, '保存', tooLargeHint));
     const json = await res.json();
     id = json.id;
@@ -1689,6 +1742,11 @@ const saveCharacter = async () => {
     } catch (err) {
       throw imageFailed(err.message);
     }
+    try {
+      stopIfAuthExpired(imgRes, '立ち絵');
+    } catch (err) {
+      throw imageFailed(err.message);
+    }
     if (!imgRes.ok) throw imageFailed(await apiErrorMessage(imgRes, '立ち絵の保存'));
     await uploadThumbnail(id, imageBlob);
     imageSourceId = id;
@@ -1708,6 +1766,10 @@ const copyShareLink = () => {
 const saveCharacterBtn = document.getElementById('save_character_btn');
 if (saveCharacterBtn) {
   saveCharacterBtn.addEventListener('click', async () => {
+    // 未ログインの新規保存は、誰でも上書きでき、削除もできない匿名キャラになるので、先に確かめる
+    // (保存済みのキャラの上書きでは聞かない)
+    if (!getAuthToken() && !currentCharacterId
+      && !confirm('現在、アカウントにログインしていません。匿名キャラクターでの保存になりますが、本当に大丈夫でしょうか？(ログインは画面右の＜マークからできます)')) return;
     saveCharacterBtn.disabled = true;
     const originalHTML = saveCharacterBtn.innerHTML;
     saveCharacterBtn.innerHTML = '保存中...';
@@ -1766,6 +1828,11 @@ const loadCharacterFromHash = async () => {
   const hash = window.location.hash || '';
   const match = hash.match(/^#id=(.+)$/);
   if (!match) return;
+  // IDはそのままAPIのURLに入れるので、IDの形でないもの(../ や ? を含むものなど)は読み込まない
+  if (!CHARACTER_ID_PATTERN.test(match[1])) {
+    showToast('共有リンクの読み込みに失敗しました。');
+    return;
+  }
 
   try {
     const res = await fetch(`${API_BASE}/api/load/${match[1]}`);

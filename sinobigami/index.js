@@ -1553,7 +1553,7 @@ GWT　戦国変調表`;
         <div class="pv-col">
           <div class="pv-section">
             <h2>背景</h2>
-            ${imageSrc ? `<div class="pv-image-wrap"><img src="${imageSrc}" class="pv-image" alt="背景画像" /></div>` : ''}
+            ${imageSrc ? `<div class="pv-image-wrap"><img src="${escapeHTML(imageSrc)}" class="pv-image" alt="背景画像" /></div>` : ''}
             <p class="pv-text">${escapeHTML(setting).replace(/\n/g, '<br>')}</p>
           </div>
         </div>
