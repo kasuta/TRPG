@@ -1064,8 +1064,17 @@ document.addEventListener('DOMContentLoaded', () => {
         if (np.name) commands += `【${np.name}】(${np.type}/指定特技:${np.skill}/間合:${np.range}/コスト:${np.cost}/参照p:${np.ref})　効果:${effectOneLine}\n`;
       });
 
+      // 変調の対象をランダムに決める行(マヒ = 習得している特技から1つ、呪い = 習得している忍法から1つ)。
+      // 選ぶものが無いときは、その行を出さない(choice[] はコマンドとして成り立たない)
+      const choiceLine = (names, label) => (names.length ? `choice[${names.join(',')}]  《${label}》\n` : '');
+      const skillNames = getCheckedSkillsByColumn().map(cb => cb.value);
+      // 忍法名は、改行と、choice の区切りに使う記号を除いた1行にする
+      const ninpoNames = collectNinpo({ includeDisabled: false })
+        .map(np => np.name.replace(/\r?\n/g, '').replace(/[,\[\]]/g, '').trim())
+        .filter(Boolean);
+
       commands += `\nーーー表ーーー
-ST　通常シーン表
+${choiceLine(skillNames, 'マヒ')}${choiceLine(ninpoNames, '呪い')}ST　通常シーン表
 FT　ファンブル表
 RTT　ランダム特技決定表
 ET　感情表
