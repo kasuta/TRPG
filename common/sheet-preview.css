@@ -1,0 +1,235 @@
+/* ============================
+   キャラシ画像(「キャラシ画像をコピー」で作る画像)の見た目
+   ============================
+   両キャラシで共通。各 index.html で、stylesheet.css より先に読み込む
+   (ゲームごとに違う数か所は、各 stylesheet.css の「キャラシ画像」で上書きする)。
+   色は各 stylesheet.css のテーマの変数(--panel など)を使う。
+   中身のHTMLは、common/sheet-common.js の pv〜 の関数が作る。 */
+
+/* 画像にするHTMLを置く、画面の外の入れ物 */
+#preview-render-container {
+	position: fixed;
+	left: -9999px;
+	top: 0;
+	pointer-events: none;
+	z-index: -1;
+	overflow: visible;
+}
+
+.pv-sheet {
+	width: 960px;
+	padding: 36px 40px 48px;
+	font-family: "Zen Kaku Gothic New", "Noto Sans JP", "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
+	color: var(--text);
+	background:
+		repeating-linear-gradient(120deg, var(--texture-color) 0px, var(--texture-color) 1px, transparent 1px, transparent 3px),
+		linear-gradient(160deg, var(--bg-top), var(--bg-bottom));
+	line-height: 1.6;
+}
+
+.pv-title {
+	margin: 0 0 24px;
+	font-size: 22px;
+	font-family: "Shippori Mincho", "Hiragino Mincho ProN", "Yu Mincho", serif;
+	font-weight: 700;
+	color: var(--accent-strong);
+	border-bottom: 3px solid var(--accent);
+	padding-bottom: 10px;
+	/* 画面の h1 のフェードインを止める(かかったままだと、薄い・消えた状態で画像になる) */
+	animation: none;
+}
+
+/* 上の2列(左: 基本情報など / 右: 立ち絵・設定など)。片方しか無ければ、その列が横幅いっぱいになる */
+.pv-columns {
+	display: flex;
+	gap: 28px;
+	margin-bottom: 24px;
+}
+
+.pv-col {
+	flex: 1;
+	min-width: 0;
+	display: flex;
+	flex-direction: column;
+	gap: 20px;
+}
+
+/* 枠(見出しつき) */
+.pv-section {
+	background: var(--panel);
+	border-radius: 12px;
+	padding: 18px 22px;
+	box-shadow: 0 2px 8px rgba(33, 24, 21, 0.08);
+	border: 1px solid var(--border);
+}
+
+.pv-section h2 {
+	margin: 0 0 12px;
+	font-size: 15px;
+	font-family: "Shippori Mincho", serif;
+	color: var(--accent-strong);
+	border-left: 4px solid var(--accent);
+	padding-left: 10px;
+}
+
+/* 2列の下に並ぶ、横幅いっぱいの枠 */
+.pv-sheet > .pv-section {
+	margin-bottom: 20px;
+}
+
+/* 「見出し: 値」の並び(基本情報など) */
+.pv-dl {
+	display: grid;
+	grid-template-columns: auto 1fr;
+	gap: 4px 14px;
+	margin: 0;
+	font-size: 13px;
+}
+
+.pv-dl dt {
+	font-weight: 700;
+	color: var(--muted);
+	white-space: nowrap;
+}
+
+.pv-dl dd {
+	margin: 0;
+	word-break: break-all;
+}
+
+/* 複数行の文章(設定など) */
+.pv-text {
+	margin: 0;
+	font-size: 13px;
+	white-space: pre-wrap;
+	word-break: break-all;
+}
+
+.pv-dl + .pv-text {
+	margin-top: 8px;
+}
+
+/* 立ち絵 */
+.pv-image-wrap {
+	text-align: center;
+}
+
+.pv-image {
+	max-width: 100%;
+	max-height: 300px;
+	border-radius: 8px;
+	object-fit: contain;
+	box-shadow: 0 2px 8px rgba(33, 24, 21, 0.1);
+}
+
+/* 表の下の一言(特記事項・魂の特技) */
+.pv-note {
+	margin: 10px 0 0;
+	font-size: 13px;
+}
+
+/* 特技表 */
+.pv-skill-table {
+	width: 100%;
+	border-collapse: collapse;
+	table-layout: fixed;
+	font-size: 12px;
+	margin-top: 4px;
+}
+
+.pv-skill-col-num {
+	width: 28px;
+}
+
+.pv-skill-col-gap {
+	width: 6px;
+}
+
+.pv-skill-col-area {
+	width: auto;
+}
+
+.pv-skill-table th,
+.pv-skill-table td {
+	border: 1px solid var(--border);
+	padding: 4px 6px;
+	text-align: center;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.pv-skill-table th {
+	background: var(--ink);
+	color: #fff;
+	font-weight: 700;
+}
+
+.pv-num {
+	background: var(--border);
+	font-weight: 700;
+	color: var(--accent-strong);
+	width: 28px;
+}
+
+.pv-skill-on {
+	background: var(--selected-bg);
+	color: var(--selected-color);
+	font-weight: 700;
+}
+
+/* 特技表の分野の間(ギャップ)の列 */
+.pv-gap-head,
+.pv-gap-cell {
+	width: 6px;
+	min-width: 6px;
+	max-width: 6px;
+	padding: 0;
+	border: none;
+	background: transparent;
+}
+
+.pv-gap-on {
+	background: var(--selected-bg) !important;
+}
+
+/* 行を並べる表(忍法・背景・関係・蔵書など) */
+.pv-table {
+	width: 100%;
+	border-collapse: collapse;
+	font-size: 12px;
+	margin-top: 4px;
+}
+
+.pv-table th,
+.pv-table td {
+	border: 1px solid var(--border);
+	padding: 6px 8px;
+	text-align: left;
+}
+
+.pv-table th {
+	background: var(--ink);
+	color: #fff;
+	font-weight: 700;
+	white-space: nowrap;
+}
+
+/* 長い文章の列(効果など) */
+.pv-effect {
+	max-width: 280px;
+	word-break: break-all;
+	white-space: pre-wrap;
+}
+
+/* 隠している欄の黒塗り(シノビガミの奥義・忍具) */
+.pv-hidden-block {
+	background: var(--ink);
+	color: #ffffff;
+	text-align: center;
+	font-size: 1.2rem;
+	font-weight: 700;
+	letter-spacing: 0.2em;
+	padding: 28px 0;
+	border-radius: 8px;
+}

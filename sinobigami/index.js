@@ -318,12 +318,6 @@ const legacyNinguOtherRow = (value = '') => {
 };
 
 /** 習得済み特技IDリストを返す */
-const getAcquiredSkillIds = () => {
-  const ids = [];
-  document.querySelectorAll('.skill-check:checked').forEach(cb => ids.push(cb.id));
-  return ids;
-};
-
 /** リストの末尾からrowSize個の子要素を削除する（ヘッダー行数以下にはしない） */
 const removeLastRow = (list, headerCount, rowSize) => {
   if (!list || list.children.length <= headerCount) return false;
@@ -1242,196 +1236,65 @@ GWT　戦国変調表`;
   // ──────────────────────────────
   // 5. キャラシ画像の中身(生成とコピーは sheet-common.js の initSheetImageOutput)
   // ──────────────────────────────
-  const AREA_NAMES = ['器術', '体術', '忍術', '謀術', '戦術', '妖術'];
-  const SKILL_TABLE = [
-    ['絡繰術','騎乗術','生存術','医術','兵糧術','異形化'],
-    ['火術','砲術','潜伏術','毒術','鳥獣術','召喚術'],
-    ['水術','手裏剣術','遁走術','罠術','野戦術','死霊術'],
-    ['針術','手練','盗聴術','調査術','地の利','結界術'],
-    ['仕込み','身体操術','腹話術','詐術','意気','封術'],
-    ['衣装術','歩法','隠形術','対人術','用兵術','言霊術'],
-    ['縄術','走法','変装術','遊芸','記憶術','幻術'],
-    ['登術','飛術','香術','九ノ一術','見敵術','瞳術'],
-    ['拷問術','骨法術','分身の術','傀儡の術','暗号術','千里眼の術'],
-    ['壊器術','刀術','隠蔽術','流言の術','伝達術','憑依術'],
-    ['掘削術','怪力','第六感','経済力','人脈','呪術']
-  ];
-
+  /** キャラシ画像の中身(部品は sheet-common.js の pv〜。中身の無い枠と行は出ない) */
   const buildPreviewHTML = () => {
-    const v = (id) => escapeHTML(getFieldValue(id));
-    const setting = getFieldValue('setting');
-    const specialSkill = getFieldValue('special_skill');
+    const v = (id) => getFieldValue(id);
+    const mark = (on) => (on ? '■' : '□');
     const lifeLabel = CHARACTER_KINDS[getCharacterKind()].lifeLabel;
-    const skillIds = getAcquiredSkillIds();
-    const ougi = collectOugi().filter(og => og.name);
-    const ninpo = collectNinpo().filter(np => np.name);
-    const relations = collectRelations().filter(r => r.name);
 
-    const imgEl = document.getElementById('setting_image_preview');
-    const imageSrc = (imgEl && imgEl.classList.contains('is-visible') && imgEl.src) ? imgEl.src : '';
+    const ougiRows = collectOugi().filter(og => og.name)
+      .map(og => [og.name, og.skill, og.kaizou, og.effect]);
+    const ninpoRows = collectNinpo({ includeDisabled: false }).filter(np => np.name)
+      .map(np => [np.name, np.type, np.skill, np.range, np.cost, np.effect, np.ref]);
+    const haikeiRows = collectHaikei().filter(hk => hk.name)
+      .map(hk => [hk.name, hk.merit, hk.cost, hk.effect, hk.ref]);
+    const relationRows = collectRelations().filter(r => r.name)
+      .map(r => [r.name, mark(r.location), mark(r.secret), mark(r.ougi), `${r.emotion_sign ? '－' : '＋'}${r.emotion}`]);
+    const ninguRows = [
+      ['兵糧丸', v('ningu_hyorogan')],
+      ['神通丸', v('ningu_jintsumaru')],
+      ['遁甲符', v('ningu_tonkofu')],
+    ].filter(([, count]) => count)
+      .concat(collectNingu().filter(row => !isEmptyNinguRow(row)).map(row => [row.name || 'その他', row.count]));
 
-    // ギャップ（分野間の塗りつぶし）状態を取得
-    const gaps = [];
-    for (let g = 1; g <= 5; g++) {
-      const cb = document.getElementById(`gap${g}`);
-      gaps.push(cb ? cb.checked : false);
-    }
-
-    let skillHTML = '<table class="pv-skill-table"><colgroup><col class="pv-skill-col-num">';
-    AREA_NAMES.forEach(() => {
-      skillHTML += '<col class="pv-skill-col-area"><col class="pv-skill-col-gap">';
+    return pvSheet('シノビガミ キャラクターシート', {
+      left: [
+        pvSection('基本情報', pvDefinitionList([
+          ['名前', v('name')],
+          ['ふりがな', v('furigana')],
+          ['上位流派', v('school')],
+          ['流派', v('sub_school')],
+          ['階級', v('rank')],
+          ['信念', v('belief')],
+          ['性別', v('gender')],
+          ['年齢', v('age')],
+          ['表の顔', v('face')],
+          ['加入条件', v('join_condition')],
+          ['流儀', v('manner')],
+          ['仇敵', v('nemesis')],
+          ['功績点', v('points')],
+        ])),
+        pvSection(lifeLabel, pvDefinitionList([[lifeLabel, v('life_extra')]])),
+      ],
+      right: [
+        pvSection('立ち絵', pvImage(currentPortraitSrc())),
+        pvSection('設定', pvText(v('setting'))),
+      ],
+      sections: [
+        pvSection('特技', pvSkillTable() + pvNote('特記事項', v('special_skill'))),
+        // 隠している間の奥義・忍具は、中身があるかどうかに関係なく黒塗りにする
+        pvSection('奥義', isHidden
+          ? pvHiddenBlock('奥義')
+          : pvTable(['奥義名', '指定特技', '改造', 'エフェクト'], ougiRows, { effectColumns: [3] })),
+        pvSection('忍法', pvTable(['忍法名', 'タイプ', '指定特技', '間合い', 'コスト', '効果', '参照p'], ninpoRows, { effectColumns: [5] })),
+        pvSection('背景', pvTable(['背景名', '長所/短所', '必要功績点', '効果', '参照p'], haikeiRows, { effectColumns: [3] })),
+        pvSection('関係', pvTable(['人物名', '居所', '秘密', '奥義', '感情'], relationRows)),
+        pvSection('忍具', isHidden ? pvHiddenBlock('忍具') : pvTable(['忍具', '個数'], ninguRows)),
+      ],
     });
-    skillHTML += '</colgroup><thead><tr><th></th>';
-    AREA_NAMES.forEach((a, ai) => {
-      skillHTML += `<th>${a}</th>`;
-      if (ai < 5) skillHTML += `<th class="pv-gap-head ${gaps[ai] ? 'pv-gap-on' : ''}"></th>`;
-    });
-    skillHTML += '</tr></thead><tbody>';
-    SKILL_TABLE.forEach((row, ri) => {
-      skillHTML += `<tr><td class="pv-num">${ri + 2}</td>`;
-      row.forEach((s, ci) => {
-        const id = `skill_r${ri + 2}_c${ci + 1}`;
-        skillHTML += `<td class="${skillIds.includes(id) ? 'pv-skill-on' : ''}">${s}</td>`;
-        if (ci < 5) skillHTML += `<td class="pv-gap-cell ${gaps[ci] ? 'pv-gap-on' : ''}"></td>`;
-      });
-      skillHTML += '</tr>';
-    });
-    skillHTML += '</tbody></table>';
-
-    let ougiHTML = '';
-    if (ougi.length) {
-      ougiHTML = '<table class="pv-table"><thead><tr><th>奥義名</th><th>指定特技</th><th>改造</th><th>エフェクト</th></tr></thead><tbody>';
-      ougi.forEach(og => {
-        ougiHTML += `<tr><td>${escapeHTML(og.name)}</td><td>${escapeHTML(og.skill)}</td><td>${escapeHTML(og.kaizou)}</td><td class="pv-effect">${escapeHTML(og.effect)}</td></tr>`;
-      });
-      ougiHTML += '</tbody></table>';
-    }
-
-    let ninpoHTML = '';
-    const ninpoForPreview = collectNinpo({ includeDisabled: false }).filter(np => np.name);
-    if (ninpoForPreview.length) {
-      ninpoHTML = '<table class="pv-table"><thead><tr><th>忍法名</th><th>タイプ</th><th>指定特技</th><th>間合い</th><th>コスト</th><th>効果</th><th>参照p</th></tr></thead><tbody>';
-      ninpoForPreview.forEach(np => {
-        ninpoHTML += `<tr><td>${escapeHTML(np.name)}</td><td>${escapeHTML(np.type)}</td><td>${escapeHTML(np.skill)}</td><td>${escapeHTML(np.range)}</td><td>${escapeHTML(np.cost)}</td><td class="pv-effect">${escapeHTML(np.effect)}</td><td>${escapeHTML(np.ref)}</td></tr>`;
-      });
-      ninpoHTML += '</tbody></table>';
-    }
-
-    const haikei = collectHaikei().filter(hk => hk.name);
-    let haikeiHTML = '';
-    if (haikei.length) {
-      haikeiHTML = '<table class="pv-table"><thead><tr><th>背景名</th><th>長所/短所</th><th>必要功績点</th><th>効果</th><th>参照p</th></tr></thead><tbody>';
-      haikei.forEach(hk => {
-        haikeiHTML += `<tr><td>${escapeHTML(hk.name)}</td><td>${escapeHTML(hk.merit)}</td><td>${escapeHTML(hk.cost)}</td><td class="pv-effect">${escapeHTML(hk.effect)}</td><td>${escapeHTML(hk.ref)}</td></tr>`;
-      });
-      haikeiHTML += '</tbody></table>';
-    }
-
-    let relHTML = '';
-    if (relations.length) {
-      relHTML = '<table class="pv-table"><thead><tr><th>人物名</th><th>居所</th><th>秘密</th><th>奥義</th><th>感情</th></tr></thead><tbody>';
-      relations.forEach(r => {
-        const sign = r.emotion_sign ? '－' : '＋';
-        relHTML += `<tr><td>${escapeHTML(r.name)}</td><td>${r.location ? '■' : '□'}</td><td>${r.secret ? '■' : '□'}</td><td>${r.ougi ? '■' : '□'}</td><td>${sign}${escapeHTML(r.emotion)}</td></tr>`;
-      });
-      relHTML += '</tbody></table>';
-    }
-
-    // 忍具データ収集
-    const ninguData = {
-      hyorogan: escapeHTML(getFieldValue('ningu_hyorogan')),
-      jintsumaru: escapeHTML(getFieldValue('ningu_jintsumaru')),
-      tonkofu: escapeHTML(getFieldValue('ningu_tonkofu')),
-      items: collectNingu().filter(row => !isEmptyNinguRow(row))
-    };
-    const hasNingu = ninguData.hyorogan || ninguData.jintsumaru || ninguData.tonkofu || ninguData.items.length;
-    let ninguHTML = '';
-    if (hasNingu) {
-      ninguHTML = '<table class="pv-table"><thead><tr><th>忍具</th><th>個数</th></tr></thead><tbody>';
-      if (ninguData.hyorogan) ninguHTML += `<tr><td>兵糧丸</td><td>${ninguData.hyorogan}</td></tr>`;
-      if (ninguData.jintsumaru) ninguHTML += `<tr><td>神通丸</td><td>${ninguData.jintsumaru}</td></tr>`;
-      if (ninguData.tonkofu) ninguHTML += `<tr><td>遁甲符</td><td>${ninguData.tonkofu}</td></tr>`;
-      ninguData.items.forEach(row => {
-        ninguHTML += `<tr><td>${escapeHTML(row.name || 'その他')}</td><td>${escapeHTML(row.count)}</td></tr>`;
-      });
-      ninguHTML += '</tbody></table>';
-    }
-
-    // 隠すモード時は奥義・忍具を黒塗りにする
-    const ougiBlock = isHidden
-      ? '<div class="pv-hidden-block">奥義</div>'
-      : (ougiHTML || '<p class="pv-empty">なし</p>');
-    const ninguBlock = isHidden
-      ? '<div class="pv-hidden-block">忍具</div>'
-      : (ninguHTML || '<p class="pv-empty">なし</p>');
-
-    return `
-    <div class="pv-sheet">
-      <h1 class="pv-title">シノビガミ キャラクターシート</h1>
-      <div class="pv-columns">
-        <div class="pv-col">
-          <div class="pv-section">
-            <h2>基本情報</h2>
-            <dl class="pv-dl">
-              <dt>名前</dt><dd>${v('name')}</dd>
-              <dt>ふりがな</dt><dd>${v('furigana')}</dd>
-              <dt>上位流派</dt><dd>${v('school')}</dd>
-              <dt>流派</dt><dd>${v('sub_school')}</dd>
-              <dt>階級</dt><dd>${v('rank')}</dd>
-              <dt>信念</dt><dd>${v('belief')}</dd>
-              <dt>性別</dt><dd>${v('gender')}</dd>
-              <dt>年齢</dt><dd>${v('age')}</dd>
-              <dt>表の顔</dt><dd>${v('face')}</dd>
-              <dt>加入条件</dt><dd>${v('join_condition')}</dd>
-              <dt>流儀</dt><dd>${v('manner')}</dd>
-              <dt>仇敵</dt><dd>${v('nemesis')}</dd>
-              <dt>功績点</dt><dd>${v('points')}</dd>
-            </dl>
-          </div>
-          <div class="pv-section">
-            <h2>${lifeLabel}</h2>
-            <dl class="pv-dl">
-              <dt>${lifeLabel}</dt><dd>${v('life_extra')}</dd>
-            </dl>
-          </div>
-        </div>
-        <div class="pv-col">
-          <div class="pv-section">
-            <h2>背景</h2>
-            ${imageSrc ? `<div class="pv-image-wrap"><img src="${escapeHTML(imageSrc)}" class="pv-image" alt="背景画像" /></div>` : ''}
-            <p class="pv-text">${escapeHTML(setting).replace(/\n/g, '<br>')}</p>
-          </div>
-        </div>
-      </div>
-      <div class="pv-section pv-full">
-        <h2>特技</h2>
-        ${skillHTML}
-        ${specialSkill ? `<p class="pv-soul">特記事項：<strong>${escapeHTML(specialSkill)}</strong></p>` : ''}
-      </div>
-      <div class="pv-section pv-full">
-        <h2>奥義</h2>
-        ${ougiBlock}
-      </div>
-      <div class="pv-section pv-full">
-        <h2>忍法</h2>
-        ${ninpoHTML || '<p class="pv-empty">なし</p>'}
-      </div>
-      <div class="pv-section pv-full">
-        <h2>背景</h2>
-        ${haikeiHTML || '<p class="pv-empty">なし</p>'}
-      </div>
-      <div class="pv-section pv-full">
-        <h2>関係</h2>
-        ${relHTML || '<p class="pv-empty">なし</p>'}
-      </div>
-      <div class="pv-section pv-full">
-        <h2>忍具</h2>
-        ${ninguBlock}
-      </div>
-    </div>`;
   };
 
   const ICON_SPINNER = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true" class="btn-spinner"><path d="M12 3a9 9 0 1 0 9 9"/></svg>`;
 
-  initSheetImageOutput({ buildPreviewHTML, busyHTML: `${ICON_SPINNER}生成中...`, fallbackBackground: '#f4ede0' });
+  initSheetImageOutput({ buildPreviewHTML, busyHTML: `${ICON_SPINNER}生成中...` });
 }); // end DOMContentLoaded

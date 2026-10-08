@@ -1989,6 +1989,111 @@ const initJsonFileButtons = () => {
 };
 
 // ==========================================
+// キャラシ画像の中身を作る部品(見た目は common/sheet-preview.css)
+// ==========================================
+// どの部品も、受け取った文字をここでエスケープする(呼ぶ側は入力欄の値をそのまま渡す)。
+// 中身が無いときは空文字を返すので、中身の無い枠や行は画像に出ない。
+
+/** 枠(見出しつき)。bodyHTML は、ほかの部品が返したHTML。空なら枠ごと出さない */
+const pvSection = (title, bodyHTML) => (bodyHTML
+  ? `<div class="pv-section"><h2>${escapeHTML(title)}</h2>${bodyHTML}</div>`
+  : '');
+
+/** 「見出し: 値」の並び。pairs は [見出し, 値] の配列で、値の無い行は出さない */
+const pvDefinitionList = (pairs) => {
+  const rows = pairs
+    .filter(([, value]) => String(value ?? '').trim() !== '')
+    .map(([label, value]) => `<dt>${escapeHTML(label)}</dt><dd>${escapeHTML(String(value))}</dd>`)
+    .join('');
+  return rows ? `<dl class="pv-dl">${rows}</dl>` : '';
+};
+
+/**
+ * 行を並べる表。headers は見出しの配列、rows は行(セルの文字の配列)の配列。行が無ければ出さない。
+ * effectColumns は、長い文章が入る列の番号(0始まり)。その列は入力した改行のまま折り返し、ほかの列の改行は <br> にする。
+ */
+const pvTable = (headers, rows, { effectColumns = [] } = {}) => {
+  if (!rows.length) return '';
+  const cell = (value, index) => {
+    const text = escapeHTML(String(value ?? ''));
+    return effectColumns.includes(index)
+      ? `<td class="pv-effect">${text}</td>`
+      : `<td>${text.replace(/\r?\n/g, '<br>')}</td>`;
+  };
+  const head = headers.map(h => `<th>${escapeHTML(h)}</th>`).join('');
+  const body = rows.map(row => `<tr>${row.map(cell).join('')}</tr>`).join('');
+  return `<table class="pv-table"><thead><tr>${head}</tr></thead><tbody>${body}</tbody></table>`;
+};
+
+/** 複数行の文章(設定など) */
+const pvText = (text) => (String(text ?? '').trim()
+  ? `<p class="pv-text">${escapeHTML(String(text)).replace(/\r?\n/g, '<br>')}</p>`
+  : '');
+
+/** 立ち絵。src は currentPortraitSrc() の値 */
+const pvImage = (src) => (src
+  ? `<div class="pv-image-wrap"><img src="${escapeHTML(src)}" class="pv-image" alt="立ち絵" /></div>`
+  : '');
+
+/** 表の下に添える一言(「特記事項：〜」など) */
+const pvNote = (label, text) => (String(text ?? '').trim()
+  ? `<p class="pv-note">${escapeHTML(label)}：<strong>${escapeHTML(String(text))}</strong></p>`
+  : '');
+
+/** 隠している欄の黒塗り(中身があるかどうかは見せない) */
+const pvHiddenBlock = (label) => `<div class="pv-hidden-block">${escapeHTML(label)}</div>`;
+
+/** 今キャラシに表示している立ち絵のURL(無ければ空文字) */
+const currentPortraitSrc = () => (imagePreview.classList.contains('is-visible') && imagePreview.src ? imagePreview.src : '');
+
+/**
+ * 特技表。分野名・特技名・習得の有無・ギャップは、キャラシの特技の表(.skill-head / .skill-check / #gap1〜)から読む
+ * (特技の一覧を、HTMLとスクリプトの両方に持たないため)。
+ */
+const pvSkillTable = () => {
+  const areas = [...document.querySelectorAll('.skill-head')].map(el => el.textContent.trim());
+  const lastArea = areas.length - 1;
+  const gapClass = (index) => (document.getElementById(`gap${index + 1}`)?.checked ? ' pv-gap-on' : '');
+
+  // 行番号 → 列の順に並べたチェックボックス
+  const rows = new Map();
+  document.querySelectorAll('.skill-check').forEach(cb => {
+    const m = SKILL_ID_RE.exec(cb.id);
+    if (!m) return;
+    const row = Number(m[1]);
+    if (!rows.has(row)) rows.set(row, []);
+    rows.get(row)[Number(m[2]) - 1] = cb;
+  });
+
+  const cols = areas.map((_, i) => `<col class="pv-skill-col-area">${i < lastArea ? '<col class="pv-skill-col-gap">' : ''}`).join('');
+  const head = areas.map((area, i) =>
+    `<th>${escapeHTML(area)}</th>${i < lastArea ? `<th class="pv-gap-head${gapClass(i)}"></th>` : ''}`).join('');
+  const body = [...rows.keys()].sort((a, b) => a - b).map(row => {
+    const cells = rows.get(row).map((cb, i) =>
+      `<td${cb.checked ? ' class="pv-skill-on"' : ''}>${escapeHTML(cb.value)}</td>${i < lastArea ? `<td class="pv-gap-cell${gapClass(i)}"></td>` : ''}`).join('');
+    return `<tr><td class="pv-num">${row}</td>${cells}</tr>`;
+  }).join('');
+  return `<table class="pv-skill-table"><colgroup><col class="pv-skill-col-num">${cols}</colgroup>`
+    + `<thead><tr><th></th>${head}</tr></thead><tbody>${body}</tbody></table>`;
+};
+
+/**
+ * 画像全体。left / right は上の2列に入れる枠、sections はその下に横幅いっぱいで並べる枠(どれも pvSection の結果の配列)。
+ * 片方の列に出すものが無ければ、もう片方が横幅いっぱいになる。
+ */
+const pvSheet = (title, { left = [], right = [], sections = [] }) => {
+  const column = (parts) => {
+    const html = parts.join('');
+    return html ? `<div class="pv-col">${html}</div>` : '';
+  };
+  const columns = column(left) + column(right);
+  return `<div class="pv-sheet"><h1 class="pv-title">${escapeHTML(title)}</h1>`
+    + (columns ? `<div class="pv-columns">${columns}</div>` : '')
+    + sections.join('')
+    + '</div>';
+};
+
+// ==========================================
 // キャラシ画像の生成とコピー(html2canvas)
 // ==========================================
 /** 画像出力に焼き込むテーマのCSS変数 */
@@ -1999,9 +2104,11 @@ const PREVIEW_THEME_VAR_NAMES = [
   '--corner-glow', '--accent-glow', '--surface', '--surface-alt', '--text',
   '--selected-bg', '--selected-color',
 ];
+/** テーマの背景色(--bg-top)が取れないときの、画像の背景色 */
+const PREVIEW_FALLBACK_BACKGROUND = '#f4ede0';
 
 /** 画像出力用のHTML(.pv-sheet を含む)を画面の外に置いて、canvas にする */
-const renderPreviewToCanvas = async (html, fallbackBackground) => {
+const renderPreviewToCanvas = async (html) => {
   const container = document.createElement('div');
   container.id = 'preview-render-container';
   container.innerHTML = html;
@@ -2041,7 +2148,7 @@ const renderPreviewToCanvas = async (html, fallbackBackground) => {
     await Promise.race([imagesAndLayoutReady, new Promise(resolve => setTimeout(resolve, 1500))]);
 
     return await html2canvas(sheet, {
-      backgroundColor: rootStyle.getPropertyValue('--bg-top').trim() || fallbackBackground,
+      backgroundColor: rootStyle.getPropertyValue('--bg-top').trim() || PREVIEW_FALLBACK_BACKGROUND,
       scale: 2,
       useCORS: true,
       width,
@@ -2052,21 +2159,35 @@ const renderPreviewToCanvas = async (html, fallbackBackground) => {
       windowHeight: height,
       logging: false,
       imageTimeout: 15000,
-      letterRendering: true,
     });
   } finally {
     container.remove();
   }
 };
 
+/** canvas を PNG の Blob にする */
+const canvasToPngBlob = (canvas) => new Promise((resolve, reject) => {
+  canvas.toBlob(blob => (blob ? resolve(blob) : reject(new Error('画像にできませんでした'))), 'image/png');
+});
+
 /**
- * 「キャラシ画像をコピー」ボタンを使えるようにする。各 index.js が、画像出力用のHTMLを作る関数を定義した後に呼ぶ。
- *   buildPreviewHTML()   … 画像にするHTML(.pv-sheet を含む)
+ * 画像(できあがる前の Promise でもよい)をクリップボードにコピーする。できなければ例外。
+ * Promise のまま渡せば、画像ができるのを待たずに呼べる(Safari は、操作から間が空くとコピーさせてくれない)。
+ */
+const copyImageToClipboard = async (pngBlobOrPromise) => {
+  if (!navigator.clipboard || !navigator.clipboard.write || typeof ClipboardItem === 'undefined') {
+    throw new Error('この環境では画像をコピーできません');
+  }
+  await navigator.clipboard.write([new ClipboardItem({ 'image/png': pngBlobOrPromise })]);
+};
+
+/**
+ * 「キャラシ画像をコピー」ボタンを使えるようにする。各 index.js が、画像の中身を作る関数を定義した後に呼ぶ。
+ *   buildPreviewHTML()   … 画像にするHTML(pvSheet の結果)
  *   busyHTML             … 生成中のボタンの中身
- *   fallbackBackground   … テーマの背景色(--bg-top)が取れないときの背景色
  * 画像はクリップボードにコピーし、できなければファイルとして保存させる。
  */
-const initSheetImageOutput = ({ buildPreviewHTML, busyHTML, fallbackBackground }) => {
+const initSheetImageOutput = ({ buildPreviewHTML, busyHTML }) => {
   const screenshotBtn = document.getElementById('screenshot_btn');
   if (!screenshotBtn) return;
 
@@ -2075,20 +2196,31 @@ const initSheetImageOutput = ({ buildPreviewHTML, busyHTML, fallbackBackground }
     screenshotBtn.innerHTML = busyHTML;
     screenshotBtn.disabled = true;
 
+    // 画像は1回だけ作り、コピーにも保存にも同じものを使う
+    const pngBlob = renderPreviewToCanvas(buildPreviewHTML()).then(canvasToPngBlob);
     try {
-      const canvas = await renderPreviewToCanvas(buildPreviewHTML(), fallbackBackground);
-
-      canvas.toBlob(async (blob) => {
-        if (!blob) { showToast('画像の生成に失敗しました。'); return; }
+      let copied = false;
+      try {
+        // 1回目は、画像ができる前に(操作の直後に)呼ぶ
+        await copyImageToClipboard(pngBlob);
+        copied = true;
+      } catch (firstError) {
+        // Promise のままでは受け付けないブラウザ向けに、画像ができてからもう一度試す(画像を作れていなければ、ここで外へ抜ける)
+        const blob = await pngBlob;
         try {
-          await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]);
-          showToast('キャラクターシートの画像をクリップボードにコピーしました！\nCtrl+V で貼り付けできます。');
+          await copyImageToClipboard(blob);
+          copied = true;
         } catch (err) {
-          console.error('クリップボードへのコピーに失敗:', err);
-          downloadBlob(blob, `${getFieldValue('name', 'character')}_キャラシ.png`);
-          showToast('クリップボードへのコピーに失敗したため、画像をダウンロードしました。');
+          console.error('クリップボードへのコピーに失敗:', firstError, err);
         }
-      }, 'image/png');
+      }
+
+      if (copied) {
+        showToast('キャラクターシートの画像をクリップボードにコピーしました！\nCtrl+V で貼り付けできます。');
+      } else {
+        downloadBlob(await pngBlob, `${getFieldValue('name', 'character')}_キャラシ.png`);
+        showToast('クリップボードへのコピーに失敗したため、画像をダウンロードしました。');
+      }
     } catch (err) {
       console.error('画像生成に失敗:', err);
       showToast('画像の生成に失敗しました。');

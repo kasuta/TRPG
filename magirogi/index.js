@@ -185,13 +185,6 @@ const isEmptySpellRow = (row = {}) => !row.name && !row.skill && !row.target && 
 /** 関係の空行判定 */
 const isEmptyRelationRow = (row = {}) => !row.anchor && !row.fate && !row.attr && !row.setting;
 
-/** 習得済み特技一覧を返す */
-const getAcquiredSkills = () => {
-  const skills = [];
-  document.querySelectorAll('.skill-check:checked').forEach(cb => skills.push(cb.value));
-  return skills;
-};
-
 // ==========================================
 // DOMContentLoaded — すべての初期化を集約
 // ==========================================
@@ -777,132 +770,46 @@ FLT　その後表`;
   // ──────────────────────────────
   // 9. キャラシ画像の中身(生成とコピーは sheet-common.js の initSheetImageOutput)
   // ──────────────────────────────
-  const AREA_NAMES = ['星', '獣', '力', '歌', '夢', '闇'];
-  const SKILL_TABLE = [
-    ['黄金','肉','重力','物語','追憶','深淵'],
-    ['大地','蟲','風','旋律','謎','腐敗'],
-    ['森','花','流れ','涙','嘘','裏切り'],
-    ['道','血','水','別れ','不安','迷い'],
-    ['海','鱗','波','微笑み','眠り','怠惰'],
-    ['静寂','混沌','自由','想い','偶然','歪み'],
-    ['雨','牙','衝撃','勝利','幻','不幸'],
-    ['嵐','叫び','雷','恋','狂気','バカ'],
-    ['太陽','怒り','炎','情熱','祈り','悪意'],
-    ['天空','翼','光','癒し','希望','絶望'],
-    ['異界','エロス','円環','時','未来','死']
-  ];
-
+  /** キャラシ画像の中身(部品は sheet-common.js の pv〜。中身の無い枠と行は出ない) */
   const buildPreviewHTML = () => {
-    const v = (id) => escapeHTML(getFieldValue(id));
-    const setting = getFieldValue('setting');
-    const trueDesc = getFieldValue('true_description');
-    const soulSkill = getFieldValue('soul_skill');
-    const skills = getAcquiredSkills();
-    const spells = collectSpells().filter(sp => sp.name);
-    const relations = collectRelations().filter(r => r.anchor);
+    const v = (id) => getFieldValue(id);
+    const tier = [v('tier_number') && `第${v('tier_number')}階梯`, v('tier_name')].filter(Boolean).join(' ');
 
-    const imgEl = document.getElementById('setting_image_preview');
-    const imageSrc = (imgEl && imgEl.classList.contains('is-visible') && imgEl.src) ? imgEl.src : '';
+    const spellRows = collectSpells().filter(sp => sp.name)
+      .map(sp => [sp.name, sp.type, sp.skill, sp.target, sp.cost, sp.effect, sp.phrase || '□', sp.ref]);
+    const relationRows = collectRelations().filter(r => r.anchor)
+      .map(r => [r.check ? '■' : '□', r.anchor, r.fate, r.attr, r.setting]);
 
-    const gaps = [];
-    for (let g = 1; g <= 5; g++) {
-      const cb = document.getElementById(`gap${g}`);
-      gaps.push(cb ? cb.checked : false);
-    }
-
-    let skillHTML = '<table class="pv-skill-table"><colgroup><col class="pv-skill-col-num">';
-    AREA_NAMES.forEach(() => {
-      skillHTML += '<col class="pv-skill-col-area"><col class="pv-skill-col-gap">';
+    return pvSheet('マギカロギア キャラクターシート', {
+      left: [
+        pvSection('基本情報', pvDefinitionList([
+          ['かりそめの名前', v('name')],
+          ['魔法名', v('m_name')],
+          ['性別', v('gender')],
+          ['年齢', v('age')],
+          ['功績点', v('points')],
+          ['階梯', tier],
+          ['領域', v('area')],
+          ['攻撃力', v('attack')],
+          ['防御力', v('defense')],
+          ['根源力', v('kongen')],
+          ['経歴/機関', v('history')],
+          ['信条', v('belief')],
+          ['表の顔', v('face')],
+        ])),
+      ],
+      right: [
+        pvSection('立ち絵', pvImage(currentPortraitSrc())),
+        pvSection('設定', pvText(v('setting'))),
+        pvSection('真の姿', pvDefinitionList([['名称', v('true_name')], ['効果', v('true_effect')]]) + pvText(v('true_description'))),
+      ],
+      sections: [
+        pvSection('特技', pvSkillTable() + pvNote('魂の特技', v('soul_skill'))),
+        pvSection('蔵書（修得魔法）', pvTable(['魔法名', 'タイプ', '指定特技', '対象', 'コスト', '効果', '呪句', '参照p'], spellRows, { effectColumns: [5] })),
+        pvSection('関係', pvTable(['', 'アンカー名', '運命', '属性', '設定'], relationRows)),
+      ],
     });
-    skillHTML += '</colgroup><thead><tr><th></th>';
-    AREA_NAMES.forEach((a, ai) => {
-      skillHTML += `<th>${a}</th>`;
-      if (ai < 5) skillHTML += `<th class="pv-gap-head ${gaps[ai] ? 'pv-gap-on' : ''}"></th>`;
-    });
-    skillHTML += '</tr></thead><tbody>';
-    SKILL_TABLE.forEach((row, ri) => {
-      skillHTML += `<tr><td class="pv-num">${ri + 2}</td>`;
-      row.forEach((s, ci) => {
-        skillHTML += `<td class="${skills.includes(s) ? 'pv-skill-on' : ''}">${s}</td>`;
-        if (ci < 5) skillHTML += `<td class="pv-gap-cell ${gaps[ci] ? 'pv-gap-on' : ''}"></td>`;
-      });
-      skillHTML += '</tr>';
-    });
-    skillHTML += '</tbody></table>';
-
-    let spellHTML = '';
-    if (spells.length) {
-      spellHTML = '<table class="pv-table"><thead><tr><th>魔法名</th><th>タイプ</th><th>指定特技</th><th>対象</th><th>コスト</th><th>効果</th><th>呪句</th><th>参照p</th></tr></thead><tbody>';
-      spells.forEach(sp => {
-        spellHTML += `<tr><td>${escapeHTML(sp.name).replace(/\r?\n/g, '<br>')}</td><td>${escapeHTML(sp.type)}</td><td>${escapeHTML(sp.skill)}</td><td>${escapeHTML(sp.target)}</td><td>${escapeHTML(sp.cost)}</td><td class="pv-effect">${escapeHTML(sp.effect)}</td><td>${escapeHTML(sp.phrase || '□')}</td><td>${escapeHTML(sp.ref)}</td></tr>`;
-      });
-      spellHTML += '</tbody></table>';
-    }
-
-    let relHTML = '';
-    if (relations.length) {
-      relHTML = '<table class="pv-table"><thead><tr><th></th><th>アンカー名</th><th>運命</th><th>属性</th><th>設定</th></tr></thead><tbody>';
-      relations.forEach(r => {
-        relHTML += `<tr><td>${r.check ? '■' : '□'}</td><td>${escapeHTML(r.anchor)}</td><td>${escapeHTML(r.fate)}</td><td>${escapeHTML(r.attr)}</td><td>${escapeHTML(r.setting)}</td></tr>`;
-      });
-      relHTML += '</tbody></table>';
-    }
-
-    return `
-    <div class="pv-sheet">
-      <h1 class="pv-title">マギカロギア キャラクターシート</h1>
-      <div class="pv-columns">
-        <div class="pv-col">
-          <div class="pv-section">
-            <h2>基本情報</h2>
-            <dl class="pv-dl">
-              <dt>かりそめの名前</dt><dd>${v('name')}</dd>
-              <dt>魔法名</dt><dd>${v('m_name')}</dd>
-              <dt>性別</dt><dd>${v('gender')}</dd>
-              <dt>年齢</dt><dd>${v('age')}</dd>
-              <dt>功績点</dt><dd>${v('points')}</dd>
-              <dt>階梯</dt><dd>第${v('tier_number')}階梯 ${v('tier_name')}</dd>
-              <dt>領域</dt><dd>${v('area')}</dd>
-              <dt>攻撃力</dt><dd>${v('attack')}</dd>
-              <dt>防御力</dt><dd>${v('defense')}</dd>
-              <dt>根源力</dt><dd>${v('kongen')}</dd>
-              <dt>経歴/機関</dt><dd>${v('history')}</dd>
-              <dt>信条</dt><dd>${v('belief')}</dd>
-              <dt>表の顔</dt><dd>${v('face')}</dd>
-            </dl>
-          </div>
-        </div>
-        <div class="pv-col">
-          <div class="pv-section">
-            <h2>設定</h2>
-            ${imageSrc ? `<div class="pv-image-wrap"><img src="${escapeHTML(imageSrc)}" class="pv-image" alt="設定画像" /></div>` : ''}
-            <p class="pv-text">${escapeHTML(setting).replace(/\n/g, '<br>')}</p>
-          </div>
-          <div class="pv-section">
-            <h2>真の姿</h2>
-            <dl class="pv-dl">
-              <dt>名称</dt><dd>${v('true_name')}</dd>
-              <dt>効果</dt><dd>${v('true_effect')}</dd>
-            </dl>
-            <p class="pv-text">${escapeHTML(trueDesc).replace(/\n/g, '<br>')}</p>
-          </div>
-        </div>
-      </div>
-      <div class="pv-section pv-full">
-        <h2>特技</h2>
-        ${skillHTML}
-        ${soulSkill ? `<p class="pv-soul">魂の特技：<strong>${escapeHTML(soulSkill)}</strong></p>` : ''}
-      </div>
-      <div class="pv-section pv-full">
-        <h2>蔵書（修得魔法）</h2>
-        ${spellHTML || '<p class="pv-empty">なし</p>'}
-      </div>
-      <div class="pv-section pv-full">
-        <h2>関係</h2>
-        ${relHTML || '<p class="pv-empty">なし</p>'}
-      </div>
-    </div>`;
   };
 
-  initSheetImageOutput({ buildPreviewHTML, busyHTML: '⏳ 生成中...', fallbackBackground: '#f7efe3' });
+  initSheetImageOutput({ buildPreviewHTML, busyHTML: '⏳ 生成中...' });
 }); // end DOMContentLoaded
