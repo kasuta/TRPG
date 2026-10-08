@@ -468,11 +468,8 @@ document.addEventListener('DOMContentLoaded', () => {
   if (removeRelationBtn) removeRelationBtn.addEventListener('click', removeRelationRow);
 
   // ──────────────────────────────
-  // 5. セーブ・ロード（.jsonファイル、従来どおり併存）
+  // 5. 保存データの組み立てと反映(JSONファイル・サーバーへの保存・共有リンクは sheet-common.js)
   // ──────────────────────────────
-  const saveBtn = document.getElementById('save_data_btn');
-  const loadFile = document.getElementById('load_data_file');
-
   /** 現在の入力内容からセーブデータ(JSON化可能なオブジェクト)を構築 */
   const buildSaveData = () => {
     const data = { inputs: {}, checkboxes: {}, spells: [], relations: [], image: savedImageBase64 };
@@ -514,20 +511,10 @@ document.addEventListener('DOMContentLoaded', () => {
   const applyLoadedData = (data) => {
     clearCharacterForm();
 
-    if (data.inputs) {
-      for (const [key, value] of Object.entries(data.inputs)) {
-        const el = document.getElementById(key) || document.querySelector(`[name="${key}"]`);
-        if (el) { el.value = value; if (key === 'area') el.dispatchEvent(new Event('change')); }
-      }
-    }
+    // 領域を変えたら、特技の表の表示(領域の列)も合わせる
+    applyInputsAndCheckboxes(data, (key, el) => { if (key === 'area') el.dispatchEvent(new Event('change')); });
     characterTags = normalizeTags(data.tags);
     renderTagChips();
-    if (data.checkboxes) {
-      for (const [key, checked] of Object.entries(data.checkboxes)) {
-        const el = document.getElementById(key);
-        if (el) el.checked = checked;
-      }
-    }
 
     // 蔵書はテキスト入力中でも表に入れ、テキスト入力の欄は表から作り直す
     while (document.querySelectorAll('.spell-textarea[name^="spell_name_"]').length > 0) removeSpellRow();
@@ -557,41 +544,6 @@ document.addEventListener('DOMContentLoaded', () => {
     syncTabTitle();
   };
 
-  if (saveBtn) {
-    saveBtn.addEventListener('click', () => {
-      const data = buildSaveData();
-      const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `${getFieldValue('name', 'character')}_マギロギCS.json`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
-    });
-  }
-
-  if (loadFile) {
-    loadFile.addEventListener('change', (e) => {
-      const file = e.target.files[0];
-      if (!file) return;
-      const reader = new FileReader();
-      reader.onload = (event) => {
-        try {
-          const data = JSON.parse(event.target.result);
-          applyLoadedData(data);
-          showToast('データの読み込みが完了しました！');
-        } catch (error) {
-          console.error(error);
-          showToast('データの読み込みに失敗しました。');
-        }
-        e.target.value = '';
-      };
-      reader.readAsText(file);
-    });
-  }
-
   // ──────────────────────────────
   // 6. 共有用の圧縮データ形式(マギロギ用: 蔵書・関係。奥義/忍法は無し)
   // ──────────────────────────────
@@ -603,16 +555,6 @@ document.addEventListener('DOMContentLoaded', () => {
     true_name: 'trn', true_effect: 'tre', true_description: 'trd', soul_skill: 'ss',
   };
   const INPUT_KEY_MAP_REV = Object.fromEntries(Object.entries(INPUT_KEY_MAP).map(([k, v]) => [v, k]));
-
-  const SKILL_ID_RE = /^skill_r(\d+)_c(\d+)$/;
-  const packSkillIndex = (row, col) => (row - 2) * 6 + (col - 1);
-  const unpackSkillIndex = (idx) => ({ row: Math.floor(idx / 6) + 2, col: (idx % 6) + 1 });
-
-  const trimTrailingEmpty = (arr) => {
-    const a = arr.slice();
-    while (a.length && !a[a.length - 1]) a.pop();
-    return a;
-  };
 
   /** 蔵書行を短縮配列に変換([名前,タイプ,指定特技,対象,コスト,効果,参照p,(旧チャージ機能の名残・位置互換のため空文字列),呪句]) */
   const spellsToArrays = (spells) => spells.map(sp => trimTrailingEmpty([
@@ -636,27 +578,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   /** 共有用にキー名を持たない最小構造へ変換 */
   const compactifyForShare = (data) => {
-    const compact = {};
-    if (data.inputs) {
-      const inputs = {};
-      Object.entries(data.inputs).forEach(([k, v]) => {
-        if (!v) return;
-        inputs[INPUT_KEY_MAP[k] || k] = v;
-      });
-      if (Object.keys(inputs).length) compact.i = inputs;
-    }
-    if (data.checkboxes) {
-      const skills = [];
-      const others = [];
-      Object.entries(data.checkboxes).forEach(([id, checked]) => {
-        if (!checked) return;
-        const m = id.match(SKILL_ID_RE);
-        if (m) { skills.push(packSkillIndex(Number(m[1]), Number(m[2]))); return; }
-        others.push(id); // gap1〜gap5など
-      });
-      if (skills.length) compact.sk = skills;
-      if (others.length) compact.cb = others;
-    }
+    const compact = compactInputsAndChecks(data, INPUT_KEY_MAP);
     if (data.spells && data.spells.length) compact.sp = spellsToArrays(data.spells);
     if (data.relations && data.relations.length) compact.rl = relationsToArrays(data.relations);
     if (data.tags && data.tags.length) compact.tg = data.tags;
@@ -665,17 +587,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   /** compactifyForShareの逆変換(applyLoadedDataが読める形へ復元) */
   const expandFromShare = (compact = {}) => {
-    const data = { inputs: {}, checkboxes: {}, spells: [], relations: [] };
-    if (compact.i) {
-      Object.entries(compact.i).forEach(([k, v]) => { data.inputs[INPUT_KEY_MAP_REV[k] || k] = v; });
-    }
-    if (compact.sk) {
-      compact.sk.forEach(idx => {
-        const { row, col } = unpackSkillIndex(idx);
-        data.checkboxes[`skill_r${row}_c${col}`] = true;
-      });
-    }
-    if (compact.cb) compact.cb.forEach(id => { data.checkboxes[id] = true; });
+    const data = { ...expandInputsAndChecks(compact, INPUT_KEY_MAP_REV), spells: [], relations: [] };
     if (compact.sp) data.spells = arraysToSpells(compact.sp);
     if (compact.rl) data.relations = arraysToRelations(compact.rl);
     if (Array.isArray(compact.tg)) data.tags = compact.tg;
@@ -712,6 +624,7 @@ document.addEventListener('DOMContentLoaded', () => {
     compactifyForShare,
     expandFromShare,
     resetCharacterForm,
+    jsonFileLabel: 'マギロギCS',
   });
 
   // ──────────────────────────────
@@ -862,11 +775,8 @@ FLT　その後表`;
   }
 
   // ──────────────────────────────
-  // 9. キャラシ画像生成 & コピー
+  // 9. キャラシ画像の中身(生成とコピーは sheet-common.js の initSheetImageOutput)
   // ──────────────────────────────
-  const screenshotBtn = document.getElementById('screenshot_btn');
-  if (!screenshotBtn) return;
-
   const AREA_NAMES = ['星', '獣', '力', '歌', '夢', '闇'];
   const SKILL_TABLE = [
     ['黄金','肉','重力','物語','追憶','深淵'],
@@ -994,69 +904,5 @@ FLT　その後表`;
     </div>`;
   };
 
-  screenshotBtn.addEventListener('click', async () => {
-    const originalText = screenshotBtn.textContent;
-    screenshotBtn.textContent = '⏳ 生成中...';
-    screenshotBtn.disabled = true;
-
-    try {
-      const container = document.createElement('div');
-      container.id = 'preview-render-container';
-      container.innerHTML = buildPreviewHTML();
-
-      // 現在のテーマのCSS変数値を明示的に取得してインライン指定する。
-      // html2canvasは [data-theme="..."] のような属性セレクタ経由のCSS変数を
-      // 正しく解決できずデフォルト(:root)値にフォールバックすることがあるため、
-      // 生成前に実際の計算値をコンテナへ直接焼き込んで確実に反映させる。
-      const THEME_VAR_NAMES = [
-        '--ink', '--muted', '--panel', '--panel-shadow', '--border', '--highlight',
-        '--bg-top', '--bg-bottom', '--accent', '--accent-strong', '--accent-rgb',
-        '--accent-hover', '--h1-color', '--footer-color', '--texture-color',
-        '--corner-glow', '--accent-glow', '--surface', '--surface-alt', '--text',
-        '--selected-bg', '--selected-color',
-      ];
-      const rootStyle = getComputedStyle(document.documentElement);
-      THEME_VAR_NAMES.forEach(name => {
-        const value = rootStyle.getPropertyValue(name).trim();
-        if (value) container.style.setProperty(name, value);
-      });
-
-      document.body.appendChild(container);
-
-      await new Promise(resolve => setTimeout(resolve, 200));
-
-      const themeBgColor = rootStyle.getPropertyValue('--bg-top').trim() || '#f7efe3';
-
-      const canvas = await html2canvas(container.querySelector('.pv-sheet'), {
-        useCORS: true, scale: 2, backgroundColor: themeBgColor
-      });
-      document.body.removeChild(container);
-
-      canvas.toBlob(async (blob) => {
-        if (!blob) { showToast('画像の生成に失敗しました。'); return; }
-        try {
-          await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]);
-          showToast('キャラクターシートの画像をクリップボードにコピーしました！\nCtrl+V で貼り付けできます。');
-        } catch (err) {
-          console.error('クリップボードへのコピーに失敗:', err);
-          const url = URL.createObjectURL(blob);
-          const a = document.createElement('a');
-          a.href = url;
-          a.download = `${getFieldValue('name', 'character')}_キャラシ.png`;
-          document.body.appendChild(a);
-          a.click();
-          document.body.removeChild(a);
-          URL.revokeObjectURL(url);
-          showToast('クリップボードへのコピーに失敗したため、画像をダウンロードしました。');
-        }
-      }, 'image/png');
-    } catch (err) {
-      console.error('画像生成に失敗:', err);
-      showToast('画像の生成に失敗しました。');
-    } finally {
-      screenshotBtn.textContent = originalText;
-      screenshotBtn.disabled = false;
-    }
-  });
-
+  initSheetImageOutput({ buildPreviewHTML, busyHTML: '⏳ 生成中...', fallbackBackground: '#f7efe3' });
 }); // end DOMContentLoaded

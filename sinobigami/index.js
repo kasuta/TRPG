@@ -827,11 +827,8 @@ document.addEventListener('DOMContentLoaded', () => {
   if (schoolSelect) schoolSelect.addEventListener('change', applySchoolGaps);
 
   // ──────────────────────────────
-  // 3. セーブ・ロード(.jsonファイル。サーバーへの保存と共有リンクは sheet-common.js)
+  // 3. 保存データの組み立てと反映(JSONファイル・サーバーへの保存・共有リンクは sheet-common.js)
   // ──────────────────────────────
-  const saveBtn = document.getElementById('save_data_btn');
-  const loadFile = document.getElementById('load_data_file');
-
   /** 現在の入力内容からセーブデータ(JSON化可能なオブジェクト)を構築 */
   const buildSaveData = () => {
     const data = { inputs: {}, checkboxes: {}, ougi: [], ninpo: [], relations: [], image: savedImageBase64 };
@@ -879,20 +876,9 @@ document.addEventListener('DOMContentLoaded', () => {
   const applyLoadedData = (data) => {
     clearCharacterForm();
 
-    if (data.inputs) {
-      for (const [key, value] of Object.entries(data.inputs)) {
-        const el = document.getElementById(key) || document.querySelector(`[name="${key}"]`);
-        if (el) el.value = value;
-      }
-    }
+    applyInputsAndCheckboxes(data);
     characterTags = normalizeTags(data.tags);
     renderTagChips();
-    if (data.checkboxes) {
-      for (const [key, checked] of Object.entries(data.checkboxes)) {
-        const el = document.getElementById(key);
-        if (el) el.checked = checked;
-      }
-    }
     if (data.ougi) {
       while (document.querySelectorAll('.ougi-textarea[name^="ougi_name_"]').length > 0) removeOugiRow();
       data.ougi.filter(row => !isEmptyOugiRow(row)).forEach((og, idx) => {
@@ -965,41 +951,6 @@ document.addEventListener('DOMContentLoaded', () => {
     refreshOwnerPasswordUI();
   };
 
-  if (saveBtn) {
-    saveBtn.addEventListener('click', () => {
-      const data = buildSaveData();
-      const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `${getFieldValue('name', 'character')}_シノビガミCS.json`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
-    });
-  }
-
-  if (loadFile) {
-    loadFile.addEventListener('change', (e) => {
-      const file = e.target.files[0];
-      if (!file) return;
-      const reader = new FileReader();
-      reader.onload = (event) => {
-        try {
-          const data = JSON.parse(event.target.result);
-          applyLoadedData(data);
-          showToast('データの読み込みが完了しました！');
-        } catch (error) {
-          console.error(error);
-          showToast('データの読み込みに失敗しました。');
-        }
-        e.target.value = '';
-      };
-      reader.readAsText(file);
-    });
-  }
-
   // ──────────────────────────────
   // 3b. 共有用の圧縮データ形式(キー名を持たない位置配列化・短縮キー化)
   // ──────────────────────────────
@@ -1015,15 +966,6 @@ document.addEventListener('DOMContentLoaded', () => {
     ningu_tonkofu: 'nt', ningu_other: 'no', special_skill: 'sp',
   };
   const INPUT_KEY_MAP_REV = Object.fromEntries(Object.entries(INPUT_KEY_MAP).map(([k, v]) => [v, k]));
-  const SKILL_ID_RE = /^skill_r(\d+)_c(\d+)$/;
-  const packSkillIndex = (row, col) => (row - 2) * 6 + (col - 1);
-  const unpackSkillIndex = (idx) => ({ row: Math.floor(idx / 6) + 2, col: (idx % 6) + 1 });
-
-  const trimTrailingEmpty = (arr) => {
-    const a = arr.slice();
-    while (a.length && !a[a.length - 1]) a.pop();
-    return a;
-  };
   const rowsToArrays = (rows, order) => rows.map(row => trimTrailingEmpty(order.map(k => row[k] || '')));
   const arraysToRows = (arrs, order) => arrs.map(arr => {
     const row = {};
@@ -1033,27 +975,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   /** 共有用にキー名を持たない最小構造へ変換 */
   const compactifyForShare = (data) => {
-    const compact = {};
-    if (data.inputs) {
-      const inputs = {};
-      Object.entries(data.inputs).forEach(([k, v]) => {
-        if (!v) return;
-        inputs[INPUT_KEY_MAP[k] || k] = v;
-      });
-      if (Object.keys(inputs).length) compact.i = inputs;
-    }
-    if (data.checkboxes) {
-      const skills = [];
-      const others = [];
-      Object.entries(data.checkboxes).forEach(([id, checked]) => {
-        if (!checked) return;
-        const m = id.match(SKILL_ID_RE);
-        if (m) skills.push(packSkillIndex(Number(m[1]), Number(m[2])));
-        else others.push(id);
-      });
-      if (skills.length) compact.sk = skills;
-      if (others.length) compact.cb = others;
-    }
+    const compact = compactInputsAndChecks(data, INPUT_KEY_MAP);
     if (data.ougi && data.ougi.length) compact.og = rowsToArrays(data.ougi, OUGI_ORDER);
     if (data.ninpo && data.ninpo.length) compact.np = rowsToArrays(data.ninpo, NINPO_ORDER);
     if (data.haikei && data.haikei.length) compact.hk = rowsToArrays(data.haikei, HAIKEI_ORDER);
@@ -1071,17 +993,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   /** compactifyForShareの逆変換(applyLoadedDataが読める形へ復元) */
   const expandFromShare = (compact = {}) => {
-    const data = { inputs: {}, checkboxes: {}, ougi: [], ninpo: [], haikei: [], relations: [] };
-    if (compact.i) {
-      Object.entries(compact.i).forEach(([k, v]) => { data.inputs[INPUT_KEY_MAP_REV[k] || k] = v; });
-    }
-    if (compact.sk) {
-      compact.sk.forEach(idx => {
-        const { row, col } = unpackSkillIndex(idx);
-        data.checkboxes[`skill_r${row}_c${col}`] = true;
-      });
-    }
-    if (compact.cb) compact.cb.forEach(id => { data.checkboxes[id] = true; });
+    const data = { ...expandInputsAndChecks(compact, INPUT_KEY_MAP_REV), ougi: [], ninpo: [], haikei: [], relations: [] };
     if (compact.og) data.ougi = arraysToRows(compact.og, OUGI_ORDER);
     if (compact.np) data.ninpo = arraysToRows(compact.np, NINPO_ORDER);
     if (compact.hk) data.haikei = arraysToRows(compact.hk, HAIKEI_ORDER);
@@ -1320,6 +1232,7 @@ GWT　戦国変調表`;
     compactifyForShare,
     expandFromShare,
     resetCharacterForm,
+    jsonFileLabel: 'シノビガミCS',
     // 自分のキャラかどうかで、隠す欄のパスワード設定の表示が変わる
     onMyCharactersLoaded: refreshOwnerPasswordUI,
   });
@@ -1327,76 +1240,8 @@ GWT　戦国変調表`;
   if (getAuthToken()) renderMyCharacters();
 
   // ──────────────────────────────
-  // 5. キャラシ画像生成 & コピー
+  // 5. キャラシ画像の中身(生成とコピーは sheet-common.js の initSheetImageOutput)
   // ──────────────────────────────
-  const screenshotBtn = document.getElementById('screenshot_btn');
-  if (!screenshotBtn) return;
-
-  const renderPreviewToCanvas = async () => {
-    const container = document.createElement('div');
-    container.id = 'preview-render-container';
-    container.innerHTML = buildPreviewHTML();
-
-    // 現在のテーマのCSS変数値を明示的に取得してインライン指定する。
-    // html2canvasは [data-theme="..."] のような属性セレクタ経由のCSS変数を
-    // 正しく解決できずデフォルト(:root)値にフォールバックすることがあるため、
-    // 生成前に実際の計算値をコンテナへ直接焼き込んで確実に反映させる。
-    const THEME_VAR_NAMES = [
-      '--ink', '--muted', '--panel', '--panel-shadow', '--border', '--highlight',
-      '--bg-top', '--bg-bottom', '--accent', '--accent-strong', '--accent-rgb',
-      '--accent-hover', '--h1-color', '--footer-color', '--texture-color',
-      '--corner-glow', '--accent-glow', '--surface', '--surface-alt', '--text',
-      '--selected-bg', '--selected-color',
-    ];
-    const rootStyle = getComputedStyle(document.documentElement);
-    THEME_VAR_NAMES.forEach(name => {
-      const value = rootStyle.getPropertyValue(name).trim();
-      if (value) container.style.setProperty(name, value);
-    });
-
-    document.body.appendChild(container);
-
-    const sheet = container.querySelector('.pv-sheet');
-    if (!sheet) {
-      container.remove();
-      throw new Error('プレビュー要素が見つかりません');
-    }
-
-    const width = Math.ceil(sheet.scrollWidth || 960);
-    const height = Math.ceil(sheet.scrollHeight || 1400);
-    container.style.width = `${width}px`;
-    container.style.height = `${height}px`;
-
-    await document.fonts.ready;
-    await Promise.all(
-      Array.from(container.querySelectorAll('img')).map(img =>
-        img.decode ? img.decode().catch(() => undefined) : Promise.resolve()
-      )
-    );
-
-    await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
-
-    const themeBgColor = getComputedStyle(document.documentElement).getPropertyValue('--bg-top').trim() || '#f4ede0';
-
-    const canvas = await html2canvas(sheet, {
-      backgroundColor: themeBgColor,
-      scale: 2,
-      useCORS: true,
-      width,
-      height,
-      scrollX: 0,
-      scrollY: 0,
-      windowWidth: width,
-      windowHeight: height,
-      logging: false,
-      imageTimeout: 15000,
-      letterRendering: true,
-    });
-
-    container.remove();
-    return canvas;
-  };
-
   const AREA_NAMES = ['器術', '体術', '忍術', '謀術', '戦術', '妖術'];
   const SKILL_TABLE = [
     ['絡繰術','騎乗術','生存術','医術','兵糧術','異形化'],
@@ -1588,39 +1433,5 @@ GWT　戦国変調表`;
 
   const ICON_SPINNER = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true" class="btn-spinner"><path d="M12 3a9 9 0 1 0 9 9"/></svg>`;
 
-  screenshotBtn.addEventListener('click', async () => {
-    const originalHTML = screenshotBtn.innerHTML;
-    screenshotBtn.innerHTML = `${ICON_SPINNER}生成中...`;
-    screenshotBtn.disabled = true;
-
-    try {
-      const canvas = await renderPreviewToCanvas();
-
-      canvas.toBlob(async (blob) => {
-        if (!blob) { showToast('画像の生成に失敗しました。'); return; }
-        try {
-          await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]);
-          showToast('キャラクターシートの画像をクリップボードにコピーしました！\nCtrl+V で貼り付けできます。');
-        } catch (err) {
-          console.error('クリップボードへのコピーに失敗:', err);
-          const url = URL.createObjectURL(blob);
-          const a = document.createElement('a');
-          a.href = url;
-          a.download = `${getFieldValue('name', 'character')}_キャラシ.png`;
-          document.body.appendChild(a);
-          a.click();
-          document.body.removeChild(a);
-          URL.revokeObjectURL(url);
-          showToast('クリップボードへのコピーに失敗したため、画像をダウンロードしました。');
-        }
-      }, 'image/png');
-    } catch (err) {
-      console.error('画像生成に失敗:', err);
-      showToast('画像の生成に失敗しました。');
-    } finally {
-      screenshotBtn.innerHTML = originalHTML;
-      screenshotBtn.disabled = false;
-    }
-  });
-
+  initSheetImageOutput({ buildPreviewHTML, busyHTML: `${ICON_SPINNER}生成中...`, fallbackBackground: '#f4ede0' });
 }); // end DOMContentLoaded

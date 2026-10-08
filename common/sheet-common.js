@@ -188,7 +188,7 @@ const refreshTagSuggestions = async () => {
   const characters = await tagSuggestionProvider();
   datalist.innerHTML = tagUsage(characters)
     .filter(([tag]) => !characterTags.includes(tag))
-    .map(([tag]) => `<option value="${escapeHTML(tag).replace(/"/g, '&quot;')}"></option>`)
+    .map(([tag]) => `<option value="${escapeHTML(tag)}"></option>`)
     .join('');
 };
 
@@ -258,6 +258,101 @@ window.addEventListener('resize', () => {
 
 /** HTML エスケープ(属性値の中でも使えるよう、引用符も置き換える) */
 const escapeHTML = (str) => str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+
+/** Blob を、指定した名前のファイルとして保存させる */
+const downloadBlob = (blob, filename) => {
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+};
+
+// ==========================================
+// 保存データのうち、両キャラシで同じ形の部分(入力欄とチェックボックス)
+// ==========================================
+/** 特技のチェックボックスのIDと、短縮形での番号(行2〜12・列1〜6を 0〜65 にしたもの) */
+const SKILL_ID_RE = /^skill_r(\d+)_c(\d+)$/;
+const packSkillIndex = (row, col) => (row - 2) * 6 + (col - 1);
+const unpackSkillIndex = (idx) => ({ row: Math.floor(idx / 6) + 2, col: (idx % 6) + 1 });
+
+/** 配列の末尾の空の要素を取り除く(短縮形を短くするため) */
+const trimTrailingEmpty = (arr) => {
+  const a = arr.slice();
+  while (a.length && !a[a.length - 1]) a.pop();
+  return a;
+};
+
+/**
+ * 保存データの inputs / checkboxes を、短縮形の i(短いキーの入力値)/ sk(特技の番号)/ cb(そのほかのチェックのID)にする。
+ * 空の値とチェックの無いものは入れない。inputKeyMap は、入力欄のID → 短いキー。
+ */
+const compactInputsAndChecks = (data, inputKeyMap) => {
+  const compact = {};
+  if (data.inputs) {
+    const inputs = {};
+    Object.entries(data.inputs).forEach(([k, v]) => {
+      if (!v) return;
+      inputs[inputKeyMap[k] || k] = v;
+    });
+    if (Object.keys(inputs).length) compact.i = inputs;
+  }
+  if (data.checkboxes) {
+    const skills = [];
+    const others = [];
+    Object.entries(data.checkboxes).forEach(([id, checked]) => {
+      if (!checked) return;
+      const m = id.match(SKILL_ID_RE);
+      if (m) skills.push(packSkillIndex(Number(m[1]), Number(m[2])));
+      else others.push(id); // gap1〜gap5 など
+    });
+    if (skills.length) compact.sk = skills;
+    if (others.length) compact.cb = others;
+  }
+  return compact;
+};
+
+/** compactInputsAndChecks の逆変換({ inputs, checkboxes })。inputKeyMapRev は、短いキー → 入力欄のID */
+const expandInputsAndChecks = (compact, inputKeyMapRev) => {
+  const inputs = {};
+  const checkboxes = {};
+  if (compact.i) {
+    Object.entries(compact.i).forEach(([k, v]) => { inputs[inputKeyMapRev[k] || k] = v; });
+  }
+  if (compact.sk) {
+    compact.sk.forEach(idx => {
+      const { row, col } = unpackSkillIndex(idx);
+      checkboxes[`skill_r${row}_c${col}`] = true;
+    });
+  }
+  if (compact.cb) compact.cb.forEach(id => { checkboxes[id] = true; });
+  return { inputs, checkboxes };
+};
+
+/**
+ * 保存データの inputs / checkboxes を入力欄に反映する。onInputApplied(key, el) は、入力欄に値を入れた直後に呼ぶ。
+ * 読み込むデータは誰でも書き換えられるので、一覧パネル(ログイン・検索)の欄とファイルの選択欄には入れない。
+ */
+const applyInputsAndCheckboxes = (data, onInputApplied = () => {}) => {
+  const isSheetField = (el) => el && !el.closest('#history_panel') && el.type !== 'file';
+  if (data.inputs) {
+    for (const [key, value] of Object.entries(data.inputs)) {
+      const el = document.getElementById(key) || document.querySelector(`[name="${CSS.escape(key)}"]`);
+      if (!isSheetField(el)) continue;
+      el.value = value;
+      onInputApplied(key, el);
+    }
+  }
+  if (data.checkboxes) {
+    for (const [key, checked] of Object.entries(data.checkboxes)) {
+      const el = document.getElementById(key);
+      if (isSheetField(el)) el.checked = checked;
+    }
+  }
+};
 
 /**
  * 一覧用の立ち絵のサムネイルを作る。切らずに全体を縮小し(長い辺を THUMB_MAX_SIDE 以下に。拡大はしない)、
@@ -404,6 +499,7 @@ clearPreview();
  * compactifyForShare(data)      … 保存データを、サーバーに送る短縮形にする
  * expandFromShare(compact)      … 短縮形を保存データに戻す
  * resetCharacterForm()          … 新規作成用に入力を初期状態にする
+ * jsonFileLabel                 … 「データを保存 (.json)」のファイル名の末尾(<名前>_<これ>.json)
  * onMyCharactersLoaded()        … (任意) ログイン中のキャラ一覧を読み込んだあと
  */
 const sheetHooks = {
@@ -412,6 +508,7 @@ const sheetHooks = {
   compactifyForShare: null,
   expandFromShare: null,
   resetCharacterForm: null,
+  jsonFileLabel: 'CS',
   onMyCharactersLoaded: () => {},
 };
 
@@ -463,6 +560,8 @@ const clearAuth = () => {
   localStorage.removeItem(AUTH_TOKEN_KEY);
   localStorage.removeItem(AUTH_USER_KEY);
 };
+/** ログイン中なら Authorization ヘッダー、未ログインなら空(匿名の要求になる) */
+const bearerHeaders = () => (getAuthToken() ? { Authorization: `Bearer ${getAuthToken()}` } : {});
 
 /** 履歴一覧(ゲスト用ローカル保存)を取得する */
 const getHistory = () => {
@@ -521,7 +620,7 @@ const buildListItemHTML = (h) => {
   // タグが多いときは1行に収まる分だけ見せ、全部はツールチップで示す
   const name = `<a class="history-item-link" href="${characterPageHref(h.id, h.game)}" draggable="false">${escapeHTML(h.name || '(名前未設定)')}</a>`;
   const info = h.showThumb
-    ? `<div class="history-item-meta"${Array.isArray(h.tags) && h.tags.length ? ` title="${escapeHTML(h.tags.join(' / ')).replace(/"/g, '&quot;')}"` : ''}>${badge}${(Array.isArray(h.tags) ? h.tags : []).map(tag => `<span class="history-item-tag">${escapeHTML(tag)}</span>`).join('')}</div>
+    ? `<div class="history-item-meta"${Array.isArray(h.tags) && h.tags.length ? ` title="${escapeHTML(h.tags.join(' / '))}"` : ''}>${badge}${(Array.isArray(h.tags) ? h.tags : []).map(tag => `<span class="history-item-tag">${escapeHTML(tag)}</span>`).join('')}</div>
           <div class="history-item-name">${name}</div>`
     : `<div class="history-item-name">${badge}${name}</div>
           ${tags}
@@ -958,7 +1057,7 @@ const saveMyLayout = async () => {
     try {
       const res = await fetch(`${API_BASE}/api/my-layout`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${getAuthToken()}` },
+        headers: { 'Content-Type': 'application/json', ...bearerHeaders() },
         body: JSON.stringify(toLayoutPayload(items)),
       });
       if (res.status === 401) {
@@ -1057,7 +1156,7 @@ const deleteCharacterFromServer = async (id) => {
   try {
     const res = await fetch(`${API_BASE}/api/character/${id}`, {
       method: 'DELETE',
-      headers: { Authorization: `Bearer ${getAuthToken()}` },
+      headers: bearerHeaders(),
     });
     if (res.status === 401) {
       handleAuthExpired();
@@ -1093,7 +1192,7 @@ const renderMyCharacters = async () => {
 
   try {
     const res = await fetch(`${API_BASE}/api/my-layout?v=2`, {
-      headers: { Authorization: `Bearer ${getAuthToken()}` },
+      headers: bearerHeaders(),
     });
     if (res.status === 401) {
       handleAuthExpired();
@@ -1162,7 +1261,7 @@ tagSuggestionProvider = async () => {
   if (!getAuthToken()) return [];
   if (myCharactersCache.length) return myCharactersCache;
   if (!tagSuggestionFetch) {
-    tagSuggestionFetch = fetch(`${API_BASE}/api/my-layout?v=2`, { headers: { Authorization: `Bearer ${getAuthToken()}` } })
+    tagSuggestionFetch = fetch(`${API_BASE}/api/my-layout?v=2`, { headers: bearerHeaders() })
       .then(res => (res.ok ? res.json() : { items: [] }))
       .then(json => flattenLayoutItems(json.items || []))
       .catch(() => []);
@@ -1277,7 +1376,7 @@ if (logoutBtn) {
     try {
       await fetch(`${API_BASE}/api/logout`, {
         method: 'POST',
-        headers: { Authorization: `Bearer ${getAuthToken()}` },
+        headers: bearerHeaders(),
       });
     } catch (err) {
       console.error(err);
@@ -1634,7 +1733,7 @@ const uploadThumbnail = async (id, imageBlob) => {
   try {
     const thumb = await createThumbnail(imageBlob);
     if (!thumb) throw new Error(`サムネイルを${THUMB_MAX_BYTES / 1024}KB以下にできませんでした`);
-    const authHeaders = getAuthToken() ? { Authorization: `Bearer ${getAuthToken()}` } : {};
+    const authHeaders = bearerHeaders();
     const res = await fetch(`${API_BASE}/api/upload-thumb/${id}`, {
       method: 'POST',
       headers: { 'Content-Type': thumb.type, ...authHeaders },
@@ -1680,7 +1779,7 @@ const saveCharacter = async () => {
   delete data.image;
   const compact = sheetHooks.compactifyForShare(data);
 
-  const authHeaders = getAuthToken() ? { Authorization: `Bearer ${getAuthToken()}` } : {};
+  const authHeaders = bearerHeaders();
   const tooLargeHint = '効果や設定などの長い文章を短くしてから、もう一度保存してください。';
   // ログインの有効期限切れ(401)なら、未ログインの表示に戻して中止する(匿名キャラとして保存し直しはしない)
   const stopIfAuthExpired = (res, what) => {
@@ -1856,11 +1955,155 @@ const loadCharacterFromHash = async () => {
   }
 };
 
+// ==========================================
+// JSONファイルでの保存・読み込み(サーバーへの保存とは別に、手元のファイルにする)
+// ==========================================
+const initJsonFileButtons = () => {
+  const saveBtn = document.getElementById('save_data_btn');
+  if (saveBtn) {
+    saveBtn.addEventListener('click', () => {
+      const blob = new Blob([JSON.stringify(sheetHooks.buildSaveData(), null, 2)], { type: 'application/json' });
+      downloadBlob(blob, `${getFieldValue('name', 'character')}_${sheetHooks.jsonFileLabel}.json`);
+    });
+  }
+
+  const loadFile = document.getElementById('load_data_file');
+  if (loadFile) {
+    loadFile.addEventListener('change', (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        try {
+          sheetHooks.applyLoadedData(JSON.parse(event.target.result));
+          showToast('データの読み込みが完了しました！');
+        } catch (error) {
+          console.error(error);
+          showToast('データの読み込みに失敗しました。');
+        }
+        e.target.value = '';
+      };
+      reader.readAsText(file);
+    });
+  }
+};
+
+// ==========================================
+// キャラシ画像の生成とコピー(html2canvas)
+// ==========================================
+/** 画像出力に焼き込むテーマのCSS変数 */
+const PREVIEW_THEME_VAR_NAMES = [
+  '--ink', '--muted', '--panel', '--panel-shadow', '--border', '--highlight',
+  '--bg-top', '--bg-bottom', '--accent', '--accent-strong', '--accent-rgb',
+  '--accent-hover', '--h1-color', '--footer-color', '--texture-color',
+  '--corner-glow', '--accent-glow', '--surface', '--surface-alt', '--text',
+  '--selected-bg', '--selected-color',
+];
+
+/** 画像出力用のHTML(.pv-sheet を含む)を画面の外に置いて、canvas にする */
+const renderPreviewToCanvas = async (html, fallbackBackground) => {
+  const container = document.createElement('div');
+  container.id = 'preview-render-container';
+  container.innerHTML = html;
+
+  // 現在のテーマのCSS変数値を明示的に取得してインライン指定する。
+  // html2canvasは [data-theme="..."] のような属性セレクタ経由のCSS変数を
+  // 正しく解決できずデフォルト(:root)値にフォールバックすることがあるため、
+  // 生成前に実際の計算値をコンテナへ直接焼き込んで確実に反映させる。
+  const rootStyle = getComputedStyle(document.documentElement);
+  PREVIEW_THEME_VAR_NAMES.forEach(name => {
+    const value = rootStyle.getPropertyValue(name).trim();
+    if (value) container.style.setProperty(name, value);
+  });
+
+  document.body.appendChild(container);
+
+  const sheet = container.querySelector('.pv-sheet');
+  if (!sheet) {
+    container.remove();
+    throw new Error('プレビュー要素が見つかりません');
+  }
+
+  try {
+    const width = Math.ceil(sheet.scrollWidth || 960);
+    const height = Math.ceil(sheet.scrollHeight || 1400);
+    container.style.width = `${width}px`;
+    container.style.height = `${height}px`;
+
+    await document.fonts.ready;
+    await Promise.all(
+      Array.from(container.querySelectorAll('img')).map(img =>
+        img.decode ? img.decode().catch(() => undefined) : Promise.resolve()
+      )
+    );
+    await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+
+    return await html2canvas(sheet, {
+      backgroundColor: rootStyle.getPropertyValue('--bg-top').trim() || fallbackBackground,
+      scale: 2,
+      useCORS: true,
+      width,
+      height,
+      scrollX: 0,
+      scrollY: 0,
+      windowWidth: width,
+      windowHeight: height,
+      logging: false,
+      imageTimeout: 15000,
+      letterRendering: true,
+    });
+  } finally {
+    container.remove();
+  }
+};
+
 /**
- * ゲームごとの処理を登録し(sheetHooks を参照)、共有リンク(#id=)で開いたときはそのキャラを読み込む。
+ * 「キャラシ画像をコピー」ボタンを使えるようにする。各 index.js が、画像出力用のHTMLを作る関数を定義した後に呼ぶ。
+ *   buildPreviewHTML()   … 画像にするHTML(.pv-sheet を含む)
+ *   busyHTML             … 生成中のボタンの中身
+ *   fallbackBackground   … テーマの背景色(--bg-top)が取れないときの背景色
+ * 画像はクリップボードにコピーし、できなければファイルとして保存させる。
+ */
+const initSheetImageOutput = ({ buildPreviewHTML, busyHTML, fallbackBackground }) => {
+  const screenshotBtn = document.getElementById('screenshot_btn');
+  if (!screenshotBtn) return;
+
+  screenshotBtn.addEventListener('click', async () => {
+    const originalHTML = screenshotBtn.innerHTML;
+    screenshotBtn.innerHTML = busyHTML;
+    screenshotBtn.disabled = true;
+
+    try {
+      const canvas = await renderPreviewToCanvas(buildPreviewHTML(), fallbackBackground);
+
+      canvas.toBlob(async (blob) => {
+        if (!blob) { showToast('画像の生成に失敗しました。'); return; }
+        try {
+          await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]);
+          showToast('キャラクターシートの画像をクリップボードにコピーしました！\nCtrl+V で貼り付けできます。');
+        } catch (err) {
+          console.error('クリップボードへのコピーに失敗:', err);
+          downloadBlob(blob, `${getFieldValue('name', 'character')}_キャラシ.png`);
+          showToast('クリップボードへのコピーに失敗したため、画像をダウンロードしました。');
+        }
+      }, 'image/png');
+    } catch (err) {
+      console.error('画像生成に失敗:', err);
+      showToast('画像の生成に失敗しました。');
+    } finally {
+      screenshotBtn.innerHTML = originalHTML;
+      screenshotBtn.disabled = false;
+    }
+  });
+};
+
+/**
+ * ゲームごとの処理を登録し(sheetHooks を参照)、JSONファイルの保存・読み込みのボタンを使えるようにして、
+ * 共有リンク(#id=)で開いたときはそのキャラを読み込む。
  * 各 index.js の DOMContentLoaded の中で、入力欄の準備が済んでから1回呼ぶ。
  */
 const initSheetCommon = (hooks) => {
   Object.assign(sheetHooks, hooks);
+  initJsonFileButtons();
   loadCharacterFromHash();
 };
