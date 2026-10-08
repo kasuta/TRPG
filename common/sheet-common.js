@@ -2031,12 +2031,14 @@ const renderPreviewToCanvas = async (html, fallbackBackground) => {
     container.style.height = `${height}px`;
 
     await document.fonts.ready;
-    await Promise.all(
+    // 画像の読み込みと、配置が済むまでの2フレームを待つ。
+    // タブが裏にあると、どちらも終わらないことがあるので、その場合は少し待って先へ進む(画像は html2canvas も読み込む)
+    const imagesAndLayoutReady = Promise.all(
       Array.from(container.querySelectorAll('img')).map(img =>
         img.decode ? img.decode().catch(() => undefined) : Promise.resolve()
       )
-    );
-    await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+    ).then(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
+    await Promise.race([imagesAndLayoutReady, new Promise(resolve => setTimeout(resolve, 1500))]);
 
     return await html2canvas(sheet, {
       backgroundColor: rootStyle.getPropertyValue('--bg-top').trim() || fallbackBackground,

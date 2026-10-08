@@ -837,9 +837,9 @@ document.addEventListener('DOMContentLoaded', () => {
       // 一覧パネル(ログイン・検索)の入力と、タグの入力欄(タグは tags に入れる)は保存しない
       if (el.closest('#history_panel') || el.id === 'tag_input') return;
       if (el.id === 'reveal_password' || el.id === 'reveal_password_prompt_input') return;
-      if (!el.name.startsWith('ougi_') && !el.name.startsWith('ninpo_') && !el.name.startsWith('relation_') && !el.name.startsWith('ningu_item_')) {
-        data.inputs[el.id || el.name] = el.value;
-      }
+      // 行を増減できる欄(奥義・忍法・背景・関係・忍具)は、下でそれぞれの配列に入れるので、inputs には入れない
+      if (/^(ougi_|ninpo_|haikei_|relation_|ningu_item_)/.test(el.name || '')) return;
+      data.inputs[el.id || el.name] = el.value;
     });
     data.tags = [...characterTags];
     document.querySelectorAll('input[type="checkbox"]').forEach(el => {
